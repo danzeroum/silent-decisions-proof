@@ -1,0 +1,127 @@
+% -----------------------------------------------------------------------------
+% Section 6: Discussion
+% Paper: "Silent Decisions Are Type Errors: Enforcing AI Accountability
+%         via Linear Resource Types"
+% Venue: IEEE Computer — Special Issue on AI Governance
+% Deadline: 13 April 2026
+% Authors: Daniel Lau Pereira Soares
+% -----------------------------------------------------------------------------
+
+\section{Discussion}
+\label{sec:discussion}
+
+The Constitutional Enclosure Theorem establishes a strong structural
+guarantee within a precisely bounded scope.
+This section examines the boundaries of that scope honestly,
+identifies three limitations of the current reference implementation,
+and outlines directions for future work.
+
+% ----------------------------------------------------------------
+\subsection{Scope and Boundaries of the Guarantee}
+\label{sec:scope}
+
+The theorem holds within Safe Rust and for code whose crate graph
+contains \texttt{silent-decisions-proof}.
+Two categories of code lie outside this perimeter.
+
+\paragraph{Unsafe Rust.}
+The \texttt{unsafe} keyword grants the programmer the ability to
+bypass borrow-checker and visibility rules, including the private
+field restrictions that enforce Protection~A
+(Table~\ref{tab:protections}).
+Production deployments that require the full strength of the theorem
+should enforce a zero-\texttt{unsafe} policy over the transitive
+dependency graph, auditable via \texttt{cargo geiger}.
+This is not a theoretical limitation but an operational one:
+the tooling exists, and its enforcement is a policy decision,
+not a technical barrier.
+
+\paragraph{Semantic truthfulness.}
+The theorem guarantees that \emph{some} context was hashed and bound
+to a verdict---not that the hashed context is the correct or complete
+input presented to the AI system at inference time.
+A malicious or inattentive caller could pass a fixed byte string
+(\texttt{b"placeholder"}) to \texttt{EvidenceToken::new} and
+obtain a structurally valid token.
+Addressing semantic truthfulness requires attestation mechanisms at
+the application layer (e.g., hardware-rooted measurement of the
+inference pipeline), which is orthogonal to the type-level guarantee
+we provide.
+
+% ----------------------------------------------------------------
+\subsection{Limitations of the Reference Implementation}
+\label{sec:limitations}
+
+The \texttt{silent-decisions-proof} kernel is a proof-of-concept
+designed to validate the theoretical claims of this paper.
+Three implementation choices trade production robustness for
+clarity of exposition.
+
+\paragraph{L1 — Static HMAC key.}
+The current implementation uses a compile-time constant as the HMAC
+signing key.
+This is sufficient to demonstrate integrity verification (the HMAC
+binds evidence, decision, and explanation together) but is
+inadequate for production use, where key compromise would allow
+post-hoc forgery of the integrity seal.
+Production deployments should integrate a Hardware Security Module
+(HSM) or a key-management service (e.g., AWS KMS, HashiCorp Vault)
+for key issuance and rotation.
+
+\paragraph{L2 — Public \texttt{ComplianceToken} constructor.}
+The \texttt{ComplianceToken::new} constructor is \texttt{pub},
+allowing any caller to self-declare a jurisdiction, policy version,
+and contestability deadline without external validation.
+In a production governance kernel, token issuance should be
+restricted to a trusted policy engine that validates the declared
+parameters against a verified regulatory database.
+The reference implementation makes the constructor public to
+accommodate the standalone binary demo; a production deployment would
+restrict it to \texttt{pub(crate)} or require a signed token from
+an authorised issuer.
+
+\paragraph{L3 — Single-node evidence chain.}
+The current \texttt{EvidenceToken} captures a single BLAKE3 hash
+of the decision context.
+Multi-step AI pipelines (retrieval, re-ranking, generation, scoring)
+produce intermediate states that each carry accountability
+implications.
+Extending the type system to a \emph{chain} of evidence tokens---
+where each pipeline stage consumes the prior token and produces
+a new one---is a natural generalisation that preserves the
+$V \multimap (E \otimes C)$ invariant at each step.
+
+% ----------------------------------------------------------------
+\subsection{The CAL Design Principle}
+\label{sec:cal}
+
+The three limitations above reflect a deliberate design choice that
+we call the \emph{CAL principle}: in a governance system under
+resource constraints, the three properties of
+\textbf{C}onsistency (every verdict has evidence),
+\textbf{A}vailability (the system can always issue a verdict), and
+\textbf{L}egality (tokens are issued only by authorised entities)
+cannot all be maximised simultaneously.
+The reference implementation prioritises Consistency and Availability
+over Legality---a reasonable choice for a proof-of-concept, but
+one that must be revisited before production deployment.
+The CAL principle provides a vocabulary for communicating these
+trade-offs to system architects and regulators.
+
+% ----------------------------------------------------------------
+\subsection{Future Work}
+\label{sec:future}
+
+Three directions are most immediate.
+First, integrating HSM-backed key management (addressing L1) and a
+regulatory-oracle-signed \texttt{ComplianceToken} (addressing L2)
+would close the gap between the reference implementation and a
+production governance kernel.
+Second, extending the evidence chain to multi-step pipelines
+(addressing L3) would make the framework applicable to
+retrieval-augmented generation and agentic AI architectures.
+Third, formalising the type-system extension in a proof assistant
+(e.g., Lean~4 or Coq) would elevate the Constitutional Enclosure
+Theorem from a machine-checked Rust proof to a fully mechanised
+mathematical proof, strengthening its standing as a foundational
+result in the theory of accountable computation.
