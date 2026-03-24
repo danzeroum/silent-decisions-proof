@@ -87,4 +87,6 @@ fn main() {
     println!("─────────────────────────────────────────────────────────────────");
     println!();
     println!("Run `cargo test` to verify all 6 proof clauses.");
+    // Reproducible implementation metric — cite in Section 5.
+    println!("  size_of::<Verdict>() = {} bytes", std::mem::size_of::<Verdict>());
 }
