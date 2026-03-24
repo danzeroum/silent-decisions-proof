@@ -86,9 +86,9 @@ The following are ill-typed in $\Gamma_{\mathit{ext}}$:
   \item Struct-literal construction of \texttt{Verdict}---all fields
     are private (compiler error \texttt{E0451}).
   \item Direct invocation of \texttt{EvidenceToken::consume()}---the
-    method is \texttt{pub(crate)} (compiler error \texttt{E0603}).
+    method is \texttt{pub(crate)} (compiler error \texttt{E0624}).
   \item Construction of \texttt{Blake3Hash} via its tuple-struct
-    field---the field is private (compiler error \texttt{E0603}).
+    field---the field is private (compiler error \texttt{E0423}).
 \end{enumerate}
 Together, these restrictions close the encapsulation perimeter: the
 only well-typed path to a \texttt{Verdict} in $\Gamma_{\mathit{ext}}$
@@ -155,9 +155,9 @@ bypassing \texttt{Verdict::new} to extract a \texttt{Blake3Hash} and
 assemble a \texttt{Verdict} fragment.
 By Axiom~\ref{ax:encap}(2), \texttt{consume()} is declared
 \texttt{pub(crate)}.  The compiler rejects the call with
-\texttt{error[E0603]: function `consume` is private}.
+\texttt{error[E0624]: method `consume` is private}.
 This is verified by the compile-fail test
-\texttt{tests/ui/blake3hash\_public\_constructor.rs}.
+\texttt{tests/ui/external\_consume\_call.rs}.
 
 \medskip
 \noindent\textbf{Case~C: Silent drop of \texttt{EvidenceToken}.}
@@ -168,11 +168,16 @@ By Axiom~\ref{ax:unique}, \texttt{EvidenceToken} is \texttt{\#[must\_use]}.
 The compiler emits \texttt{warning: unused return value of
 `EvidenceToken` that must be used}, and because the crate sets
 \texttt{\#![deny(unused\_must\_use)]}, this warning is promoted to a
-hard error.  The developer cannot proceed without either consuming
-the token (producing a materialized verdict) or explicitly
-acknowledging the drop (which requires modifying the crate's internal
-visibility rules---itself an auditable action outside normal
-development workflow).
+hard error.  Note that \texttt{let \_ = expr} in Rust explicitly silences the
+\texttt{\#[must\_use]} lint without consuming the token.  This does
+not violate the theorem: no \texttt{Verdict} is produced, so no
+silent decision (Definition~\ref{def:silent}) materializes.  The
+\texttt{\#[must\_use]} annotation serves as a developer-facing
+guardrail against accidental drops, not as a formal closure of the
+type perimeter---that role belongs to Axiom~\ref{ax:encap} (private
+fields and \texttt{pub(crate)} visibility).  The developer cannot
+construct a \texttt{Verdict} without going through
+\texttt{Verdict::new}.
 This is verified by the compile-fail test
 \texttt{tests/ui/dropped\_evidence\_token.rs}.
 
@@ -194,11 +199,13 @@ Definition~\ref{def:silent}, no silent decision $\delta \in
 \begin{corollary}[Fail-Secure]
 \label{cor:failsecure}
 In any Safe Rust program satisfying the conditions of
-Theorem~\ref{thm:enclosure}, a runtime failure to produce evidence
-(e.g., a database timeout, a missing context field) propagates
-as a type error at compile time rather than as a silent omission
-at runtime.  The system \emph{fails securely}: it cannot issue a
-decision that lacks an evidence chain.
+Theorem~\ref{thm:enclosure}, the code path that handles a runtime
+failure to produce evidence (e.g., a database timeout, a missing
+context field) cannot silently issue a \texttt{Verdict}---the type
+system ensures at compile time that every branch leading to a
+\texttt{Verdict} must supply a valid \texttt{EvidenceToken}.
+The system \emph{fails securely}: it cannot issue a decision that
+lacks an evidence chain.
 \end{corollary}
 
 \begin{proof}

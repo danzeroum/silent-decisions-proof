@@ -20,6 +20,7 @@
 
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
+use subtle::ConstantTimeEq;
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -225,9 +226,7 @@ impl Verdict {
     /// have been modified after the HMAC was sealed.
     pub fn verify_integrity(&self) -> bool {
         let expected = Self::compute_hmac(&self.evidence_id, &self.decision, &self.explanation);
-        // Constant-time comparison to resist timing attacks
-        expected.iter().zip(self.hmac.iter()).all(|(a, b)| a == b)
-            && expected.len() == self.hmac.len()
+        expected.ct_eq(&self.hmac).into()
     }
 
     pub fn evidence_id(&self) -> &Blake3Hash {
@@ -434,5 +433,19 @@ mod proof {
     fn clause_6_dropped_token_produces_compiler_warning() {
         let t = trybuild::TestCases::new();
         t.compile_fail("tests/ui/dropped_evidence_token.rs");
+    }
+
+    /// Clause 7: External code cannot call EvidenceToken::consume() directly.
+    ///
+    /// `consume()` is `pub(crate)`. External callers can create `EvidenceToken`
+    /// values via `EvidenceToken::new()` but cannot invoke `.consume()` —
+    /// the only way to satisfy `#[must_use]` from outside the crate is to pass
+    /// the token into `Verdict::new()`.
+    ///
+    /// Verified via trybuild: `tests/ui/external_consume_call.rs` must fail to compile.
+    #[test]
+    fn clause_7_external_consume_is_blocked() {
+        let t = trybuild::TestCases::new();
+        t.compile_fail("tests/ui/external_consume_call.rs");
     }
 }
