@@ -80,7 +80,11 @@ This paper makes three contributions.
     repository~\cite{soares2026a, soares2026b}.
 
   \item \textbf{Decision-Evidence Causal Binding (C2).}
-    We prove that, under the BTV type invariant, every materialized
+    We prove that, under the \emph{BTV}\footnote{BTV (\textit{Bound-To-Verdict}):
+    a reference kernel implementing atomic accountability via linear types.
+    Evidence and compliance tokens are structurally \emph{bound to} the
+    verdict --- the name is the type law $V \multimap (E \otimes C)$ in English.}
+    type invariant, every materialized
     \texttt{Verdict} consumed \emph{exactly one} causally-prior
     \texttt{EvidenceToken}: a BLAKE3 digest of the decision context
     computed before the verdict existed.
@@ -92,7 +96,7 @@ This paper makes three contributions.
     the set of materialized silent decisions is empty.
     The proof proceeds by contradiction via the Rust type system and is
     machine-checkable: \texttt{cargo test} on the companion repository
-    verifies all six clauses in under four seconds.
+    verifies all six clauses in under four seconds.\
 \end{enumerate}
 
 \noindent
