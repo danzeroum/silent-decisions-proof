@@ -28,11 +28,7 @@ fn main() {
     println!("      Context hash: (token not yet consumed)");
 
     // Step 2: Prepare compliance metadata
-    let compliance = ComplianceToken {
-        jurisdiction: "BR-LGPD".to_string(),
-        policy_version: "1.0.0".to_string(),
-        contestability_deadline_hours: 720, // 30 days per LGPD Art. 18§2
-    };
+    let compliance = ComplianceToken::new("BR-LGPD", "1.0.0", 720); // 30 days per LGPD Art. 18§2
     println!("  [2] ComplianceToken prepared");
     println!("      Jurisdiction: BR-LGPD");
     println!("      Policy:       v1.0.0");

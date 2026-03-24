@@ -97,10 +97,54 @@ impl EvidenceToken {
 ///
 /// Encodes regulatory obligations: jurisdiction, policy version, and the
 /// deadline by which an affected party may contest the decision.
+///
+/// All fields are **private**. The constructor is `pub(crate)`, signalling
+/// that only the governance kernel (Policy Engine) may issue compliance tokens.
+/// External code receives compliance metadata by reading a [`Verdict`]'s
+/// accessors — it cannot fabricate a `ComplianceToken` from scratch.
 pub struct ComplianceToken {
-    pub jurisdiction: String,
-    pub policy_version: String,
-    pub contestability_deadline_hours: u32,
+    jurisdiction: String,
+    policy_version: String,
+    contestability_deadline_hours: u32,
+}
+
+impl ComplianceToken {
+    /// Create a `ComplianceToken`.
+    ///
+    /// **Proof-repo note:** This constructor is `pub` so that the binary demo
+    /// (a separate Rust crate in this package) can construct tokens directly.
+    /// In the production BTV kernel (`BuildToValueGovernance`) this function is
+    /// `pub(crate)` — only the Policy Engine, internal to the governance kernel,
+    /// may issue compliance tokens. External callers receive compliance metadata
+    /// by reading a [`Verdict`]'s accessors, never by constructing tokens directly.
+    ///
+    /// The proof's structural guarantee — that no silent decision can compile —
+    /// is provided by the private *fields*, not by this constructor's visibility.
+    /// Struct literal syntax (`ComplianceToken { jurisdiction: ... }`) is blocked
+    /// from outside this module regardless of whether `new()` is `pub` or `pub(crate)`.
+    pub fn new(
+        jurisdiction: impl Into<String>,
+        policy_version: impl Into<String>,
+        contestability_deadline_hours: u32,
+    ) -> Self {
+        ComplianceToken {
+            jurisdiction: jurisdiction.into(),
+            policy_version: policy_version.into(),
+            contestability_deadline_hours,
+        }
+    }
+
+    pub fn jurisdiction(&self) -> &str {
+        &self.jurisdiction
+    }
+
+    pub fn policy_version(&self) -> &str {
+        &self.policy_version
+    }
+
+    pub fn deadline_hours(&self) -> u32 {
+        self.contestability_deadline_hours
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -157,7 +201,7 @@ impl Verdict {
         decision: Decision,
         explanation: String,
     ) -> Self {
-        let appeal_deadline_hours = compliance.contestability_deadline_hours;
+        let appeal_deadline_hours = compliance.deadline_hours();
         let evidence_id = token.consume(); // ← linear consumption: token is destroyed here
         let hmac = Self::compute_hmac(&evidence_id, &decision, &explanation);
         Verdict {
@@ -198,7 +242,7 @@ impl Verdict {
     }
 
     pub fn jurisdiction(&self) -> &str {
-        &self.compliance.jurisdiction
+        self.compliance.jurisdiction()
     }
 
     fn compute_hmac(
@@ -206,7 +250,10 @@ impl Verdict {
         decision: &Decision,
         explanation: &str,
     ) -> [u8; 32] {
-        // Key is fixed for this proof; production use would derive from HSM.
+        // LIMITATION (declared): The HMAC key is static in this proof repository.
+        // This suffices to demonstrate integrity detection (clause_5) but does not
+        // provide the key-management guarantees of production deployment.
+        // Production BTV derives the signing key from an HSM; see Section 6 of the paper.
         let mut mac =
             HmacSha256::new_from_slice(b"btv-proof-key-constitutional-enclosure-2026")
                 .expect("HMAC key length is valid");
@@ -254,11 +301,7 @@ mod proof {
         let token = EvidenceToken::new(
             b"subject:alice | action:credit-application | score:0.42 | threshold:0.50",
         );
-        let compliance = ComplianceToken {
-            jurisdiction: "BR-LGPD".to_string(),
-            policy_version: "1.0.0".to_string(),
-            contestability_deadline_hours: 720, // 30 days per LGPD Art. 18§2
-        };
+        let compliance = ComplianceToken::new("BR-LGPD", "1.0.0", 720); // 30 days per LGPD Art. 18§2
         let verdict = Verdict::new(
             token,
             compliance,
@@ -352,11 +395,7 @@ mod proof {
     #[test]
     fn clause_5_tampered_verdict_fails_integrity_check() {
         let token = EvidenceToken::new(b"credit-denial-production-context-2026");
-        let compliance = ComplianceToken {
-            jurisdiction: "EU-AIACT".to_string(),
-            policy_version: "2024/1689".to_string(),
-            contestability_deadline_hours: 720,
-        };
+        let compliance = ComplianceToken::new("EU-AIACT", "2024/1689", 720);
         let mut verdict = Verdict::new(
             token,
             compliance,
