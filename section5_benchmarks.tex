@@ -149,3 +149,14 @@ an auditor to confirm the integrity of any stored verdict at a rate
 exceeding $3 \times 10^6$ verifications per second on a single core.
 This makes retroactive audit of large decision logs computationally
 tractable without specialised hardware.
+
+% ----------------------------------------------------------------
+\subsection{Worked Examples}
+\label{sec:worked-examples}
+
+Three worked examples demonstrate BTV in semi-realistic scenarios: credit
+scoring under LGPD (30-day appeal window), hiring screening under EU AI Act
+Art.~86 (high-risk classification), and emergency triage (where \texttt{Allow}
+decisions also require evidence).  Each example constructs verdicts from
+domain-specific payloads and verifies integrity.  Source code is included in
+the companion repository (\texttt{examples/}).
