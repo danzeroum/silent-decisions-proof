@@ -121,7 +121,7 @@ the encapsulation perimeter:
 A & Struct-literal \texttt{Verdict \{ \ldots \}} &
   All fields \texttt{private} & \texttt{E0451} \\
 B & External \texttt{consume()} call &
-  \texttt{pub(crate)} visibility & \texttt{E0603} \\
+  \texttt{pub(crate)} visibility & \texttt{E0624} \\
 C & Silent drop of \texttt{EvidenceToken} &
   \texttt{\#[must\_use]} + deny & \texttt{unused\_must\_use} \\
 \hline
@@ -163,6 +163,17 @@ holds within the following boundaries:
   \item \textbf{Out of scope:} Policy accuracy.  Whether the
     \texttt{ComplianceToken} accurately reflects the applicable law
     is a legal question, not a type question.
+  \item \textbf{Out of scope:} Decisions that bypass the
+    \texttt{Verdict} type entirely.  The theorem guarantees that no
+    \texttt{Verdict} exists without evidence---it does not guarantee
+    that all consequential decisions are routed through
+    \texttt{Verdict}.  Note that \texttt{let \_ =
+    EvidenceToken::new(\ldots)} silences the \texttt{\#[must\_use]}
+    lint; however, this produces no \texttt{Verdict} and therefore
+    does not constitute a silent decision under
+    Definition~\ref{def:silent}.  Enforcing that all decision points
+    use the BTV pipeline is an architectural obligation, not a
+    type-level one.
 \end{itemize}
 
 The boundary conditions above are not weaknesses of the approach;
