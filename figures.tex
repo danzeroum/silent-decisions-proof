@@ -1,0 +1,78 @@
+% figures.tex — Include file for paper figures
+% Usage: copy fig*.pdf to a figures/ subdirectory, then \input{figures.tex}
+% Requires: \usepackage{graphicx} in main.tex preamble
+
+% ─────────────────────────────────────────────────────────────────────────────
+% Figure 1: Executive summary (for compliance professionals)
+% Place in Section 1 (Introduction), after the first paragraph
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig0_executive_summary.pdf}
+\caption{Overview of the silent-decision problem and the BTV solution.
+  \textbf{Top:} an AI system denies a citizen's application; the audit log
+  is asynchronous and may be silently dropped.
+  \textbf{Middle:} regulations (LGPD, EU AI Act, NIST AI RMF) require
+  explanations but cannot structurally prevent evidence-less decisions.
+  \textbf{Bottom:} under BTV, evidence and compliance tokens are atomically
+  fused into the verdict at construction time---no evidence, no verdict.}
+\label{fig:executive_summary}
+\end{figure*}
+
+% ─────────────────────────────────────────────────────────────────────────────
+% Figure 2: Status quo vs. BTV
+% Place in Section 1 or Section 2
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig1_silent_decision_problem.pdf}
+\caption{Runtime audit (left) vs.\ compile-time guarantee (right).
+  In the status quo, evidence is a separable, omissible artifact.
+  Under BTV, \texttt{Verdict::new} atomically consumes both tokens;
+  the verdict cannot exist without them.}
+\label{fig:silent_decision_problem}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────────────
+% Figure 3: The linear type law V ⊸ (E ⊗ C)
+% Place in Section 3 (Type System)
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig2_linear_type_law.pdf}
+\caption{The core type law $V \multimap (E \otimes C)$.
+  An \texttt{EvidenceToken}~($E$) and \texttt{ComplianceToken}~($C$)
+  are jointly consumed ($\otimes$) to produce a \texttt{Verdict}~($V$).
+  Three compiler-enforced barriers prevent cloning, dropping, or forging
+  tokens.}
+\label{fig:linear_type_law}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────────────
+% Figure 4: Compile-time enclosure perimeter
+% Place in Section 4 (Theorem)
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig3_enclosure_perimeter.pdf}
+\caption{The Constitutional Enclosure perimeter.
+  Three attack vectors (Cases~A, B, C) are rejected by the Rust
+  compiler with specific error codes.  The only well-typed path to a
+  \texttt{Verdict} from external code is through \texttt{Verdict::new}.}
+\label{fig:enclosure_perimeter}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────────────
+% Figure 5: Benchmark overhead (log scale)
+% Place in Section 5 (Benchmarks)
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig4_benchmark_overhead.pdf}
+\caption{BTV governance overhead vs.\ typical AI inference latency
+  (logarithmic scale).  The full verdict construction cycle
+  (1.67\,\textmu{}s for a 4\,KiB context) is five orders of magnitude
+  faster than a typical LLM inference call, confirming that the
+  type-level guarantee is a zero-cost abstraction in practice.}
+\label{fig:benchmark_overhead}
+\end{figure}
