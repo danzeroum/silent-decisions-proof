@@ -1,0 +1,16 @@
+error: cannot construct `Verdict` with struct literal syntax due to private fields
+  --> tests/ui/verdict_struct_literal.rs:9:20
+   |
+ 9 |     let _verdict = Verdict {
+   |                    ^^^^^^^
+10 |         decision: Decision::Allow,
+   |         ------------------------- private field
+   |
+   = note: ...and other private fields `evidence_id`, `compliance`, `explanation`, `appeal_deadline_hours` and `hmac` that were not provided
+help: you might have meant to use the `new` associated function
+   |
+ 9 -     let _verdict = Verdict {
+10 -         decision: Decision::Allow,
+11 -     };
+ 9 +     let _verdict = Verdict::new(_, _, _, _);
+   |

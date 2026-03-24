@@ -1,0 +1,15 @@
+error[E0423]: cannot initialize a tuple struct which contains private fields
+ --> tests/ui/blake3hash_public_constructor.rs:9:17
+  |
+9 |     let _hash = Blake3Hash([0u8; 32]);
+  |                 ^^^^^^^^^^
+  |
+note: constructor is not visible here due to private fields
+ --> src/lib.rs
+  |
+  | pub struct Blake3Hash([u8; 32]);
+  |                       ^^^^^^^^ private field
+help: you might have meant to use the `of` associated function
+  |
+9 |     let _hash = Blake3Hash::of([0u8; 32]);
+  |                           ++++

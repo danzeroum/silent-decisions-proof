@@ -1,0 +1,20 @@
+[package]
+name = "silent-decisions-proof"
+version = "0.1.0"
+edition = "2021"
+description = "Machine-checkable proof for the Constitutional Enclosure Theorem"
+repository = "https://github.com/danzeroum/silent-decisions-proof"
+license = "MIT"
+
+[[bin]]
+name = "silent-decisions-proof"
+path = "src/main.rs"
+
+[dependencies]
+blake3 = "1"
+hmac = "0.12"
+sha2 = "0.10"
+hex = "0.4"
+
+[dev-dependencies]
+trybuild = "1"
