@@ -1,0 +1,247 @@
+    Updating crates.io index
+     Locking 46 packages to latest compatible versions
+      Adding aho-corasick v1.1.4
+      Adding anes v0.1.6
+      Adding anstyle v1.0.14
+      Adding autocfg v1.5.0
+      Adding bumpalo v3.20.2
+      Adding cast v0.3.0
+      Adding ciborium v0.2.2
+      Adding ciborium-io v0.2.2
+      Adding ciborium-ll v0.2.2
+      Adding clap v4.6.0
+      Adding clap_builder v4.6.0
+      Adding clap_lex v1.1.0
+      Adding criterion v0.5.1 (available: v0.8.2)
+      Adding criterion-plot v0.5.0
+      Adding crossbeam-deque v0.8.6
+      Adding crossbeam-epoch v0.9.18
+      Adding crossbeam-utils v0.8.21
+      Adding crunchy v0.2.4
+      Adding either v1.15.0
+      Adding half v2.7.1
+      Adding hermit-abi v0.5.2
+      Adding is-terminal v0.4.17
+      Adding itertools v0.10.5
+      Adding js-sys v0.3.91
+      Adding num-traits v0.2.19
+      Adding once_cell v1.21.4
+      Adding oorandom v11.1.5
+      Adding plotters v0.3.7
+      Adding plotters-backend v0.3.7
+      Adding plotters-svg v0.3.7
+      Adding rayon v1.11.0
+      Adding rayon-core v1.13.0
+      Adding regex v1.12.3
+      Adding regex-automata v0.4.14
+      Adding regex-syntax v0.8.10
+      Adding rustversion v1.0.22
+      Adding same-file v1.0.6
+      Adding tinytemplate v1.2.1
+      Adding walkdir v2.5.0
+      Adding wasm-bindgen v0.2.114
+      Adding wasm-bindgen-macro v0.2.114
+      Adding wasm-bindgen-macro-support v0.2.114
+      Adding wasm-bindgen-shared v0.2.114
+      Adding web-sys v0.3.91
+      Adding zerocopy v0.8.47
+      Adding zerocopy-derive v0.8.47
+ Downloading crates ...
+  Downloaded block-buffer v0.10.4
+  Downloaded anstyle v1.0.14
+  Downloaded plotters-svg v0.3.7
+  Downloaded shlex v1.3.0
+  Downloaded trybuild v1.0.116
+  Downloaded target-triple v1.0.0
+  Downloaded walkdir v2.5.0
+  Downloaded zmij v1.0.21
+  Downloaded toml_parser v1.1.0+spec-1.1.0
+  Downloaded unicode-ident v1.0.24
+  Downloaded half v2.7.1
+  Downloaded zerocopy-derive v0.8.47
+  Downloaded cc v1.2.57
+  Downloaded regex v1.12.3
+  Downloaded serde_json v1.0.149
+  Downloaded plotters v0.3.7
+  Downloaded rayon v1.11.0
+  Downloaded winnow v1.0.0
+  Downloaded clap_builder v4.6.0
+  Downloaded blake3 v1.8.3
+  Downloaded hashbrown v0.16.1
+  Downloaded aho-corasick v1.1.4
+  Downloaded serde v1.0.228
+  Downloaded zerocopy v0.8.47
+  Downloaded syn v2.0.117
+  Downloaded rayon-core v1.13.0
+  Downloaded memchr v2.8.0
+  Downloaded regex-syntax v0.8.10
+  Downloaded indexmap v2.13.0
+  Downloaded criterion v0.5.1
+  Downloaded typenum v1.19.0
+  Downloaded toml v1.1.0+spec-1.1.0
+  Downloaded quote v1.0.45
+  Downloaded proc-macro2 v1.0.106
+  Downloaded crossbeam-utils v0.8.21
+  Downloaded clap v4.6.0
+  Downloaded tinytemplate v1.2.1
+  Downloaded sha2 v0.10.9
+  Downloaded serde_derive v1.0.228
+  Downloaded serde_core v1.0.228
+  Downloaded oorandom v11.1.5
+  Downloaded num-traits v0.2.19
+  Downloaded hmac v0.12.1
+  Downloaded regex-automata v0.4.14
+  Downloaded find-msvc-tools v0.1.9
+  Downloaded either v1.15.0
+  Downloaded digest v0.10.7
+  Downloaded crossbeam-deque v0.8.6
+  Downloaded ciborium v0.2.2
+  Downloaded cast v0.3.0
+  Downloaded arrayvec v0.7.6
+  Downloaded toml_datetime v1.1.0+spec-1.1.0
+  Downloaded glob v0.3.3
+  Downloaded equivalent v1.0.2
+  Downloaded criterion-plot v0.5.0
+  Downloaded constant_time_eq v0.4.2
+  Downloaded libc v0.2.183
+  Downloaded autocfg v1.5.0
+  Downloaded anes v0.1.6
+  Downloaded version_check v0.9.5
+  Downloaded toml_writer v1.1.0+spec-1.1.0
+  Downloaded termcolor v1.4.1
+  Downloaded subtle v2.6.1
+  Downloaded serde_spanned v1.1.0
+  Downloaded same-file v1.0.6
+  Downloaded is-terminal v0.4.17
+  Downloaded cpufeatures v0.2.17
+  Downloaded ciborium-io v0.2.2
+  Downloaded cfg-if v1.0.4
+  Downloaded arrayref v0.3.9
+  Downloaded plotters-backend v0.3.7
+  Downloaded itoa v1.0.18
+  Downloaded hex v0.4.3
+  Downloaded generic-array v0.14.7
+  Downloaded clap_lex v1.1.0
+  Downloaded ciborium-ll v0.2.2
+  Downloaded once_cell v1.21.4
+  Downloaded itertools v0.10.5
+  Downloaded crypto-common v0.1.7
+  Downloaded crossbeam-epoch v0.9.18
+   Compiling proc-macro2 v1.0.106
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.45
+   Compiling serde_core v1.0.228
+   Compiling typenum v1.19.0
+   Compiling version_check v0.9.5
+   Compiling generic-array v0.14.7
+   Compiling cfg-if v1.0.4
+   Compiling syn v2.0.117
+   Compiling crossbeam-utils v0.8.21
+   Compiling serde v1.0.228
+   Compiling shlex v1.3.0
+   Compiling find-msvc-tools v0.1.9
+   Compiling zerocopy v0.8.47
+   Compiling zmij v1.0.21
+   Compiling cc v1.2.57
+   Compiling block-buffer v0.10.4
+   Compiling crypto-common v0.1.7
+   Compiling autocfg v1.5.0
+   Compiling serde_json v1.0.149
+   Compiling subtle v2.6.1
+   Compiling num-traits v0.2.19
+   Compiling digest v0.10.7
+   Compiling blake3 v1.8.3
+   Compiling crossbeam-epoch v0.9.18
+   Compiling cpufeatures v0.2.17
+   Compiling libc v0.2.183
+   Compiling either v1.15.0
+   Compiling rayon-core v1.13.0
+   Compiling memchr v2.8.0
+   Compiling itoa v1.0.18
+   Compiling crossbeam-deque v0.8.6
+   Compiling ciborium-io v0.2.2
+   Compiling arrayvec v0.7.6
+   Compiling constant_time_eq v0.4.2
+   Compiling zerocopy-derive v0.8.47
+   Compiling serde_derive v1.0.228
+   Compiling plotters-backend v0.3.7
+   Compiling target-triple v1.0.0
+   Compiling arrayref v0.3.9
+   Compiling anstyle v1.0.14
+   Compiling clap_lex v1.1.0
+   Compiling regex-syntax v0.8.10
+   Compiling winnow v1.0.0
+   Compiling toml_parser v1.1.0+spec-1.1.0
+   Compiling regex-automata v0.4.14
+   Compiling clap_builder v4.6.0
+   Compiling half v2.7.1
+   Compiling ciborium-ll v0.2.2
+   Compiling plotters-svg v0.3.7
+   Compiling itertools v0.10.5
+   Compiling sha2 v0.10.9
+   Compiling hmac v0.12.1
+   Compiling toml_datetime v1.1.0+spec-1.1.0
+   Compiling serde_spanned v1.1.0
+   Compiling cast v0.3.0
+   Compiling same-file v1.0.6
+   Compiling hex v0.4.3
+   Compiling toml_writer v1.1.0+spec-1.1.0
+   Compiling walkdir v2.5.0
+   Compiling silent-decisions-proof v0.1.0 (/home/user/silent-decisions-proof)
+   Compiling toml v1.1.0+spec-1.1.0
+   Compiling criterion-plot v0.5.0
+   Compiling is-terminal v0.4.17
+   Compiling rayon v1.11.0
+   Compiling plotters v0.3.7
+   Compiling ciborium v0.2.2
+   Compiling clap v4.6.0
+   Compiling regex v1.12.3
+   Compiling tinytemplate v1.2.1
+   Compiling once_cell v1.21.4
+   Compiling termcolor v1.4.1
+   Compiling glob v0.3.3
+   Compiling anes v0.1.6
+   Compiling oorandom v11.1.5
+   Compiling criterion v0.5.1
+   Compiling trybuild v1.0.116
+    Finished `bench` profile [optimized] target(s) in 37.06s
+     Running benches/verdict_construction.rs (target/release/deps/verdict_construction-035cddc12d002d10)
+Gnuplot not found, using plotters backend
+Benchmarking Verdict::new/context_size/64B
+Benchmarking Verdict::new/context_size/64B: Warming up for 3.0000 s
+Benchmarking Verdict::new/context_size/64B: Collecting 100 samples in estimated 5.0008 s (5.7M iterations)
+Benchmarking Verdict::new/context_size/64B: Analyzing
+Verdict::new/context_size/64B
+                        time:   [414.67 ns 416.80 ns 419.08 ns]
+Found 12 outliers among 100 measurements (12.00%)
+  3 (3.00%) low mild
+  1 (1.00%) high mild
+  8 (8.00%) high severe
+Benchmarking Verdict::new/context_size/512B
+Benchmarking Verdict::new/context_size/512B: Warming up for 3.0000 s
+Benchmarking Verdict::new/context_size/512B: Collecting 100 samples in estimated 5.0059 s (3.1M iterations)
+Benchmarking Verdict::new/context_size/512B: Analyzing
+Verdict::new/context_size/512B
+                        time:   [859.22 ns 869.26 ns 880.74 ns]
+Found 7 outliers among 100 measurements (7.00%)
+  3 (3.00%) high mild
+  4 (4.00%) high severe
+Benchmarking Verdict::new/context_size/4KB
+Benchmarking Verdict::new/context_size/4KB: Warming up for 3.0000 s
+Benchmarking Verdict::new/context_size/4KB: Collecting 100 samples in estimated 5.0059 s (914k iterations)
+Benchmarking Verdict::new/context_size/4KB: Analyzing
+Verdict::new/context_size/4KB
+                        time:   [1.6394 µs 1.6705 µs 1.7076 µs]
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+
+Benchmarking Verdict::verify_integrity
+Benchmarking Verdict::verify_integrity: Warming up for 3.0000 s
+Benchmarking Verdict::verify_integrity: Collecting 100 samples in estimated 5.0005 s (16M iterations)
+Benchmarking Verdict::verify_integrity: Analyzing
+Verdict::verify_integrity
+                        time:   [324.09 ns 327.36 ns 330.32 ns]
+Found 20 outliers among 100 measurements (20.00%)
+  8 (8.00%) high mild
+  12 (12.00%) high severe
+
