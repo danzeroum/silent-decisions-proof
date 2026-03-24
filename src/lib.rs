@@ -84,7 +84,12 @@ impl EvidenceToken {
     ///
     /// Takes `self` **by value** — the token is destroyed after this call.
     /// The Rust compiler rejects any subsequent use of the moved token.
-    pub fn consume(self) -> Blake3Hash {
+    ///
+    /// Visibility is `pub(crate)`: only `Verdict::new()` inside this crate
+    /// may consume a token. External code can create tokens via `EvidenceToken::new()`
+    /// but cannot call `.consume()` directly — the only way to satisfy `#[must_use]`
+    /// from outside the crate is to pass the token into `Verdict::new()`.
+    pub(crate) fn consume(self) -> Blake3Hash {
         self.0
     }
 }
