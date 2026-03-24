@@ -86,6 +86,27 @@ test result: ok. 6 passed; 0 failed
 
 ---
 
+## Worked Examples
+
+Three executable examples demonstrate BTV in semi-realistic scenarios:
+
+| Example | Domain | Jurisdiction | Scenario |
+|---------|--------|-------------|---------|
+| `credit_scoring` | Finance | BR-LGPD | Credit denial with 30-day appeal window; reproducibility check |
+| `hiring_screening` | HR | EU AI Act Art. 86 | High-risk CV screening; multi-candidate loop |
+| `health_triage` | Healthcare | BR-LGPD | Emergency triage; Allow decisions also require evidence |
+
+```bash
+cargo run --example credit_scoring
+cargo run --example hiring_screening
+cargo run --example health_triage
+```
+
+Each example constructs verdicts from domain-specific payloads and verifies integrity.
+Source code is in `examples/`.
+
+---
+
 ## Connection to BuildToValue (BTV)
 
 This repository isolates the type-theoretic proof from the full BTV system.  
