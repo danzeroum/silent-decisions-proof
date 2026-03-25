@@ -502,6 +502,7 @@ impl EscalatedVerdict {
         let mut mac =
             HmacSha256::new_from_slice(b"btv-escalated-proof-key-2026-xx")
                 .expect("HMAC accepts any key size");
+        mac.update(b"btv-escalated-v1"); // canonical schema version prefix
         mac.update(operator_id);
         mac.update(operator_signature);
         mac.update(decision.as_bytes());

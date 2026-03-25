@@ -72,7 +72,7 @@ fn main() {
     println!("  [5] AccountableDecision trait:");
     println!("      is_automated: {}", verdict.is_automated());
     println!("      This decision is auditable but attributed to a human,");
-    println!("      not to the AI system. AI Act Art. 14 satisfied.\n");
+    println!("      not to the AI system. Structurally aligns with AI Act Art. 14 (human oversight requirement).\n");
 
     println!("═══════════════════════════════════════════════════════════════");
     println!("  The system did NOT fail silently.");

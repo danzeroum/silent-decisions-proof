@@ -225,3 +225,44 @@ LGPD Art.~18\S2 and EU AI Act Art.~86: the obligation to provide an
 explanation is not advisory but \emph{structural}---it cannot be
 omitted under load, behind a feature flag, or through a code path
 that bypasses an \texttt{assert}.
+
+% ----------------------------------------------------------------
+\subsection{Corollary 4.8: Human Escalation as the Only Well-Typed Alternative}
+\label{sec:escalated}
+
+\begin{corollary}[Human Escalation]
+\label{cor:escalated}
+Under the conditions of Theorem~\ref{thm:enclosure}, when an
+\texttt{EvidenceToken} cannot be produced (e.g., model timeout,
+unavailable context), the type system provides exactly one
+well-typed alternative: constructing an \texttt{EscalatedVerdict}
+via a linearly-consumed \texttt{OperatorToken}.
+Silent fallback to an unevidenced automated verdict is ill-typed.
+Formally, $V_{\mathrm{esc}} \multimap (O \otimes \mathbf{1})$.
+
+This structure aligns with the human oversight requirement of
+EU AI Act Art.~14: the system cannot produce a consequential
+decision-equivalent record without binding exactly one named
+human operator, whose identity and authorisation are
+cryptographically sealed via HMAC.
+\end{corollary}
+
+\begin{proof}
+\texttt{EscalatedVerdict} is a sibling type to \texttt{Verdict}
+and does not affect the proof of Theorem~\ref{thm:enclosure}.
+Its sole constructor \texttt{EscalatedVerdict::new} requires an
+\texttt{OperatorToken} by value, following the same
+$\otimes$-I pattern as Axiom~\ref{ax:intro}.
+\texttt{OperatorToken} carries the same linear-resource invariants
+as \texttt{EvidenceToken}: it is \texttt{\#[must\_use]},
+not \texttt{Clone}/\texttt{Copy}, and its \texttt{consume()}
+destructor is \texttt{pub(crate)}.
+The four compile-fail tests
+\texttt{escalated\_struct\_literal.rs},
+\texttt{escalated\_token\_reuse.rs},
+\texttt{escalated\_operator\_token\_drop.rs}, and
+\texttt{escalated\_consume\_external.rs}
+verify by exhaustive case analysis (mirroring Cases~A, B, and~C
+of Theorem~\ref{thm:enclosure}) that no \texttt{EscalatedVerdict}
+can be forged, duplicated, or silently dropped.
+\end{proof}
