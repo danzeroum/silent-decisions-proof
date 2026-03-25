@@ -211,11 +211,39 @@ Whether a result analogous to the FLP impossibility theorem~\cite{flp1985}
 can be proved for accountability systems under asynchronous network
 conditions is an open question we identify as future work.
 
+To partially address the availability cost, the reference
+implementation introduces \texttt{EscalatedVerdict}---a sibling type
+to \texttt{Verdict} that formalises human escalation as a
+linearly-typed alternative.
+When an \texttt{EvidenceToken} cannot be produced (e.g., model
+timeout, unavailable context), the developer may construct an
+\texttt{EscalatedVerdict} by consuming exactly one
+\texttt{OperatorToken}: a cryptographic attestation binding a named
+human operator to the decision act.
+The type law for the escalated path is
+$V_{\mathrm{esc}} \multimap (O \otimes \mathbf{1})$,
+where $O$ is the sole linear resource and $\mathbf{1}$ denotes the
+ordinary (non-linear) parameters (decision, context reference, reason).
+Corollary~\ref{cor:escalated} (Section~\ref{sec:escalated}) proves
+that this path preserves $\mathcal{S} = \emptyset$: no
+\texttt{EscalatedVerdict} can be constructed without consuming its
+\texttt{OperatorToken}, and the four compile-fail tests mirror
+Cases~A--C of the main theorem.
+The measured overhead is comparable:
+\texttt{size\_of::\allowbreak<EscalatedVerdict>()} $= 160$~bytes
+versus $152$~bytes for \texttt{Verdict}, confirming that structured
+human oversight introduces negligible memory cost.
+This extension structurally aligns with EU AI Act Art.~14 (human
+oversight for high-risk systems)~\cite{eu2024aiact}: the system
+cannot silently fall back to an unevidenced automated verdict---it
+must either produce full automated evidence or explicitly escalate
+to a named, cryptographically bound human operator.
+
 % ----------------------------------------------------------------
 \subsection{Future Work}
 \label{sec:future}
 
-Four directions are most immediate.
+Five directions are most immediate.
 First, implementing the \texttt{AttestableContext} extension
 (Section~\ref{sec:scope}) and the \texttt{ComplianceAuthority}
 factory (L2) would close the semantic-truthfulness and
@@ -231,3 +259,9 @@ Fourth, investigating whether a formal CAL impossibility result
 holds under asynchronous network conditions would provide
 theoretical grounding for the design trade-offs observed in
 Section~\ref{sec:cal}.
+Fifth, unifying \texttt{Verdict} and \texttt{EscalatedVerdict}
+under the \texttt{AccountableDecision} trait and formalising the
+composed invariant $(V_{\mathrm{auto}} \oplus V_{\mathrm{esc}})
+\multimap R$, where $R$ is the linear resource appropriate to
+each branch, would complete the type-theoretic account of
+mixed human-automated decision pipelines.
