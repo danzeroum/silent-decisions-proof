@@ -164,7 +164,7 @@ pub enum Decision {
 }
 
 impl Decision {
-    fn as_bytes(&self) -> &[u8] {
+    pub(crate) fn as_bytes(&self) -> &[u8] {
         match self {
             Decision::Allow => b"allow",
             Decision::Deny => b"deny",
@@ -287,9 +287,281 @@ impl Verdict {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// EXTENSION: EscalatedVerdict — Human Override with Linear Accountability
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Corollary 4.8: V_esc ⊸ (O ⊗ 1)
+//
+// An EscalatedVerdict can only be constructed by consuming exactly one
+// OperatorToken. This is a SEPARATE type from Verdict — the Constitutional
+// Enclosure Theorem (Theorem 4.6) remains unchanged.
+//
+// Design rationale: when EvidenceToken cannot be produced (system failure,
+// timeout, unavailable model), the only well-typed alternative is human
+// escalation — not a silent decision, not an unevidenced automated verdict.
+
+// ─────────────────────────────────────────────────────────────────────────
+// ContextRef — public reference to a failed decision context
+// ─────────────────────────────────────────────────────────────────────────
+
+/// A reference to the decision context that could not be processed automatically.
+///
+/// Unlike [`Blake3Hash`], this type has a **public** constructor.
+/// It exists specifically to allow external code to reference a context
+/// without exposing the private internals of `Blake3Hash`.
+///
+/// `ContextRef` is `Clone` and `Copy` — it is data, not a linear resource.
+#[derive(Debug, Clone, Copy)]
+pub struct ContextRef([u8; 32]);
+
+impl ContextRef {
+    /// Create a `ContextRef` from a BLAKE3 hash of the original context bytes.
+    pub fn from_context(context: &[u8]) -> Self {
+        let hash = blake3::hash(context);
+        ContextRef(*hash.as_bytes())
+    }
+
+    /// Create a `ContextRef` from raw bytes (e.g., from a stored hash).
+    pub fn from_bytes(bytes: [u8; 32]) -> Self {
+        ContextRef(bytes)
+    }
+
+    pub fn as_bytes(&self) -> &[u8; 32] {
+        &self.0
+    }
+
+    pub fn to_hex(&self) -> String {
+        hex::encode(self.0)
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// OperatorToken — linear resource for human oversight
+// ─────────────────────────────────────────────────────────────────────────
+
+/// A cryptographic attestation that a specific human operator has assumed
+/// accountability for a decision.
+///
+/// ## Linearity Guarantee
+///
+/// `OperatorToken` follows the same discipline as [`EvidenceToken`]:
+/// - `#[must_use]` — compiler warns/errors when dropped unused
+/// - Not `Clone` — cannot be duplicated
+/// - Not `Copy` — move semantics enforced
+///
+/// The only way to consume an `OperatorToken` is through
+/// [`EscalatedVerdict::new()`].
+#[must_use = "OperatorToken must be consumed via EscalatedVerdict::new(); \
+              dropping it without use means an operator was authenticated but \
+              no escalation was recorded — a logic error in the governance pipeline"]
+pub struct OperatorToken {
+    operator_id: [u8; 32],
+    signature: [u8; 32],
+}
+
+// NO #[derive(Clone, Copy)] — linearity enforced structurally.
+
+impl OperatorToken {
+    /// Private constructor — only callable by `OperatorAuthority::issue_token()`.
+    fn new_signed(operator_id: [u8; 32], signing_key: &[u8; 32]) -> Self {
+        let mut mac = <HmacSha256 as Mac>::new_from_slice(signing_key)
+            .expect("HMAC accepts any key size");
+        mac.update(&operator_id);
+        mac.update(b"operator-token-v1");
+        let result = mac.finalize().into_bytes();
+        let mut signature = [0u8; 32];
+        signature.copy_from_slice(&result[..32]);
+        OperatorToken { operator_id, signature }
+    }
+
+    /// Read-only access to the operator's identity.
+    pub fn operator_id(&self) -> &[u8; 32] {
+        &self.operator_id
+    }
+
+    /// Consume the token, returning the operator ID and signature.
+    ///
+    /// `pub(crate)`: only `EscalatedVerdict::new()` may consume.
+    pub(crate) fn consume(self) -> ([u8; 32], [u8; 32]) {
+        (self.operator_id, self.signature)
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// OperatorAuthority — factory for OperatorToken issuance
+// ─────────────────────────────────────────────────────────────────────────
+
+/// An authority that issues [`OperatorToken`]s.
+///
+/// In production, the signing key would be injected from an HSM/KMS.
+pub struct OperatorAuthority {
+    signing_key: [u8; 32],
+}
+
+impl OperatorAuthority {
+    /// Create an authority with a given signing key.
+    pub fn new(signing_key: [u8; 32]) -> Self {
+        OperatorAuthority { signing_key }
+    }
+
+    /// Test-only constructor with a deterministic key.
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn new_for_test() -> Self {
+        OperatorAuthority { signing_key: [0xAA; 32] }
+    }
+
+    /// Issue an `OperatorToken` for a given operator identity.
+    pub fn issue_token(&self, operator_id: [u8; 32]) -> OperatorToken {
+        OperatorToken::new_signed(operator_id, &self.signing_key)
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// EscalatedVerdict — human override with linear accountability
+// ─────────────────────────────────────────────────────────────────────────
+
+/// A human-escalated decision with non-repudiable operator binding.
+///
+/// ## Type Invariant  V_esc ⊸ (O ⊗ 1)
+///
+/// An `EscalatedVerdict` can only be constructed by consuming exactly one
+/// [`OperatorToken`]. The sole constructor is [`EscalatedVerdict::new()`].
+///
+/// All fields are **private**. Struct literal syntax is a compile-time error
+/// outside this module.
+pub struct EscalatedVerdict {
+    operator_id: [u8; 32],
+    operator_signature: [u8; 32],
+    decision: Decision,
+    failed_context: ContextRef,
+    reason: String,
+    hmac: [u8; 32],
+}
+
+impl EscalatedVerdict {
+    /// The sole constructor. Enforces V_esc ⊸ (O ⊗ 1).
+    ///
+    /// Moves `operator` by value, consuming it linearly.
+    pub fn new(
+        operator: OperatorToken,
+        decision: Decision,
+        failed_context: ContextRef,
+        reason: String,
+    ) -> Self {
+        let (operator_id, operator_signature) = operator.consume();
+        let hmac = Self::compute_hmac(
+            &operator_id,
+            &operator_signature,
+            &decision,
+            &failed_context,
+            &reason,
+        );
+        EscalatedVerdict { operator_id, operator_signature, decision, failed_context, reason, hmac }
+    }
+
+    /// Verify that the EscalatedVerdict has not been tampered with.
+    pub fn verify_integrity(&self) -> bool {
+        let expected = Self::compute_hmac(
+            &self.operator_id,
+            &self.operator_signature,
+            &self.decision,
+            &self.failed_context,
+            &self.reason,
+        );
+        expected.ct_eq(&self.hmac).into()
+    }
+
+    pub fn operator_id(&self) -> &[u8; 32] {
+        &self.operator_id
+    }
+
+    pub fn operator_id_hex(&self) -> String {
+        hex::encode(self.operator_id)
+    }
+
+    pub fn decision(&self) -> &Decision {
+        &self.decision
+    }
+
+    pub fn failed_context(&self) -> &ContextRef {
+        &self.failed_context
+    }
+
+    pub fn reason(&self) -> &str {
+        &self.reason
+    }
+
+    fn compute_hmac(
+        operator_id: &[u8; 32],
+        operator_signature: &[u8; 32],
+        decision: &Decision,
+        failed_context: &ContextRef,
+        reason: &str,
+    ) -> [u8; 32] {
+        let mut mac =
+            HmacSha256::new_from_slice(b"btv-escalated-proof-key-2026-xx")
+                .expect("HMAC accepts any key size");
+        mac.update(operator_id);
+        mac.update(operator_signature);
+        mac.update(decision.as_bytes());
+        mac.update(failed_context.as_bytes());
+        mac.update(reason.as_bytes());
+        let result = mac.finalize();
+        let bytes = result.into_bytes();
+        let mut out = [0u8; 32];
+        out.copy_from_slice(&bytes);
+        out
+    }
+
+    /// Test-only: tamper with reason to verify HMAC detection.
+    #[cfg(test)]
+    pub fn tamper_reason_for_test(&mut self, new_reason: &str) {
+        self.reason = new_reason.to_string();
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// AccountableDecision — unifying trait for audit
+// ─────────────────────────────────────────────────────────────────────────
+
+/// A trait implemented by all BTV decision types.
+///
+/// Allows auditing code to process both `Verdict` and `EscalatedVerdict`
+/// uniformly without knowing which variant was produced.
+pub trait AccountableDecision {
+    fn decision(&self) -> &Decision;
+    fn verify_integrity(&self) -> bool;
+    fn is_automated(&self) -> bool;
+}
+
+impl AccountableDecision for Verdict {
+    fn decision(&self) -> &Decision {
+        self.decision()
+    }
+    fn verify_integrity(&self) -> bool {
+        self.verify_integrity()
+    }
+    fn is_automated(&self) -> bool {
+        true
+    }
+}
+
+impl AccountableDecision for EscalatedVerdict {
+    fn decision(&self) -> &Decision {
+        self.decision()
+    }
+    fn verify_integrity(&self) -> bool {
+        self.verify_integrity()
+    }
+    fn is_automated(&self) -> bool {
+        false
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Proof — 6 clauses of the Constitutional Enclosure Theorem
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
 mod proof {
@@ -447,5 +719,113 @@ mod proof {
     fn clause_7_external_consume_is_blocked() {
         let t = trybuild::TestCases::new();
         t.compile_fail("tests/ui/external_consume_call.rs");
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // COROLLARY 4.8 — EscalatedVerdict proof clauses
+    // ═══════════════════════════════════════════════════════════════
+
+    /// Clause 8: EscalatedVerdict can be constructed with valid OperatorToken.
+    #[test]
+    fn clause_8_escalated_verdict_can_be_constructed() {
+        let authority = OperatorAuthority::new_for_test();
+        let token = authority.issue_token([0x42; 32]);
+        let ctx = ContextRef::from_context(b"medical-triage-context-timeout");
+        let verdict = EscalatedVerdict::new(
+            token,
+            Decision::Allow,
+            ctx,
+            "System timeout during triage — nurse approved immediate treatment".to_string(),
+        );
+        assert!(
+            verdict.verify_integrity(),
+            "Freshly constructed EscalatedVerdict must pass integrity check"
+        );
+        assert_eq!(verdict.operator_id(), &[0x42; 32]);
+        assert_eq!(verdict.reason(), "System timeout during triage — nurse approved immediate treatment");
+    }
+
+    /// Clause 9: OperatorToken is a linear resource (consumed on use).
+    #[test]
+    fn clause_9_operator_token_is_linear() {
+        let authority = OperatorAuthority::new_for_test();
+        let token = authority.issue_token([0x01; 32]);
+        let (id, sig) = token.consume(); // token is moved and destroyed
+        // let _second = token.consume(); // would produce E0382
+        assert_eq!(id, [0x01; 32]);
+        assert_ne!(sig, [0u8; 32], "Signature must be non-trivial");
+    }
+
+    /// Clause 10: EscalatedVerdict struct literal is blocked.
+    #[test]
+    fn clause_10_escalated_struct_literal_is_blocked() {
+        let t = trybuild::TestCases::new();
+        t.compile_fail("tests/ui/escalated_struct_literal.rs");
+    }
+
+    /// Clause 11: OperatorToken cannot be reused (linear consumption).
+    #[test]
+    fn clause_11_operator_token_reuse_is_blocked() {
+        let t = trybuild::TestCases::new();
+        t.compile_fail("tests/ui/escalated_token_reuse.rs");
+    }
+
+    /// Clause 12: Dropping OperatorToken without use produces compile error.
+    #[test]
+    fn clause_12_dropped_operator_token_is_blocked() {
+        let t = trybuild::TestCases::new();
+        t.compile_fail("tests/ui/escalated_operator_token_drop.rs");
+    }
+
+    /// Clause 13: External code cannot call OperatorToken::consume().
+    #[test]
+    fn clause_13_external_consume_is_blocked() {
+        let t = trybuild::TestCases::new();
+        t.compile_fail("tests/ui/escalated_consume_external.rs");
+    }
+
+    /// Clause 14: Tampered EscalatedVerdict fails integrity check.
+    #[test]
+    fn clause_14_tampered_escalated_verdict_fails_integrity() {
+        let authority = OperatorAuthority::new_for_test();
+        let token = authority.issue_token([0x42; 32]);
+        let ctx = ContextRef::from_context(b"triage-context");
+        let mut verdict = EscalatedVerdict::new(
+            token,
+            Decision::Allow,
+            ctx,
+            "Legitimate escalation reason".to_string(),
+        );
+        assert!(verdict.verify_integrity(), "Pre-tamper: must pass");
+        verdict.tamper_reason_for_test("Maliciously altered reason");
+        assert!(!verdict.verify_integrity(), "Post-tamper: must FAIL");
+    }
+
+    /// Clause 15: AccountableDecision trait works for both types.
+    #[test]
+    fn clause_15_accountable_decision_trait_is_polymorphic() {
+        let token = EvidenceToken::new(b"auto-context");
+        let compliance = ComplianceToken::new("BR-LGPD", "1.0.0", 720);
+        let auto_verdict = Verdict::new(
+            token, compliance, Decision::Deny,
+            "Auto denial".to_string(),
+        );
+
+        let authority = OperatorAuthority::new_for_test();
+        let op_token = authority.issue_token([0x42; 32]);
+        let ctx = ContextRef::from_context(b"failed-context");
+        let esc_verdict = EscalatedVerdict::new(
+            op_token, Decision::Allow, ctx,
+            "Human override".to_string(),
+        );
+
+        fn check(d: &dyn AccountableDecision) -> bool {
+            d.verify_integrity()
+        }
+
+        assert!(check(&auto_verdict));
+        assert!(check(&esc_verdict));
+        assert!(auto_verdict.is_automated());
+        assert!(!esc_verdict.is_automated());
     }
 }
