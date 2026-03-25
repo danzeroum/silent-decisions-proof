@@ -5,6 +5,7 @@
 % Venue: IEEE Computer — Special Issue on AI Governance
 % Deadline: 13 April 2026
 % Authors: Daniel Lau Pereira Soares
+% Rev 3: 25 March 2026 — ACID distinction added (§2.2)
 % -----------------------------------------------------------------------------
 
 \section{Related Work}
@@ -71,6 +72,21 @@ act of proving---a separation that is incompatible with the
 structural accountability obligations imposed by LGPD Art.~18\S2 and
 EU AI Act Art.~86, which require that evidence \emph{accompany} a
 decision, not merely follow it.
+
+A stronger form of runtime guarantee is offered by transactional
+databases: an ACID transaction wrapping both the decision record and
+the audit log ensures that either both are committed or neither is.
+However, transactional atomicity is a tool the developer must
+consciously choose to apply---wrapping decision and log within the
+same \texttt{BEGIN}/\texttt{COMMIT} boundary.
+Omitting that boundary is a logic error, not a type error: the
+compiler accepts the program, the database commits the decision
+without the log, and the silent-decision failure mode materialises
+with no static diagnostic.
+BTV closes exactly this gap: the compiler rejects any program that
+constructs a \texttt{Verdict} without a causally-prior
+\texttt{EvidenceToken}, regardless of whether the developer intended
+to include the evidence or not.
 
 % ----------------------------------------------------------------
 \subsection{Linear Types and Resource Correctness}
