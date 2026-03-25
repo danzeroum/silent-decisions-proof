@@ -4,7 +4,7 @@
 //! every materialized Verdict consumed exactly one EvidenceToken
 //! and one ComplianceToken. No silent decisions are possible.
 
-use silent_decisions_proof::{ComplianceToken, Decision, EvidenceToken, Verdict};
+use silent_decisions_proof::{ComplianceToken, Decision, EscalatedVerdict, EvidenceToken, Verdict};
 
 fn main() {
     println!("═══════════════════════════════════════════════════════════════");
@@ -86,7 +86,8 @@ fn main() {
     println!("  EvidenceToken::new(ctx); // dropped without .consume()");
     println!("─────────────────────────────────────────────────────────────────");
     println!();
-    println!("Run `cargo test` to verify all 6 proof clauses.");
-    // Reproducible implementation metric — cite in Section 5.
-    println!("  size_of::<Verdict>() = {} bytes", std::mem::size_of::<Verdict>());
+    println!("Run `cargo test` to verify all 15 proof clauses.");
+    // Reproducible implementation metrics — cite in Section 5.
+    println!("  size_of::<Verdict>()          = {} bytes", std::mem::size_of::<Verdict>());
+    println!("  size_of::<EscalatedVerdict>() = {} bytes", std::mem::size_of::<EscalatedVerdict>());
 }
