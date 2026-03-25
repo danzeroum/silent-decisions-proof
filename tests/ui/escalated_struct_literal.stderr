@@ -1,0 +1,16 @@
+error: cannot construct `EscalatedVerdict` with struct literal syntax due to private fields
+ --> tests/ui/escalated_struct_literal.rs:8:14
+  |
+8 |     let _v = EscalatedVerdict {
+  |              ^^^^^^^^^^^^^^^^
+9 |         decision: Decision::Allow,
+  |         ------------------------- private field
+  |
+  = note: ...and other private fields `operator_id`, `operator_signature`, `failed_context`, `reason` and `hmac` that were not provided
+help: you might have meant to use the `new` associated function
+  |
+8 -     let _v = EscalatedVerdict {
+9 -         decision: Decision::Allow,
+10-     };
+8 +     let _v = EscalatedVerdict::new(_, _, _, _);
+  |
