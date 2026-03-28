@@ -1,0 +1,31 @@
+=== BTV-Transparency (Paper 2) Empirical Evidence ===
+Date: 2026-03-28
+Hardware: Intel Xeon 2.10 GHz, Linux 6.18.5 x86_64
+Compiler: rustc (release profile, opt-level=3, LTO disabled)
+Criterion: 0.5.1, 100 samples
+
+--- Test Suite ---
+Unit tests:         4 passed (seal_and_deliver_roundtrip, invalid_signature_rejected,
+                              log_server_append_only, submit_signature_verifies_with_client_message)
+Compile-fail tests: 7 passed (receipt_struct_literal, receipt_consume_external,
+                              receipt_drop_silent, receipt_token_reuse,
+                              delivery_struct_literal, delivery_without_receipt,
+                              delivery_token_reuse)
+Integration tests:  2 passed (end_to_end_pipeline, log_unavailable_fails_secure)
+Total:             13 tests, 0 failed
+
+--- Type Sizes ---
+sizeof(DeliveryToken)    = 56 bytes
+sizeof(InclusionReceipt) = 264 bytes
+
+--- Benchmarks (95% CI) ---
+BTV Verdict::new (Paper 1, reproduced)    lower=1.64µs  mean=1.67µs  upper=1.71µs
+BTV-T DeliveryToken::seal (in-process)    lower=41.7µs  mean=42.0µs  upper=42.3µs
+Full Pipeline (HTTP loopback)             lower=4.47ms  mean=4.73ms  upper=4.96ms
+
+--- Notes ---
+- seal is dominated by mandatory Ed25519 signature verify (~40µs on this CPU)
+- Full pipeline = HTTP POST /submit + Axum handler + Ed25519 sign (server) +
+  TCP loopback RTT + Ed25519 verify (client) + seal + deliver
+- At WAN RTT 10ms: estimated ~15ms total (≤30% of 50ms classifier)
+- cargo-geiger: 0 unsafe blocks in btv-transparency crate

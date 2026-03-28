@@ -65,9 +65,10 @@ accountability guarantee without requiring the log to be reachable.
   submission; WAN latency to a remote log will be higher. The system argument
   (log latency is dominated by inference latency) remains valid for remote logs
   in the same cloud region (typical RTT 1--10\,ms). At a representative WAN RTT
-  of 10\,ms, the full pipeline would be approximately 12\,ms, representing
-  $\leq$24\,\% of a 50\,ms classifier---still within the acceptable overhead
-  bounds established in Section~\ref{sec:benchmarks}.
+  of 10\,ms, the full pipeline would be approximately 15\,ms, representing
+  $\leq$30\,\% of a 50\,ms classifier and $\leq$7.5\,\% of a 200\,ms
+  generative model---still within acceptable overhead bounds for regulated
+  AI applications (see Section~\ref{sec:benchmarks}).
   \item \textbf{L3 --- Single-language boundary.} The enclosure perimeter holds
   within Safe Rust. Polyglot pipelines require the FFI gateway pattern described
   in BTV~\cite{btv2026} Section~6.2.4, extended to wrap the

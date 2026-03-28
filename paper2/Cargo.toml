@@ -34,3 +34,4 @@ tokio = { version = "1", features = ["full"] }
 [[bench]]
 name = "delivery_bench"
 harness = false
+required-features = ["bench_helpers"]
