@@ -1,0 +1,5 @@
+error[E0599]: no method named `clone` found for struct `InclusionReceipt` in the current scope
+ --> tests/ui/receipt_token_reuse.rs:9:17
+  |
+9 |     let _r2 = r.clone();
+  |                 ^^^^^ method not found in `InclusionReceipt`

@@ -28,6 +28,15 @@ async fn main() {
     println!("Verifying key (pin this in LogClient::new):");
     println!("  {}", encode_hex(vk.as_bytes()));
 
+    println!(
+        "sizeof(DeliveryToken)   = {} bytes",
+        std::mem::size_of::<btv_transparency::DeliveryToken>()
+    );
+    println!(
+        "sizeof(InclusionReceipt) = {} bytes",
+        std::mem::size_of::<btv_transparency::InclusionReceipt>()
+    );
+
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }

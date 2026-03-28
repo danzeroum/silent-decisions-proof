@@ -22,7 +22,11 @@ infrastructure. An operator can satisfy the BTV invariant---generating a valid
 \texttt{Verdict} in memory---while simply discarding the artefact before it
 reaches persistent storage. We call this failure mode an \textbf{Ephemeral
 Verdict} (Definition~\ref{def:ephemeral}): a decision that is legal in its
-formation but inaccessible in its aftermath. The type \texttt{Verdict} proves
+formation but inaccessible in its aftermath. This failure mode is not
+hypothetical: off-channel communications fines levied by the U.S. Securities
+and Exchange Commission since 2021 (exceeding \$2B in aggregate) demonstrate
+that operators routinely fail to persist mandatory records even under explicit
+regulatory obligations~\cite{sec-fines-2024}. The type \texttt{Verdict} proves
 structural integrity; it does not prove persistence.
 
 We introduce \textbf{BTV-Transparency}, a framework that extends the linear

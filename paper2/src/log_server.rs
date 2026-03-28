@@ -47,10 +47,8 @@ impl LogState {
         self.entries.push(LogEntry { hash: verdict_hash });
         let index = (self.entries.len() - 1) as u64;
         let root = self.compute_root();
-        // Sign: index (8 bytes LE) || root_hash (32 bytes)
-        let mut msg = Vec::with_capacity(40);
-        msg.extend_from_slice(&index.to_le_bytes());
-        msg.extend_from_slice(&root);
+        // Sign: index (8 bytes LE) — matches lib.rs index_message()
+        let msg = index.to_le_bytes();
         let signature = self.signing_key.sign(&msg);
         (index, root, signature.to_bytes())
     }
@@ -150,6 +148,47 @@ pub fn build_router(log: SharedLog) -> Router {
         .route("/proof/:index", get(handle_proof))
         .route("/health", get(handle_health))
         .with_state(log)
+}
+
+// ---------------------------------------------------------------------------
+// Unit tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ed25519_dalek::SigningKey;
+    use rand::rngs::OsRng;
+
+    #[test]
+    fn log_server_append_only() {
+        let sk = SigningKey::generate(&mut OsRng);
+        let mut log = LogState::new(sk);
+        let (i0, _, _) = log.submit([0u8; 32]);
+        let (i1, _, _) = log.submit([1u8; 32]);
+        let (i2, _, _) = log.submit([2u8; 32]);
+        assert_eq!(i0, 0);
+        assert_eq!(i1, 1);
+        assert_eq!(i2, 2);
+        assert_eq!(log.entries.len(), 3);
+        // Entries are immutable once appended (Vec only grows)
+        assert_eq!(log.entries[0].hash, [0u8; 32]);
+        assert_eq!(log.entries[1].hash, [1u8; 32]);
+        assert_eq!(log.entries[2].hash, [2u8; 32]);
+    }
+
+    #[test]
+    fn submit_signature_verifies_with_client_message() {
+        use ed25519_dalek::{Verifier, Signature};
+        let sk = SigningKey::generate(&mut OsRng);
+        let vk = sk.verifying_key();
+        let mut log = LogState::new(sk);
+        let (index, _root, sig_bytes) = log.submit([42u8; 32]);
+        // Verify using the same message format as lib.rs::index_message
+        let msg = index.to_le_bytes();
+        let sig = Signature::from_bytes(&sig_bytes);
+        assert!(vk.verify(&msg, &sig).is_ok(), "server signature must verify with index-only message");
+    }
 }
 
 // ---------------------------------------------------------------------------

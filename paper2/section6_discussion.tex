@@ -11,7 +11,14 @@ the \texttt{unsafe} limitation of BTV~\cite{btv2026}: the type system enforces
 structural accountability; cryptographic key security is an orthogonal trust
 assumption. In practice, key protection relies on HSM/TPM deployment for the
 Log server and independent monitoring (CT Gossip~\cite{rfc6962}) for
-misbehaviour detection.
+misbehaviour detection. Additional mitigations include: (1)~scheduled key
+rotation with overlap periods that allow auditors to verify historical receipts;
+(2)~requiring submission to $k \geq 2$ independent log authorities (analogous
+to the multi-log requirement for TLS certificates in modern browsers), so that
+a single key compromise does not unilaterally invalidate the audit trail; and
+(3)~CT Gossip-based consistency checks across independent monitors, ensuring
+that log misbehaviour or selective suppression is detectable even when the
+operator controls the log server infrastructure.
 
 \paragraph{Single-log trust.}
 Relying on a single Log authority creates a trust bottleneck. Production
@@ -39,6 +46,15 @@ can adopt BTV-Transparency by wrapping their delivery paths in
 both invariants cannot produce a decision that (a) lacks an evidence chain or
 (b) was not verifiably persisted before delivery.
 
+When the transparency log is unavailable, BTV-Transparency fails securely
+(Corollary~\ref{cor:fail-secure}): no \texttt{DeliveryToken} can be produced,
+so no decision is delivered. In safety-critical deployments (e.g., healthcare)
+where hard blocking on log unavailability is unacceptable, the
+\texttt{EscalatedVerdict} pattern from BTV~\cite{btv2026} composes naturally
+with this fail-secure behaviour: an escalation path can be encoded as a
+separate linear type that requires human authorisation, preserving the
+accountability guarantee without requiring the log to be reachable.
+
 \subsection{Limitations}
 
 \begin{enumerate}
@@ -48,9 +64,18 @@ both invariants cannot produce a decision that (a) lacks an evidence chain or
   \item \textbf{L2 --- Loopback latency.} Benchmarks measure loopback
   submission; WAN latency to a remote log will be higher. The system argument
   (log latency is dominated by inference latency) remains valid for remote logs
-  in the same cloud region (typical RTT 1--10\,ms).
+  in the same cloud region (typical RTT 1--10\,ms). At a representative WAN RTT
+  of 10\,ms, the full pipeline would be approximately 12\,ms, representing
+  $\leq$24\,\% of a 50\,ms classifier---still within the acceptable overhead
+  bounds established in Section~\ref{sec:benchmarks}.
   \item \textbf{L3 --- Single-language boundary.} The enclosure perimeter holds
   within Safe Rust. Polyglot pipelines require the FFI gateway pattern described
   in BTV~\cite{btv2026} Section~6.2.4, extended to wrap the
   \texttt{DeliveryToken} before crossing the language boundary.
+  \item \textbf{L4 --- Privacy.} The transparency log stores verdict hashes,
+  not verdict content. The SHA-256 fingerprint of the serialised verdict is
+  appended to the log; no personal data is transmitted to or stored by
+  \texttt{btv-log}. Nonetheless, even hash-only logs may be subject to
+  correlation attacks in low-entropy decision spaces. Privacy-preserving
+  verification (e.g., zero-knowledge inclusion proofs) is left as future work.
 \end{enumerate}

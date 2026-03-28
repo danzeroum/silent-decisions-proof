@@ -1,0 +1,15 @@
+error[E0382]: use of moved value: `token`
+ --> tests/ui/delivery_token_reuse.rs:9:15
+  |
+7 | fn double_deliver(token: DeliveryToken) {
+  |                   ----- move occurs because `token` has type `DeliveryToken`, which does not implement the `Copy` trait
+8 |     let _p1 = token.deliver(); // consumes token
+  |                     --------- `token` moved due to this method call
+9 |     let _p2 = token.deliver(); // E0382: use of moved value
+  |               ^^^^^ value used here after move
+  |
+note: `DeliveryToken::deliver` takes ownership of the receiver `self`, which moves `token`
+ --> src/lib.rs
+  |
+  |     pub fn deliver(self) -> DeliveryPayload {
+  |                    ^^^^

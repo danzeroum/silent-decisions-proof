@@ -1,0 +1,10 @@
+error[E0624]: method `consume` is private
+ --> tests/ui/receipt_consume_external.rs:9:15
+  |
+9 |     let _ = r.consume();
+  |               ^^^^^^^ private method
+  |
+ ::: src/lib.rs
+  |
+  |     pub(crate) fn consume(self) -> (u64, Signature, VerifyingKey) {
+  |     ------------------------------------------------------------- private method defined here
