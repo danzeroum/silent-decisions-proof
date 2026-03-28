@@ -7,15 +7,23 @@ description = "BTV-Transparency: linear persistence types for AI accountability"
 repository = "https://github.com/danzeroum/silent-decisions-proof"
 license = "MIT"
 
+[[bin]]
+name = "btv-log"
+path = "src/main.rs"
+
 [dependencies]
-ed25519-dalek = { version = "2", features = ["serde"] }
+ed25519-dalek = { version = "2", features = ["rand_core"] }
 sha2 = "0.10"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+ureq = { version = "2", features = ["json"] }
+axum = "0.7"
+tokio = { version = "1", features = ["full"] }
+rand = "0.8"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
-trybuild = "1"  # compile-fail test harness
+trybuild = "1"
 
 [[bench]]
 name = "delivery_bench"
