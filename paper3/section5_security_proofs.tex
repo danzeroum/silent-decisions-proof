@@ -1,0 +1,160 @@
+\section{Security Analysis}
+\label{sec:security}
+
+We prove that the Accountable Redaction protocol satisfies the four
+security properties defined in Section~\ref{sec:model}. Each proof is
+structured as a reduction to a known cryptographic primitive.
+
+\subsection{Property 1: Redaction Soundness}
+\label{subsec:soundness}
+
+\begin{theorem}
+  A computationally bounded adversary $\mathcal{A}$ cannot produce a
+  proof $\pi_{\mathit{stat}}$ accepted by $\mathsf{Verify}$ for a
+  redaction batch $R$ that violates $\varepsilon$-statistical consistency
+  (Definition~\ref{def:eps-stat}), except with negligible probability.
+\end{theorem}
+
+\begin{proof}
+Proceed by contradiction. Suppose $\mathcal{A}$ outputs a tuple
+$(R, \pi_{\mathit{stat}})$ such that $\mathsf{Verify}(\mathit{vk},
+\mathbf{x}, \pi_{\mathit{stat}}) = 1$ where $\mathbf{x}$ encodes a
+transition with true statistical deviation $\Delta_g > \varepsilon_g$ for
+some $g \in \mathcal{G}$.
+
+By the knowledge soundness of the underlying SNARK (Groth16 or Plonk),
+there exists a polynomial-time extractor $\mathcal{E}$ such that, given
+$\pi_{\mathit{stat}}$, $\mathcal{E}$ produces a witness $w$ satisfying
+every constraint in $\mathcal{C}$. In particular, $w$ must satisfy the
+consistency constraint:
+\[
+  \bigl| q_g^{(t)} - q_g^{(t+1)} \bigr| \;\leq\; \varepsilon_g \cdot
+  \mathsf{S}
+\]
+where $q_g^{(t)}, q_g^{(t+1)}$ are the fixed-point quotients derived
+from the per-group statistics (Section~\ref{subsec:fixedpoint}). A
+witness satisfying this constraint implies the true deviation $\Delta_g
+\leq \varepsilon_g$, contradicting the assumption that $\Delta_g >
+\varepsilon_g$.
+
+Since the constraint is unsatisfiable under the assumed conditions, no
+valid witness exists, and no computationally bounded prover can produce an
+accepted proof without breaking the knowledge soundness of the SNARK.
+\end{proof}
+
+\subsection{Property 2: Content Indistinguishability}
+\label{subsec:privacy}
+
+\begin{theorem}
+  For any redacted index $i \in R$, the post-redaction commitment $C_i'$
+  is computationally indistinguishable from a fresh null commitment
+  $C_{\bot}$. In particular, the demographic attribute $g_i$ and the
+  decision content of $\ell_i$ are irrecoverable from the public log
+  state.
+\end{theorem}
+
+\begin{proof}
+The public view after redaction consists of the leaf commitment $C_i' =
+C_{\bot}$ (a null Pedersen commitment) and the proof $\pi_{\mathit{stat}}$.
+By the zero-knowledge property of the SNARK, $\pi_{\mathit{stat}}$ is
+computationally indistinguishable from a simulated proof that does not
+use the witness; hence it reveals no information about $g_i$ or $\ell_i$
+beyond what is implied by the public inputs.
+
+Suppose $\mathcal{A}$ can distinguish the group $g_i \in \{g_0, g_1\}$
+of a redacted entry with non-negligible advantage $\delta$. Construct a
+simulator $\mathcal{S}$ against the hiding game for Pedersen commitments:
+\begin{enumerate}
+  \item The challenger samples $b \gets \{0,1\}$ and provides
+  $C^* = \mathsf{Com}(g_b;\, r)$ to $\mathcal{S}$.
+  \item $\mathcal{S}$ embeds $C^*$ as the leaf for index $i$ in a
+  simulated log and uses the SNARK simulator (whose existence is
+  guaranteed by the zero-knowledge property) to produce a valid-looking
+  $\pi_{\mathit{stat}}$ without the real witness.
+  \item $\mathcal{S}$ presents $(C^*, \pi_{\mathit{stat}})$ to
+  $\mathcal{A}$, which outputs $\hat{b}$. $\mathcal{S}$ outputs
+  $\hat{b}$.
+\end{enumerate}
+$\mathcal{S}$'s advantage equals $\mathcal{A}$'s advantage $\delta$ in
+breaking the computational hiding of the Pedersen commitment over the
+underlying group. Since Pedersen commitments are computationally hiding
+under the Discrete Logarithm assumption in the generic group model,
+$\delta$ is negligible.
+\end{proof}
+
+\subsection{Property 3: Merkle Continuity}
+\label{subsec:continuity}
+
+\begin{theorem}
+  A valid redaction batch $R$ targeting indices $i \in R$ cannot modify,
+  remove, or invalidate the Merkle membership of any entry $j \notin R$.
+  Existing consistency proofs computed against $\mathit{rt}_t$ remain
+  verifiable against $\mathit{rt}_{t+1}$.
+\end{theorem}
+
+\begin{proof}
+A redaction replaces leaf $i$ with $C_{\bot}$ and recomputes the path
+from leaf $i$ to the root. All sibling nodes on paths not intersecting
+with the redacted path are unchanged. Modifying leaf $j \notin R$ while
+producing a valid root $\mathit{rt}_{t+1}$ would require finding two
+distinct preimages yielding the same internal node, i.e., a collision in
+the hash function $H$ (Poseidon). By collision resistance of $H$, this
+occurs with at most negligible probability.
+
+Merkle consistency proofs (RFC~9162~\cite{rfc6962}) allow any party
+holding $\mathit{rt}_t$ to verify that $\mathit{rt}_{t+1}$ was obtained
+by a valid append or leaf substitution without re-downloading the log.
+This property is inherited without modification, since nullifying a leaf
+is structurally equivalent to updating its value.
+\end{proof}
+
+\subsection{Property 4: Operator Non-Frameability}
+\label{subsec:nonframe}
+
+\begin{theorem}
+  (1) A malicious operator cannot produce a valid $\pi_{\mathit{auth}}$
+  for a redaction not requested by the data subject. (2) A malicious
+  data subject cannot credibly accuse an honest operator of performing an
+  unauthorized redaction that did not occur.
+\end{theorem}
+
+\begin{proof}[Proof of Direction~1 (Operator malicious)]
+Every accepted redaction requires $\pi_{\mathit{auth}} = (i,
+\sigma_{\mathit{del}}, \mathit{pk}_S)$ where
+$\mathsf{Verify}_{\mathit{pk}_S}(\sigma_{\mathit{del}},
+\texttt{DELETE}\,\|\,i\,\|\,\mathit{ts}) = 1$ and $\mathit{pk}_S$ matches
+the identity embedded in $\ell_i$ at insertion time.
+
+Suppose operator $\mathcal{A}$ produces a valid redaction for entry $i$
+without the subject's consent. $\mathcal{A}$ must produce a valid
+signature $\sigma^*$ on a message $m^* = (\texttt{DELETE}\,\|\,i\,\|\,
+\mathit{ts})$ under $\mathit{pk}_S$. Since the subject did not consent,
+$m^*$ was never signed by the subject. Construct $\mathcal{S}$ against
+EUF-CMA of the signature scheme: $\mathcal{S}$ simulates the protocol
+and forwards all legitimate signing queries; when $\mathcal{A}$ outputs
+$\sigma^*$, $\mathcal{S}$ outputs $(m^*, \sigma^*)$ as the forgery.
+This contradicts EUF-CMA security of the signature scheme.
+\end{proof}
+
+\begin{proof}[Proof of Direction~2 (Subject malicious)]
+Suppose subject $\mathcal{A}$ claims the operator redacted entry $i$
+without consent. Two cases:
+\begin{enumerate}
+  \item \textbf{The redaction occurred.} Then the Redaction Ledger
+  contains an entry for batch $R \ni i$ with $\pi_{\mathit{auth}}^{(i)}$.
+  If $\pi_{\mathit{auth}}^{(i)}$ contains a valid signature under
+  $\mathit{pk}_S$, the subject did authorise it; the accusation is
+  false. Claiming otherwise requires the subject to deny their own valid
+  signature, which is possible only if the signature scheme is
+  repudiable --- contradicting the non-repudiation guarantee of
+  EUF-CMA-secure schemes.
+  \item \textbf{The redaction did not occur.} Then the Redaction Ledger
+  contains no entry for index $i$. By Property~3 (Merkle Continuity),
+  $\ell_i$ is still present in the main log with a valid inclusion proof
+  against the current root $\mathit{rt}$. The operator produces this
+  proof, refuting the claim. Fabricating a false absence would require
+  forging a Merkle exclusion proof, which requires finding a hash
+  collision (contradicts collision resistance of $H$).
+\end{enumerate}
+In both cases, the subject cannot mount a successful false accusation.
+\end{proof}
