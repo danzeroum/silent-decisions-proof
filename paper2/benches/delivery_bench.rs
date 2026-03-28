@@ -4,11 +4,12 @@
 //! Bench 2: Full pipeline latency (requires btv-log on localhost:8080)
 //!
 //! Run standalone benches (no server needed):
-//!   cargo bench --manifest-path paper2/Cargo.toml -- seal
+//!   cargo bench --manifest-path paper2/Cargo.toml --features bench_helpers -- seal
 //!
 //! Run integration bench (start btv-log first):
 //!   cargo run --bin btv-log &
-//!   cargo bench --manifest-path paper2/Cargo.toml -- submission
+//!   BTV_LOG_VERIFYING_KEY=<printed key> \
+//!   cargo bench --manifest-path paper2/Cargo.toml --features bench_helpers -- submission
 
 use btv_transparency::{
     log_server::{LogState, SharedLog},
