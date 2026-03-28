@@ -10,6 +10,10 @@
 \usepackage{listings}
 \usepackage{hyperref}
 \usepackage{stmaryrd} % \multimap
+\usepackage{siunitx}  % \si{\micro\second}, \si{\nano\second}, etc.
+\usepackage{booktabs} % \toprule, \midrule, \bottomrule in tables
+
+\sisetup{per-mode=symbol}
 
 \lstset{
   language=Rust,
@@ -22,11 +26,12 @@
 
 \begin{document}
 
-\title{Type-Safe Verifiability: Bridging Linear Types and Transparency Logs for AI Accountability}
+\title{Type-Safe Verifiability: Bridging Linear Types and Transparency Logs
+       for AI Accountability}
 
 \author{\IEEEauthorblockN{Daniel Lau Pereira Soares}
 \IEEEauthorblockA{\textit{Independent Researcher} \\
-São Paulo, Brazil \\
+S\~{a}o Paulo, Brazil \\
 dannielau@gmail.com}}
 
 \maketitle
@@ -43,7 +48,7 @@ Certificate Transparency, Rust, LGPD, EU AI Act, Ephemeral Verdict
 \input{section1_introduction.tex}
 \input{section2_related_work.tex}
 \input{section3_formal_model.tex}
-\input{section4_implementation.tex}
+\input{section4_theorem.tex}
 \input{section5_benchmarks.tex}
 \input{section6_discussion.tex}
 \input{section7_conclusion.tex}

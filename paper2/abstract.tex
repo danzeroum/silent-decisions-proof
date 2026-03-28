@@ -10,21 +10,18 @@ creating an \emph{Ephemeral Verdict}---a decision legal in its formation but
 inaccessible for contestation.
 
 This paper presents \textbf{BTV-Transparency}, a framework that extends the
-linear type discipline to the persistence layer via Transparency Logs. We
-define the type law $\mathsf{DeliveryToken} \multimap (V \otimes R)$, enforcing
-that a decision cannot be delivered to an end-user without linearly consuming a
-\texttt{Verdict} ($V$) and an \texttt{InclusionReceipt} ($R$)---a
+linear type discipline to the persistence layer. We define the type law
+$\mathsf{DeliveryToken} \multimap (V \otimes R)$, enforcing that a decision
+cannot be delivered to an end-user without linearly consuming a
+\texttt{Verdict}~($V$) and an \texttt{InclusionReceipt}~($R$)---a
 cryptographic Ed25519-signed proof of inclusion in a public, append-only log
 operated by an independent authority. We prove the \emph{Persistence Enclosure
 Theorem}: in any Safe Rust program integrating BTV-Transparency, the set of
 Ephemeral Verdicts is empty by construction, across four exhaustive attack
 cases (struct-literal forgery, private constructor bypass, silent drop, and
-cryptographic MITM).
-
-Empirical validation on a reference implementation (\texttt{btv-transparency}
-crate, \texttt{btv-log} server in Axum) shows that verifiable persistence adds
-a mean of 1.81\,ms end-to-end latency (p99:~3.25\,ms)---negligible relative to
-the 50--200\,ms inference cost of modern LLM pipelines. Together with BTV, this
-work closes the full accountability loop: no decision can exist without
-evidence (Paper~1), and no decision can be delivered without a verifiable
-persistence record (this paper).
+cryptographic MITM). Empirical validation shows that verifiable persistence
+adds a mean end-to-end latency of 1.81\,ms (p99:~3.25\,ms)---negligible
+relative to the 50--200\,ms inference cost of modern LLM pipelines. Together
+with BTV, this work closes the full accountability loop: no decision can exist
+without evidence~(Paper~1), and no decision can be delivered without a
+verifiable persistence record~(this paper).
