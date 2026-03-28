@@ -1,0 +1,117 @@
+% -----------------------------------------------------------------------------
+% Section 2: Related Work
+% Paper: "Silent Decisions Are Type Errors: Enforcing AI Accountability
+%         via Linear Resource Types"
+% Venue: IEEE Computer — Special Issue on AI Governance
+% Deadline: 13 April 2026
+% Authors: Daniel Lau Pereira Soares
+% Rev 3: 25 March 2026 — ACID distinction added (§2.2)
+% -----------------------------------------------------------------------------
+
+\section{Related Work}
+\label{sec:related_work}
+
+The challenge of algorithmic accountability intersects three distinct
+domains of computer science: infrastructure governance, runtime
+verification, and type theory.
+We situate our contribution in contrast to prevailing methodologies
+in each domain.
+
+% ----------------------------------------------------------------
+\subsection{Policy-as-Code for Infrastructure Governance}
+\label{sec:pac}
+
+The industry standard for continuous compliance relies on
+Policy-as-Code (PaC) frameworks such as Open Policy
+Agent~\cite{opa2024}, Kyverno, and Checkov.
+These tools excel at governing infrastructure artifacts---verifying
+that a Kubernetes pod lacks privilege escalation, that a cloud
+storage bucket is not publicly accessible, or that a Terraform plan
+does not provision over-privileged IAM roles.
+However, they are designed to evaluate \emph{declarative
+configurations}, not \emph{dynamic runtime decisions} affecting
+individual rights.
+
+Consequently, evidence of compliance in these systems manifests as
+asynchronous audit logs: records written after the decision logic has
+executed, stored in a separate artifact, and subject to omission or
+alteration if the logging pipeline fails.
+Infrastructure PaC frameworks do not address the problem we target,
+because they assume a world where the object of governance is a
+configuration artifact rather than a transient decision act with
+immediate legal consequences for a natural person.
+In PaC, accountability is a post-hoc observable state---a property
+that may or may not be present at audit time, leaving the system
+structurally vulnerable to the silent-decision failure mode we
+identify in Section~\ref{sec:intro}.
+
+% ----------------------------------------------------------------
+\subsection{Runtime Assertions and Audit Logging}
+\label{sec:runtime}
+
+To govern application-level decision logic, practitioners
+typically rely on a combination of runtime assertions
+(e.g., \texttt{assert(evidence != null)}) and structured
+audit logging.
+While functional under nominal conditions, these mechanisms are
+procedural promises, not structural invariants.
+Runtime assertions can be disabled in production builds
+(e.g., by stripping \texttt{debug\_assertions} in Rust, or by
+omitting \texttt{-ea} in the Java VM) to reduce overhead.
+Audit logs can be truncated under load, dropped by a misconfigured
+sink, or bypassed by a code path that was never reached during
+testing.
+
+Moreover, both mechanisms operate \emph{after} the decision logic
+has executed.
+They do not prevent the materialization of a verdict that lacks
+non-repudiable evidence; they attempt to record its absence, if they
+run at all.
+This architectural decoupling separates the act of deciding from the
+act of proving---a separation that is incompatible with the
+structural accountability obligations imposed by LGPD Art.~18\S2 and
+EU AI Act Art.~86, which require that evidence \emph{accompany} a
+decision, not merely follow it.
+
+A stronger form of runtime guarantee is offered by transactional
+databases: an ACID transaction wrapping both the decision record and
+the audit log ensures that either both are committed or neither is.
+However, transactional atomicity is a tool the developer must
+consciously choose to apply---wrapping decision and log within the
+same \texttt{BEGIN}/\texttt{COMMIT} boundary.
+Omitting that boundary is a logic error, not a type error: the
+compiler accepts the program, the database commits the decision
+without the log, and the silent-decision failure mode materialises
+with no static diagnostic.
+BTV closes exactly this gap: the compiler rejects any program that
+constructs a \texttt{Verdict} without a causally-prior
+\texttt{EvidenceToken}, regardless of whether the developer intended
+to include the evidence or not.
+
+% ----------------------------------------------------------------
+\subsection{Linear Types and Resource Correctness}
+\label{sec:linear_related}
+
+The theoretical foundation for structural resource guarantees is
+Linear Logic, introduced by Girard~\cite{girard1987linear} in 1987.
+Girard's key insight---that propositions should be treated as
+\emph{resources} that are consumed exactly once---was subsequently
+adapted into programming language design by
+Wadler~\cite{wadler1991linear}, who showed that linear types
+eliminate a class of resource-management errors at compile time.
+This paradigm has proven highly effective in enforcing memory safety
+and preventing data races; it underpins the ownership and borrowing
+model of the Rust programming language~\cite{jung2017rustbelt}.
+
+However, prior applications of linear types focus exclusively on
+\emph{resource} correctness---ensuring that memory is freed exactly
+once, that file handles are not leaked, that channels are not
+reused after a session ends.
+To the best of our knowledge, no prior work has applied linear
+resource types to enforce \emph{legal} correctness: the requirement
+that a decision act cannot exist without a causally-bound,
+non-repudiable evidence chain.
+Bound-To-Verdict bridges this gap, extending the linear-type
+discipline from resource management to regulatory accountability,
+and demonstrating that the same compile-time guarantees that prevent
+memory unsafety can be applied to prevent accountability unsafety.

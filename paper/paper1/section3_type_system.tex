@@ -1,0 +1,184 @@
+% Section 3: A Linear Type System for AI Accountability
+% IEEE Computer — "Silent Decisions Are Type Errors"
+% Authors: Soares et al., 2026
+
+\section{A Linear Type System for AI Accountability}
+\label{sec:type_system}
+
+The legal accountability gap identified in Section~\ref{sec:intro}
+stems from the mismatch between the \emph{sequential} structure of
+runtime assertions and the \emph{concurrent, high-throughput} nature
+of AI decision pipelines.  This section introduces the linear-type
+framework that eliminates the gap at the language level.
+
+% ----------------------------------------------------------------
+\subsection{Regulatory Obligations as Linear Resources}
+\label{sec:linear_resources}
+
+Girard's linear logic~\cite{girard1987linear} treats propositions as
+\emph{resources}: each assumption must be used exactly once---no
+duplication (\emph{contraction}) and no silent discard
+(\emph{weakening}).  This discipline maps directly onto regulatory
+accountability obligations.
+
+Under LGPD Art.~18\S2 and EU AI Act Art.~86, an AI system that
+issues a consequential decision \emph{consumes} a regulatory
+obligation: it must produce a corresponding explanation and preserve
+an auditable evidence trail.  If the obligation could be duplicated,
+the same evidence could be recycled across multiple decisions,
+undermining non-repudiability.  If the obligation could be silently
+discarded, decisions could escape accountability entirely---the
+precise failure mode we call a \emph{silent decision}.
+
+We model two regulatory obligations as first-class linear types:
+
+\begin{description}
+  \item[\texttt{EvidenceToken}]  A linear resource that encapsulates
+    the BLAKE3 hash of the decision context (the raw input fed to the
+    AI system at inference time).  Construction via
+    \texttt{EvidenceToken::new(\&[u8])} binds the token irrevocably to
+    a specific context; the hash is computed at construction and cannot
+    be altered afterwards.  The type does not implement \texttt{Clone}
+    or \texttt{Copy}, enforcing the ``used exactly once'' discipline at
+    the type-system level.
+
+  \item[\texttt{ComplianceToken}]  A linear resource that encodes the
+    applicable regulatory framework: jurisdiction identifier, policy
+    version, and contestability deadline in hours.  Like
+    \texttt{EvidenceToken}, it is consumed by value when passed to the
+    verdict constructor, ensuring that each regulatory obligation is
+    bound to exactly one verdict.
+\end{description}
+
+The non-repudiability guarantee follows directly: because an
+\texttt{EvidenceToken} cannot be cloned, the same evidence cannot be
+presented for two different decisions.  Because it cannot be silently
+dropped, a decision that lacks evidence cannot be compiled.
+
+% ----------------------------------------------------------------
+\subsection{The Atomic Binding Operator}
+\label{sec:binding}
+
+The central type law of this paper is:
+\[
+  V \multimap (E \otimes C)
+\]
+where $V$ denotes \texttt{Verdict}, $E$ denotes \texttt{EvidenceToken},
+$C$ denotes \texttt{ComplianceToken}, $\multimap$ is the linear
+function type (``linear implication''), and $\otimes$ is the
+multiplicative conjunction (``tensor product'') of linear logic.
+
+Reading right-to-left: to produce a $V$, one must simultaneously
+consume exactly one $E$ \emph{and} exactly one $C$.  There is no
+partial construction; either both resources are provided and a
+verdict is produced, or the program does not type-check.
+
+In the implementation, \texttt{Verdict::new} is the concrete
+realisation of the $\otimes$-introduction rule
+(Axiom~\ref{ax:intro}):
+
+\begin{verbatim}
+pub fn new(
+    evidence:   EvidenceToken,
+    compliance: ComplianceToken,
+    decision:   Decision,
+    explanation: String,
+) -> Verdict
+\end{verbatim}
+
+Both \texttt{evidence} and \texttt{compliance} are taken \emph{by
+value}.  Rust's ownership semantics enforce the linear discipline:
+after the call, neither token is accessible to the caller; they have
+been irreversibly consumed in the construction of \texttt{Verdict}.
+The HMAC integrity seal computed inside \texttt{new} binds
+\texttt{evidence\_id}, \texttt{decision}, and \texttt{explanation}
+into a tamper-evident record, making post-hoc alteration detectable.
+
+This atomicity property is stronger than a runtime assertion.  An
+\texttt{assert(evidence != null)} can be removed by a compiler
+optimisation, disabled under load, or bypassed by a code path that
+was never tested.  The linear type law is enforced by the type
+checker; it applies to every compilation, every code path, and every
+version of the program.
+
+% ----------------------------------------------------------------
+\subsection{Encapsulation as Compile-Time Enforcement Boundary}
+\label{sec:encapsulation}
+
+The type law alone is insufficient if an adversary (or an
+inattentive developer) can construct a \texttt{Verdict} by other
+means---for instance, by writing a struct literal or by directly
+assembling the hash value.  Three complementary protections close
+the encapsulation perimeter:
+
+\begin{table}[t]
+\caption{The Three Protections of the Constitutional Enclosure}
+\label{tab:protections}
+\begin{tabular}{llll}
+\hline
+\textbf{ID} & \textbf{Attack Vector} & \textbf{Mechanism} & \textbf{Compiler Error} \\
+\hline
+A & Struct-literal \texttt{Verdict \{ \ldots \}} &
+  All fields \texttt{private} & \texttt{E0451} \\
+B & External \texttt{consume()} call &
+  \texttt{pub(crate)} visibility & \texttt{E0624} \\
+C & Silent drop of \texttt{EvidenceToken} &
+  \texttt{\#[must\_use]} + deny & \texttt{unused\_must\_use} \\
+\hline
+\end{tabular}
+\end{table}
+
+Protection~A (Table~\ref{tab:protections}) prevents an external
+caller from assembling a \texttt{Verdict} without going through the
+constructor, regardless of whether they know the field types.
+Protection~B prevents an external caller from extracting the inner
+\texttt{Blake3Hash} out of an \texttt{EvidenceToken} and reusing it.
+The \texttt{pub(crate)} qualifier restricts \texttt{consume()} to
+the defining crate; any external call is rejected at compile time.
+Protection~C prevents a developer from acknowledging an
+\texttt{EvidenceToken} and then discarding it---the \texttt{\#[must\_use]}
+attribute, combined with a crate-level \texttt{\#![deny(unused\_must\_use)]},
+promotes the warning to a hard error.
+
+Together, these three protections form a \emph{closed perimeter}: the
+only well-typed path to a \texttt{Verdict} in any external crate is
+through \texttt{Verdict::new}, which enforces the $V \multimap (E \otimes C)$
+law.
+
+\paragraph{Scope of the Theorem.}
+The Constitutional Enclosure Theorem (Section~\ref{sec:theorem})
+holds within the following boundaries:
+
+\begin{itemize}
+  \item \textbf{In scope:} All Safe Rust code.  The type checker
+    enforces the visibility and ownership rules without exception.
+  \item \textbf{Out of scope:} Code using the \texttt{unsafe}
+    keyword.  \texttt{unsafe} permits raw pointer manipulation and
+    can bypass visibility rules.  Deployments should enforce a
+    zero-\texttt{unsafe} policy via \texttt{cargo geiger}.
+  \item \textbf{Out of scope:} Semantic truthfulness of the evidence.
+    The theorem guarantees that \emph{some} context was hashed, not
+    that the context is the correct or complete input.  Policy-level
+    correctness is a separate concern addressed at the application layer.
+  \item \textbf{Out of scope:} Policy accuracy.  Whether the
+    \texttt{ComplianceToken} accurately reflects the applicable law
+    is a legal question, not a type question.
+  \item \textbf{Out of scope:} Decisions that bypass the
+    \texttt{Verdict} type entirely.  The theorem guarantees that no
+    \texttt{Verdict} exists without evidence---it does not guarantee
+    that all consequential decisions are routed through
+    \texttt{Verdict}.  Note that \texttt{let \_ =
+    EvidenceToken::new(\ldots)} silences the \texttt{\#[must\_use]}
+    lint; however, this produces no \texttt{Verdict} and therefore
+    does not constitute a silent decision under
+    Definition~\ref{def:silent}.  Enforcing that all decision points
+    use the BTV pipeline is an architectural obligation, not a
+    type-level one.
+\end{itemize}
+
+The boundary conditions above are not weaknesses of the approach;
+they reflect a deliberate separation of concerns.  The type system
+enforces \emph{structural} accountability---that a decision cannot
+exist without evidence.  \emph{Substantive} accountability---that
+the evidence is accurate and the policy is correct---is the province
+of audit, certification, and human review.

@@ -1,0 +1,162 @@
+% Section 5: Empirical Validation
+% IEEE Computer — "Silent Decisions Are Type Errors"
+% Authors: Soares et al., 2026
+%
+% Benchmark data collected with:
+%   cargo bench --bench verdict_construction
+% on the hardware described in Section 5.1.
+% Raw output preserved in bench_results.txt (repository root).
+
+\section{Empirical Validation}
+\label{sec:benchmarks}
+
+The Constitutional Enclosure Theorem guarantees that silent decisions
+are compile-time errors.  A natural question follows: does the
+compile-time guarantee impose a \emph{runtime cost}?  This section
+answers that question empirically.
+
+% ----------------------------------------------------------------
+\subsection{Experimental Setup}
+\label{sec:setup}
+
+\paragraph{Hardware and software.}
+All measurements were collected on a single core of an
+Intel Xeon processor at 2.10~GHz (4 logical cores available, benchmarks
+single-threaded), running Linux 6.18.5 x86\_64.
+The implementation was compiled with \texttt{rustc}~1.93.1
+(release profile: \texttt{opt-level~=~3}, LTO disabled).
+Criterion~0.5.1 was used as the benchmarking harness.
+
+\paragraph{Methodology.}
+We used Criterion's \texttt{iter\_batched} API with
+\texttt{BatchSize::SmallInput}.  This separates the \emph{setup
+phase} (allocating the context buffer, cloning string arguments) from
+the \emph{measurement phase} (constructing the \texttt{Verdict}),
+ensuring that heap allocation latency is not attributed to the
+type-system mechanisms under study.
+
+To prevent the LLVM optimiser from caching the BLAKE3 hash across
+iterations (which would underestimate the hashing cost), a one-byte
+seed is incremented on each setup call, producing a distinct input
+for every iteration.  The explanation string, jurisdiction, and
+policy version are cloned from pre-allocated originals; their cost
+is excluded from the measurement window.
+
+\texttt{black\_box} wrappers are applied to inputs passed to
+\texttt{EvidenceToken::new}, preventing constant-folding of the hash
+computation.
+
+Criterion reports a 95\% confidence interval over 100 samples per
+benchmark; we quote the point estimate (mean) with the lower and
+upper bounds of the interval.
+
+% ----------------------------------------------------------------
+\subsection{Results}
+\label{sec:results}
+
+\paragraph{Memory footprint.}
+\begin{center}
+\texttt{std::mem::size\_of::\textless{}Verdict\textgreater{}() = 152 bytes} (x86-64, rustc~1.93.1, Linux)
+\end{center}
+This fixed footprint comprises the 32-byte \texttt{Blake3Hash}, the
+\texttt{ComplianceToken} fields (two heap-allocated strings and a
+\texttt{u32}), the \texttt{Decision} discriminant, the explanation
+\texttt{String}, and the 32-byte HMAC integrity seal.  The serialised
+on-wire footprint (JSON or CBOR) is approximately 300--500 bytes
+depending on field lengths.
+
+\paragraph{Verdict construction latency.}
+Table~\ref{tab:new} reports the end-to-end latency of
+\texttt{Verdict::new}, which includes BLAKE3 context hashing,
+HMAC-SHA256 sealing, and memory allocation for the \texttt{Verdict}
+struct.  Three context sizes are measured to characterise the
+BLAKE3 throughput curve.
+
+\begin{table}[t]
+\caption{Latency of \texttt{Verdict::new} by context size (95\% CI)}
+\label{tab:new}
+\begin{tabular}{lrrr}
+\hline
+\textbf{Context size} & \textbf{Lower} & \textbf{Mean} & \textbf{Upper} \\
+\hline
+64~B   & 414.67~ns & 416.80~ns & 419.08~ns \\
+512~B  & 859.22~ns & 869.26~ns & 880.74~ns \\
+4~KiB  & 1.639~\textmu{}s & 1.671~\textmu{}s & 1.708~\textmu{}s \\
+\hline
+\end{tabular}
+\end{table}
+
+\paragraph{Integrity verification latency.}
+Table~\ref{tab:verify} reports the latency of
+\texttt{Verdict::verify\_integrity}, which recomputes the
+HMAC-SHA256 seal over the stored evidence identifier, decision, and
+explanation and compares it to the seal embedded in the
+\texttt{Verdict}.  This operation does not re-hash the original
+context.
+
+\begin{table}[t]
+\caption{Latency of \texttt{Verdict::verify\_integrity} (95\% CI)}
+\label{tab:verify}
+\begin{tabular}{lrrr}
+\hline
+\textbf{Operation} & \textbf{Lower} & \textbf{Mean} & \textbf{Upper} \\
+\hline
+\texttt{verify\_integrity} & 324.09~ns & 327.36~ns & 330.32~ns \\
+\hline
+\end{tabular}
+\end{table}
+
+% ----------------------------------------------------------------
+\subsection{Discussion}
+\label{sec:discussion}
+
+\paragraph{Zero-cost abstractions.}
+The linear type discipline---private fields, \texttt{pub(crate)}
+visibility, and \texttt{\#[must\_use]}---operates entirely at compile
+time.  It introduces no additional branches, allocations, or
+synchronisation primitives.  The runtime cost of a
+\texttt{Verdict} is therefore identical to the cost of the
+cryptographic operations it encapsulates (BLAKE3 and HMAC-SHA256),
+which would be required regardless of the governance mechanism chosen.
+
+\paragraph{Isolating the BLAKE3 cost.}
+The difference between \texttt{Verdict::new} (64~B context) and
+\texttt{Verdict::verify\_integrity} isolates the cost attributable
+to hashing the decision context:
+\[
+  \Delta_{64\mathrm{B}} = 416.80\;\text{ns} - 327.36\;\text{ns}
+                        \approx 89\;\text{ns}.
+\]
+This $\approx 89$~ns represents one BLAKE3 invocation over 64 bytes,
+consistent with BLAKE3's documented throughput of approximately
+1~GB/s on this hardware class.  As context size grows, the
+additional latency scales proportionally: 512~B adds approximately
+$452\;\text{ns}$ above the 64~B baseline, and 4~KiB adds
+approximately $1.25\;\mu\text{s}$.
+
+\paragraph{Governance at microsecond scale.}
+All measured operations complete in under 2~\textmu{}s.  In a
+production AI inference pipeline, where model evaluation typically
+requires tens to hundreds of milliseconds, the governance overhead
+introduced by the Constitutional Enclosure is
+\emph{below measurement noise}---less than 0.01\% of total request
+latency for any non-trivial model.  The accountability guarantee
+is therefore practically free.
+
+\paragraph{Verification cost.}
+The \texttt{verify\_integrity} operation ($\approx 327$~ns) enables
+an auditor to confirm the integrity of any stored verdict at a rate
+exceeding $3 \times 10^6$ verifications per second on a single core.
+This makes retroactive audit of large decision logs computationally
+tractable without specialised hardware.
+
+% ----------------------------------------------------------------
+\subsection{Worked Examples}
+\label{sec:worked-examples}
+
+Three worked examples demonstrate BTV in semi-realistic scenarios: credit
+scoring under LGPD (30-day appeal window), hiring screening under EU AI Act
+Art.~86 (high-risk classification), and emergency triage (where \texttt{Allow}
+decisions also require evidence).  Each example constructs verdicts from
+domain-specific payloads and verifies integrity.  Source code is included in
+the companion repository (\texttt{examples/}).
