@@ -20,8 +20,9 @@ Theorem}: in any Safe Rust program integrating BTV-Transparency, the set of
 Ephemeral Verdicts is empty by construction, across four exhaustive attack
 cases (struct-literal forgery, private constructor bypass, silent drop, and
 cryptographic MITM). Empirical validation shows that verifiable persistence
-adds a mean end-to-end latency of 1.81\,ms (p99:~3.25\,ms)---negligible
-relative to the 50--200\,ms inference cost of modern LLM pipelines. Together
+adds a mean end-to-end latency of 4.73\,ms (95\,\% CI: 4.47--4.96\,ms)---acceptable
+relative to the 50--200\,ms inference cost of modern LLM pipelines
+($\leq$9.5\,\% of a 50\,ms classifier; $\leq$2.4\,\% of a 200\,ms model). Together
 with BTV, this work closes the full accountability loop: no decision can exist
 without evidence~(Paper~1), and no decision can be delivered without a
 verifiable persistence record~(this paper).
