@@ -1,0 +1,159 @@
+\section{The Persistence Enclosure Theorem}
+\label{sec:theorem}
+
+This section proves Theorem~\ref{thm:persistence-enclosure} by exhaustive
+case analysis. The structure mirrors the Constitutional Enclosure proof
+of BTV~\cite{btv2026} (Section~4.4), extending it with a fourth case
+for the cryptographic boundary introduced by the network-adjacent adversary.
+
+\subsection{The Enclosure Perimeter}
+
+The type law (\ref{eq:delivery-law}) defines a \emph{perimeter}:
+the set of code paths that could, in principle, allow a
+\texttt{DeliveryToken} to be constructed without a valid
+\texttt{InclusionReceipt}. We enumerate every such path and show
+each is closed by a distinct, compiler-enforced barrier.
+
+\begin{theorem}[Persistence Enclosure]
+\label{thm:pe-full}
+In any Safe Rust program $P$ whose crate graph includes
+\texttt{btv-transparency}, the set of Ephemeral Verdicts
+$\mathcal{E}(P) = \emptyset$.
+Equivalently, if $P$ type-checks under Safe Rust, then every
+delivered verdict is backed by a valid \texttt{InclusionReceipt}.
+\end{theorem}
+
+\begin{proof}
+We identify four exhaustive attack cases and show each is
+ill-typed or cryptographically rejected before the receipt enters
+the linear pipeline.
+
+\paragraph{Case A: Struct-Literal Forgery (E0451).}
+An adversary constructs \texttt{DeliveryToken~\{~verdict\_bytes:~\ldots,
+log\_index:~\ldots,~signature\_bytes:~\ldots~\}} directly.
+\begin{itemize}
+  \item \emph{Defence.} All fields of \texttt{DeliveryToken} are declared
+  without \texttt{pub} visibility; they are private to the
+  \texttt{btv-transparency} crate.
+  \item \emph{Compiler error.} \texttt{error[E0451]: field
+  `verdict\_bytes` of struct `DeliveryToken` is private}.
+  \item \emph{Verified by.} Compile-fail test
+  \texttt{tests/sui/delivery\_struct\_literal.rs}.
+\end{itemize}
+
+\paragraph{Case B: Receipt Forgery via External Constructor (E0603).}
+An adversary calls \texttt{InclusionReceipt::new(index,~sig,~key)}
+directly to manufacture a receipt without contacting the Log.
+\begin{itemize}
+  \item \emph{Defence.} \texttt{InclusionReceipt::new} is declared
+  \texttt{pub(crate)}; it is not part of the public API surface.
+  The sole public path to an \texttt{InclusionReceipt} is
+  \texttt{LogClient::submit\_and\_await}, which contacts the Log.
+  \item \emph{Compiler error.} \texttt{error[E0603]: function
+  `new` is private}.
+  \item \emph{Verified by.} Compile-fail test
+  \texttt{tests/sui/receipt\_struct\_literal.rs}.
+\end{itemize}
+
+\paragraph{Case C: Silent Drop of Receipt (\texttt{unused\_must\_use}).}
+A developer calls \texttt{LogClient::submit\_and\_await} but discards
+the result (\texttt{let~\_~=~client.submit\_and\_await(\&hash);})
+and proceeds to call \texttt{DeliveryToken::seal} via an alternative
+path.
+\begin{itemize}
+  \item \emph{Defence.} \texttt{InclusionReceipt} carries
+  \texttt{\#[must\_use = "\ldots"]}. The crate-level attribute
+  \texttt{\#![deny(unused\_must\_use)]} promotes the warning to a
+  hard compilation error. Furthermore, no alternative path to
+  \texttt{DeliveryToken::seal} exists without a value of type
+  \texttt{InclusionReceipt} (closed by Case~B).
+  \item \emph{Compiler error.} \texttt{error: unused `InclusionReceipt`
+  which must be used}.
+  \item \emph{Verified by.} Compile-fail test
+  \texttt{tests/sui/receipt\_drop\_silent.rs}.
+\end{itemize}
+
+\paragraph{Case D: Network MITM / Forged Signature.}
+A System Operator intercepts the HTTP response from the Log and
+substitutes a receipt signed with a key under the operator's control,
+bypassing the Log authority assumption at the network layer.
+\begin{itemize}
+  \item \emph{Defence.} \texttt{LogClient} is constructed with a
+  \texttt{VerifyingKey} obtained out-of-band (e.g., pinned at build
+  time or from a trusted registry). Before constructing the
+  \texttt{InclusionReceipt}, \texttt{submit\_and\_await} verifies the
+  Ed25519 signature against this pinned key. A forged or substituted
+  response fails verification and returns
+  \texttt{Err(LogClientError::InvalidSignature)}; no receipt is
+  produced.
+  \item \emph{Consequence.} By Case~B, the caller has no alternative
+  path to an \texttt{InclusionReceipt}. The pipeline fails securely
+  (Corollary~\ref{cor:fail-secure}).
+  \item \emph{Verified by.} Unit test
+  \texttt{invalid\_signature\_rejected} in \texttt{src/lib.rs}.
+\end{itemize}
+
+\medskip
+Cases A--D are exhaustive: they cover every path by which an
+\texttt{InclusionReceipt} could enter the pipeline without a genuine
+Log submission. Since \texttt{DeliveryToken::seal} requires a value
+of type \texttt{InclusionReceipt} and all forgery paths are closed,
+no \texttt{DeliveryToken} can be constructed without a Log-issued
+receipt. Since \texttt{DeliveryToken::deliver} is the sole function
+that crosses the API boundary (its signature consumes \texttt{self}
+by value), no delivery can occur without a valid receipt. Therefore
+$\mathcal{E}(P) = \emptyset$. $\square$
+\end{proof}
+
+\subsection{Corollary: Fail-Secure Persistence}
+
+\begin{corollary}[Fail-Secure Persistence]
+\label{cor:fail-secure}
+If the Transparency Log is unavailable or returns an error,
+\texttt{LogClient::submit\_and\_await} returns \texttt{Err}.
+Because \texttt{DeliveryToken::seal} requires an
+\texttt{InclusionReceipt} by value (not \texttt{Option<InclusionReceipt>}
+or \texttt{Result<\ldots>}), the error-handling code has no
+well-typed path to a \texttt{DeliveryToken}. The system therefore
+cannot deliver a decision when the log is unreachable.
+This extends Corollary~4.7 of BTV~\cite{btv2026} (fail-secure
+evidence) to the persistence layer.
+\end{corollary}
+
+\begin{proof}
+By the type of \texttt{seal}: \texttt{fn~seal(verdict:~\&impl~Serialize,
+receipt:~InclusionReceipt)~->~Result<DeliveryToken,~SealError>}.
+The second argument is \texttt{InclusionReceipt}, not a nullable or
+fallible wrapper. A caller that handles the \texttt{Err} branch of
+\texttt{submit\_and\_await} does not possess an
+\texttt{InclusionReceipt} value in scope. Cases~A and~B close all
+forgery paths. Therefore no well-typed term of type
+\texttt{DeliveryToken} can be constructed in the error branch.
+$\square$
+\end{proof}
+
+\subsection{Relationship to the Constitutional Enclosure Theorem}
+
+Table~\ref{tab:comparison} compares the two enclosure theorems
+structurally. Both proofs share the same three-case compile-time
+perimeter (Cases~A--C). BTV-Transparency adds Case~D, which bridges
+the type-system boundary to the cryptographic infrastructure layer.
+The two theorems compose: a program satisfying both invariants
+cannot produce a decision that (a) lacks an evidence chain, or
+(b) was delivered without a verifiable persistence record.
+
+\begin{table}[h]
+\caption{Structural comparison of enclosure theorems}
+\label{tab:comparison}
+\centering
+\begin{tabular}{llll}
+\hline
+\textbf{Case} & \textbf{Attack} & \textbf{BTV [1]} & \textbf{BTV-T (this paper)} \\
+\hline
+A & Struct-literal forge & E0451 & E0451 \\
+B & Private constructor & E0603/E0624 & E0603 \\
+C & Silent drop & must\_use & must\_use \\
+D & Crypto MITM & --- & Ed25519 verify \\
+\hline
+\end{tabular}
+\end{table}
