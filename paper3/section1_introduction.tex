@@ -1,0 +1,85 @@
+\section{Introduction}
+\label{sec:intro}
+
+Transparency logs, such as Certificate Transparency (CT)~\cite{rfc6962},
+have become a cornerstone of verifiable accountability for critical digital
+infrastructure. Recent work has extended this paradigm to Artificial
+Intelligence: BTV-Transparency~\cite{btv-t-repo} demonstrates that
+high-stakes AI decisions can be structurally bound to public, append-only
+logs via linear resource types, guaranteeing that no decision can be
+delivered without a verifiable persistence record. This architecture
+satisfies the auditability requirements of the EU AI Act Art.~86 and
+creates a tamper-evident audit trail for downstream regulators.
+
+However, this immutable architecture conflicts directly with data
+protection rights. GDPR Art.~17 and LGPD Art.~18 grant individuals the
+right to erasure of their personal data. While this right is fundamental
+for privacy, it introduces a novel attack surface against algorithmic
+accountability: the \emph{Selective Deletion Attack}.
+
+Unlike classical adversaries who seek to steal data or disrupt service,
+a system operator facing regulatory scrutiny for discriminatory practices
+has a strong financial incentive to sanitise their historical records.
+Enforcement actions --- such as the SEC record-keeping fines of
+2024~\cite{sec-fines-2024}, where the absence of records precluded
+verification of misconduct --- illustrate the value operators place on
+controlling what remains auditable. In the AI context, an operator
+receiving a batch of deletion requests could strategically fulfil only
+the requests corresponding to unfavorable decisions (evidence of bias),
+while ignoring or delaying requests for benign entries. The resulting
+log is legally compliant (GDPR-satisfied) but forensically distorted
+(bias evidence erased). We formalise this attack in
+Definition~\ref{def:sda}.
+
+Existing solutions for redactable logs~\cite{ateniese2017,deuber2019}
+address the mechanics of deletion but not the statistical distortion
+it enables. They answer ``Can this entry be deleted?'' but not ``Does
+this deletion distort the truth?'' This gap is not a limitation of any
+specific scheme: the problem is absent from their threat models because
+all prior work assumes the operator is a trusted party and the data
+subject is the sole source of erasure requests.
+
+This paper presents \textbf{Accountable Redaction}, a protocol that
+enforces statistical integrity as a first-class condition on every log
+transition. We model the log as a state machine: a redaction batch $R$
+induces a transition $L_t \xrightarrow{R} L_{t+1}$, accepted if and
+only if
+\[
+  \text{Valid}\!\left(L_t \xrightarrow{R} L_{t+1}\right) \;\iff\;
+  \mathsf{Verify}(\pi_{\mathit{auth}},\, R)
+  \;\land\;
+  \mathsf{Verify}(\pi_{\mathit{stat}},\, L_t,\, L_{t+1},\, \varepsilon,\, \Pi)
+\]
+where $\pi_{\mathit{auth}}$ certifies that each erasure was requested by
+the data subject or a legitimate authority, and $\pi_{\mathit{stat}}$ is
+a ZK-SNARK proving that the conditional approval rates of all protected
+groups shift by at most $\varepsilon$ after the batch. This ensures that
+the right to privacy does not come at the expense of the public interest
+in algorithmic accountability.
+
+This work completes the accountability stack initiated by BTV:
+\begin{itemize}
+  \item \textbf{Paper~1 (Construction)~\cite{btv2026}:} A decision
+  without evidence is a type error --- caught at compile time.
+  \item \textbf{Paper~2 (Persistence)~\cite{btv-t-repo}:} A decision
+  without persistence is a type error --- caught at delivery time.
+  \item \textbf{Paper~3 (This paper):} A redaction without statistical
+  justification is a verification failure --- caught at audit time.
+\end{itemize}
+
+We make three contributions:
+\begin{enumerate}
+  \item We define the Selective Deletion Attack
+  (Definition~\ref{def:sda}) and formalise $\varepsilon$-statistical
+  consistency (Definition~\ref{def:eps-stat}) as the security property
+  that defeats it.
+  \item We present the Accountable Redaction protocol
+  (Section~\ref{sec:protocol}), combining Pedersen commitments over
+  demographic attributes with a ZK-SNARK circuit for statistical
+  verification, and prove it satisfies four security properties
+  (Section~\ref{sec:security}).
+  \item We provide a detailed gate-complexity analysis of the Noir
+  circuit (Section~\ref{sec:zk}) and cost projections consistent with
+  published Barretenberg benchmarks, demonstrating feasibility for
+  production AI deployments (Section~\ref{sec:implementation}).
+\end{enumerate}

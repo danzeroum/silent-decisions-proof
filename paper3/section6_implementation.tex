@@ -1,0 +1,83 @@
+\section{Implementation and Cost Estimation}
+\label{sec:implementation}
+
+We describe the system architecture and provide a rigorous cost
+estimation for the cryptographic operations. The system is designed as
+an extension to the BTV-Transparency stack~\cite{btv-t-repo}.
+
+\subsection{System Architecture}
+
+The implementation consists of three components:
+\begin{enumerate}
+  \item \textbf{Log Server.} Maintains the Merkle tree state $L_t$.
+  Stores Pedersen commitments $C_i$ in the leaves; decision plaintext
+  is retained by the operator off-chain and destroyed on redaction.
+  \item \textbf{Redaction Service.} Handles authorisation requests,
+  generates $\pi_{\mathit{auth}}$ and $\pi_{\mathit{stat}}$, and
+  computes the new state $L_{t+1}$. The circuit is implemented in
+  Noir~(Aztec) targeting BN254.
+  \item \textbf{Verifier/Auditor.} A lightweight client that verifies
+  transition proofs against the public log state. Verification is
+  constant-time in batch size (Groth16 proof).
+\end{enumerate}
+
+\subsection{Circuit Complexity Recap}
+
+As derived in Section~\ref{sec:zk}, the gate count for $N = 1{,}000$
+decisions with Merkle depth $d = 20$ and $|\mathcal{G}| = 4$ groups is:
+
+\begin{center}
+\begin{tabular}{lrr}
+\toprule
+Layer & Gates/leaf & Total ($N$=1k) \\
+\midrule
+Merkle inclusion (Poseidon, $d$=20) & 4{,}400 & 4.4M \\
+Pedersen opening (BabyJubJub) & 600 & 0.6M \\
+Conditional aggregation (4 groups) & 200 & 0.2M \\
+Statistical comparison & $\approx$3 & $<$5k \\
+\midrule
+Total & & $\approx$5.2M \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Performance Projections}
+
+Based on published benchmarks for the Barretenberg proving backend on
+comparable circuits in the 5--10M gate range~\cite{aztec2024}, we
+project:
+
+\begin{itemize}
+  \item \textbf{Proof generation:} 2.0--2.5~s for $N = 1{,}000$
+  (linear in $N$; $\approx$21~s for $N = 10{,}000$).
+  \item \textbf{Proof verification:} $<$15~ms, constant in $N$.
+  \item \textbf{Proof size:} $\approx$3.2~kB (Groth16; constant in $N$).
+\end{itemize}
+
+\paragraph{Transparency statement.}
+The figures above are \emph{estimates} derived from the theoretical gate
+complexity of the proposed circuit and the known performance
+characteristics of the Barretenberg backend for circuits of similar
+size. Implementation of the Noir circuit and execution of on-target
+benchmarks are ongoing work. We note that even under a pessimistic
+$10\times$ overhead (20--25~s per batch), the protocol remains viable
+for asynchronous redaction workflows, which are non-interactive and do
+not require sub-second latency. Regulators processing GDPR erasure
+requests typically operate on timescales of days, not milliseconds.
+\subsection{Comparison with Baseline Schemes}
+
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+Scheme & Selective deletion & Stat.\ integrity & Const.\ verify \\
+\midrule
+Redactable blockchain~\cite{ateniese2017} & \checkmark & $\times$ & \checkmark \\
+Fine-grained rewriting~\cite{derler2019} & \checkmark & $\times$ & \checkmark \\
+Accountable Redaction (this work) & \checkmark & \checkmark & \checkmark \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent The key differentiator is statistical integrity: prior schemes
+allow redaction but provide no mechanism to prevent the operator from
+exploiting the right to erasure as a selective deletion vector.
