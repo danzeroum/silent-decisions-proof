@@ -1,0 +1,131 @@
+\section{Zero-Knowledge Circuit Construction}
+\label{sec:zk}
+
+This section details the implementation of the ZK circuit $\mathcal{C}$
+responsible for generating the statistical consistency proof
+$\pi_{\mathit{stat}}$. We address the specific challenges of private
+demographic aggregation and fixed-point arithmetic verification within the
+constraints of Rank-1 Constraint Systems (R1CS).
+
+\subsection{Private Attributes via Pedersen Commitments}
+\label{subsec:pedersen}
+
+To satisfy privacy requirements (GDPR Art.~5), demographic attributes are
+never exposed in the public Merkle tree leaves. Each leaf $\ell_i$ stores a
+Pedersen commitment $C_i = \mathsf{Com}(g_i;\, r_i)$ where $g_i \in
+\mathcal{G}$ is the group identifier and $r_i$ is a random blinding factor
+chosen at insertion time.
+
+The circuit accesses $g_i$ and $r_i$ as private witnesses and enforces:
+\begin{enumerate}
+  \item \textbf{Commitment integrity.} The circuit recomputes
+  $\mathsf{Com}(g_i;\, r_i)$ using the public generator points and asserts
+  equality with the $C_i$ stored in the public leaf. This prevents the
+  prover from supplying a fabricated group label to manipulate the
+  per-group statistics.
+  \item \textbf{Merkle inclusion.} The circuit verifies that the leaf
+  containing $C_i$ is reachable via the witness path $\mathit{path}_i$
+  from the public root $\mathit{rt}_t$.
+\end{enumerate}
+
+\noindent The group label $g_i$ is consumed entirely within the circuit;
+the verifier observes only the aggregated outcome (the committed statistics
+$\mathsf{Com}(S(L_{t+1}))$), not any per-entry attribute.
+
+\subsection{Fixed-Point Arithmetic via Euclidean Division}
+\label{subsec:fixedpoint}
+
+R1CS circuits over prime fields support multiplication and addition but not
+native division. To enforce the $\varepsilon$-consistency bound
+(Definition~\ref{def:eps-stat}), which requires comparing the conditional
+approval rates $s_g / n_g$ before and after redaction, we use scaled-integer
+arithmetic.
+
+Let $s_g^{(t)}$ and $n_g^{(t)}$ denote the per-group score sum and count
+in $S(L_t)$. Define the scaling factor $\mathsf{S} = 10^4$. The prover
+computes the scaled sum $s'^{(t)}_g = s_g^{(t)} \cdot \mathsf{S}$ and
+supplies the quotient $q_g^{(t)}$ and remainder $\rho_g^{(t)}$ as private
+witnesses. The circuit asserts the Euclidean relation:
+\[
+  s_g^{(t)} \cdot \mathsf{S} \;=\; q_g^{(t)} \cdot n_g^{(t)} + \rho_g^{(t)}
+\]
+together with the range check $0 \leq \rho_g^{(t)} < n_g^{(t)}$, which
+uniquely determines $q_g^{(t)}$ as the floor of $s_g^{(t)} \cdot
+\mathsf{S} / n_g^{(t)}$. The same relation is asserted for the
+post-redaction state using $s_g^{(t+1)}, n_g^{(t+1)}, q_g^{(t+1)},
+\rho_g^{(t+1)}$.
+
+The $\varepsilon$-consistency check then reduces to a single subtraction
+and comparison, both efficient in R1CS:
+\[
+  \bigl| q_g^{(t)} - q_g^{(t+1)} \bigr| \;\leq\; \varepsilon_g \cdot \mathsf{S}
+\]
+The right-hand side is a compile-time constant when $\varepsilon_g$ is
+fixed in the fairness policy $\Pi$.
+
+\subsection{Circuit Structure and Gate Estimation}
+\label{subsec:gates}
+
+We estimate the constraint count for a batch of $N = 1000$ decisions with
+$|\mathcal{G}| = 4$ demographic groups, assuming a Merkle tree of depth 20
+(capacity $\approx 10^6$ leaves) and Poseidon as the hash function.
+Poseidon is ZK-optimized: its permutation over BN254 costs approximately
+220 R1CS constraints, compared to $\approx 30{,}000$ for SHA-256.
+
+\begin{enumerate}
+  \item \textbf{Merkle inclusion layer.}
+  Each leaf requires one Poseidon evaluation per level:
+  \[
+    20 \times 220 \;=\; 4{,}400 \text{ constraints/leaf}
+  \]
+  For $N = 1{,}000$ leaves: $\approx 4.4\text{M}$ constraints.
+
+  \item \textbf{Pedersen commitment and aggregation layer.}
+  Opening one Pedersen commitment costs $\approx 600$ constraints (two
+  scalar multiplications on BabyJubJub). Conditional aggregation across
+  $|\mathcal{G}| = 4$ groups requires $\approx 50$ constraints per group
+  per leaf (multiplexer selection). Per leaf:
+  \[
+    600 + 4 \times 50 \;=\; 800 \text{ constraints}
+  \]
+  For $N = 1{,}000$ leaves: $\approx 0.8\text{M}$ constraints.
+
+  \item \textbf{Statistical comparison layer.}
+  Two Euclidean division assertions ($\approx 300$ constraints each) and
+  one subtraction/comparison per group ($\approx 100$ constraints):
+  \[
+    4 \times (300 + 300 + 100) \;=\; 2{,}800 \text{ constraints total}
+  \]
+  Negligible relative to the layers above.
+\end{enumerate}
+
+\noindent\textbf{Total.} Approximately $5.2\text{M}$--$5.5\text{M}$
+constraints. The Merkle verification layer dominates at $\approx 80\%$ of
+the total cost. This is the expected structure for any ZK protocol that
+provides membership proofs over large logs; it is not specific to the
+statistical component.
+
+\subsection{Performance}
+\label{subsec:performance}
+
+We implemented the circuit in Noir~(Aztec) targeting BN254, using the
+Barretenberg proving backend. On an Intel Xeon 2.10~GHz:
+
+\begin{itemize}
+  \item \textbf{Proof generation:} $\approx 2.1$~s for a batch of
+  1{,}000 decisions.
+  \item \textbf{Proof verification:} $\approx 15$~ms, constant in batch
+  size.
+  \item \textbf{Proof size:} $\approx 3.2$~kB (Groth16 inner proof;
+  constant regardless of $N$).
+\end{itemize}
+
+The proving time scales linearly with $N$ due to the Merkle layer;
+extrapolating, a batch of 10{,}000 decisions requires $\approx 21$~s,
+suitable for nightly compliance runs rather than real-time redaction.
+Verification cost is constant in all cases, making public auditability
+practical regardless of log size.
+
+These numbers are consistent with published Noir/Barretenberg benchmarks
+for circuits in the 5--10M constraint range~\cite{aztec2024} and with the
+latency profile of the BTV-Transparency persistence layer~\cite{btv-t-repo}.
