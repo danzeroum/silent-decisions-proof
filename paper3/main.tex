@@ -1,0 +1,50 @@
+\documentclass[sigconf,review]{acmart}
+
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{amsthm}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{siunitx}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{property}{Property}[section]
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{corollary}[theorem]{Corollary}
+
+\sisetup{per-mode=symbol}
+
+\begin{document}
+
+\title{Non-Discriminatory Redaction: ZK Statistical Consistency Proofs
+       for AI Decision Transparency Logs}
+
+\author{Daniel Lau Pereira Soares}
+\affiliation{\institution{Independent Researcher}
+             \city{S\~{a}o Paulo} \country{Brazil}}
+\email{dannielau@gmail.com}
+
+\begin{abstract}
+\input{abstract.tex}
+\end{abstract}
+
+\keywords{transparency logs, redactable authenticated data structures,
+          ZK-SNARKs, fairness, GDPR, right to erasure, AI accountability}
+
+\maketitle
+
+\input{section1_introduction.tex}
+\input{section2_security_model.tex}
+\input{section3_protocol.tex}
+\input{section4_zk_circuit.tex}
+\input{section5_security_proofs.tex}
+\input{section6_implementation.tex}
+\input{section7_discussion.tex}
+\input{section8_conclusion.tex}
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{refs}
+
+\end{document}

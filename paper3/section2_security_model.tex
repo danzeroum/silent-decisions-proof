@@ -1,0 +1,141 @@
+\section{Security Model and Formal Definitions}
+\label{sec:model}
+
+\subsection{System Participants and Threat Model}
+
+We consider three principals:
+\begin{itemize}
+  \item \textbf{Operator} $\mathcal{O}$: controls the AI pipeline and the
+  transparency log server. May issue redaction requests. \emph{We model
+  $\mathcal{O}$ as a potentially malicious party with respect to selective
+  deletion.}
+  \item \textbf{Data Subject} $\mathcal{S}$: the natural person whose
+  decision is recorded. Initiates erasure requests under GDPR Art.~17.
+  \item \textbf{Auditor} $\mathcal{A}$: an independent party (regulatory
+  authority, third-party auditor) that verifies the statistical properties
+  of the log without accessing individual decision content.
+\end{itemize}
+
+\noindent The network adversary $\mathcal{ADV}$ may observe all public log
+entries and all published proofs, but may not break the underlying
+cryptographic primitives (chameleon hash, ZK-SNARK soundness, Merkle
+collision resistance).
+
+\subsection{The Selective Deletion Attack}
+
+\begin{definition}[Selective Deletion Attack]
+\label{def:sda}
+Let $L = (\ell_1, \ldots, \ell_n)$ be a transparency log of AI decisions.
+For each entry $\ell_i$ let $g(\ell_i) \in \mathcal{G}$ denote the
+protected-group attribute of the subject and $r(\ell_i) \in \{0,1\}$
+denote the decision outcome (0 = reject, 1 = approve). Define the
+conditioned approval rate
+\[
+  \rho(L, g) \;=\; \frac{|\{i : r(\ell_i) = 1 \land g(\ell_i) = g\}|}
+                       {|\{i : g(\ell_i) = g\}|}.
+\]
+An operator mounts a Selective Deletion Attack by issuing a set of
+redaction requests $R \subseteq [n]$ such that, for some protected group
+$g^* \in \mathcal{G}$,
+\[
+  \rho(L_{\setminus R},\, g^*) \;>\; \rho(L,\, g^*) + \delta
+\]
+for a non-negligible $\delta$, while publishing a privacy justification
+claiming each redaction is a legitimate GDPR Art.~17 erasure.
+\end{definition}
+
+\noindent Existing redactable blockchain schemes~\cite{ateniese2017,deuber2019}
+are trivially vulnerable to Definition~\ref{def:sda}: they authenticate
+that a redaction was authorised by the key-holder, but place no constraint
+on the statistical effect of the redaction batch.
+
+\subsection{The NDR Validity Predicate}
+
+\begin{definition}[$\varepsilon$-Statistical Consistency]
+\label{def:eps-stat}
+A redaction batch $R \subseteq [n]$ over log $L$ is
+$\varepsilon$-\emph{statistically consistent} with respect to a fairness
+policy $\Pi = \{(g, \varepsilon_g)\}_{g \in \mathcal{G}}$ if, for every
+protected group $g \in \mathcal{G}$,
+\[
+  \bigl|\rho(L_{\setminus R},\, g) - \rho(L,\, g)\bigr| \;\leq\; \varepsilon_g.
+\]
+\end{definition}
+
+\begin{definition}[Valid Redaction]
+\label{def:valid-redaction}
+A redaction batch $R$ is \emph{NDR-valid} for log $L$ under policy $\Pi$
+if and only if
+\[
+  \text{Valid}(\text{Redact}(L, R)) \;\iff\;
+  \underbrace{\mathsf{Verify}(\pi_{\mathit{receipt}})}_{
+    \text{redaction is logged}}
+  \;\land\;
+  \underbrace{\mathsf{Verify}(\pi_{\mathit{stat}},\, \varepsilon,\, \Pi)}_{
+    \text{$\varepsilon$-stat.~consistency holds}}
+\]
+where $\pi_{\mathit{receipt}}$ is an inclusion proof that the redaction
+event was appended to the log, and $\pi_{\mathit{stat}}$ is a ZK-SNARK
+over the Merkle-committed log entries proving Definition~\ref{def:eps-stat}.
+\end{definition}
+
+\noindent Note the deliberate contrast with Papers~1 and~2 of this series.
+In BTV and BTV-Transparency, accountability is enforced at compile time via
+linear resource types; the invariant is a type law checked by the Rust
+compiler. In NDR, the invariant operates at the cryptographic layer and is
+checked at runtime by a SNARK verifier. The two layers are
+complementary: the type system ensures no decision escapes without a
+persistence record; the SNARK verifier ensures no persistence record can
+be selectively erased without statistical justification. Neither mechanism
+subsumes the other.
+
+\subsection{Security Properties}
+
+We require the NDR protocol to satisfy the following properties.
+
+\begin{property}[Redaction Soundness]
+No computationally bounded operator $\mathcal{O}$ can produce a proof
+$\pi_{\mathit{stat}}$ that passes
+$\mathsf{Verify}(\pi_{\mathit{stat}}, \varepsilon, \Pi)$ for a redaction
+batch $R$ that violates $\varepsilon$-statistical consistency
+(Definition~\ref{def:eps-stat}), except with negligible probability.
+\end{property}
+
+\begin{property}[Content Indistinguishability]
+For any redacted index $i \in R$, the commitment $C_i'$ published after
+redaction is computationally indistinguishable from a fresh null
+commitment $C_{\bot}$. In particular, the content of the original decision
+$\ell_i$ is irrecoverable from $C_i'$.
+\end{property}
+
+\begin{property}[Merkle Continuity]
+Let $\mathit{rt}$ and $\mathit{rt}'$ denote the Merkle roots before and
+after a valid redaction batch. Any party holding consistency proofs for
+$\mathit{rt}$ can verify membership of unredacted entries with respect to
+$\mathit{rt}'$ without re-downloading the log.
+\end{property}
+
+\begin{property}[Operator Non-Frameability]
+A data subject $\mathcal{S}$ or auditor $\mathcal{A}$ cannot forge a
+redaction receipt or a failing $\pi_{\mathit{stat}}$ to falsely accuse
+the operator of a Selective Deletion Attack.
+\end{property}
+
+\subsection{Relationship to Existing Notions}
+
+Redaction Soundness (Property~1) is stronger than the
+``policy compliance'' notion of Derler et al.~\cite{derler2019} because
+it constrains the aggregate statistical effect of a redaction batch, not
+merely the authorisation of individual redactions.
+
+Content Indistinguishability (Property~2) follows from the hiding
+property of the underlying Pedersen commitment and does not require
+new proof machinery.
+
+Merkle Continuity (Property~3) is standard in Certificate
+Transparency~\cite{rfc6962} via the existing consistency proof mechanism;
+our construction inherits it without modification.
+
+Operator Non-Frameability (Property~4) is a liveness condition not
+present in prior work, added because our threat model elevates the
+operator to a potentially malicious party.

@@ -1,0 +1,37 @@
+High-stakes AI systems operating under the EU AI Act and LGPD face a
+fundamental conflict: accountability law mandates an append-only audit trail
+of every decision, while privacy law (GDPR Art.~17, LGPD Art.~18) grants
+data subjects the right to erasure. Prior work on redactable authenticated
+data structures resolves the individual right-to-erasure problem but
+introduces a new attack surface: a system operator can satisfy GDPR
+compliance requests selectively, erasing only decisions that constitute
+evidence of algorithmic discrimination while retaining favorable ones. We
+call this the \emph{Selective Deletion Attack} and show that no existing
+redactable blockchain scheme detects it, because all prior work models the
+operator as a trusted party and the data subject as the sole source of
+erasure requests.
+
+This paper presents \textbf{Non-Discriminatory Redaction (NDR)}, a
+cryptographic protocol for AI decision transparency logs that makes the
+Selective Deletion Attack verifiably detectable. NDR augments a standard
+append-only log (as in BTV-Transparency~\cite{btv-t-repo}) with three
+primitives: (1)~a \emph{RedactionReceipt} that appends the erasure event
+itself to the log, making redactions auditable under the same append-only
+guarantee; (2)~a chameleon-hash-based leaf commitment that makes individual
+decision content irrecoverable after redaction while preserving Merkle-root
+continuity; and (3)~a \emph{StatConsistencyProof} --- a ZK-SNARK proving
+that the conditional approval rates of all protected demographic groups
+(as defined by the operator's fairness policy) shift by at most~$\varepsilon$
+after a batch of redactions.
+
+We define \emph{$\varepsilon$-statistical consistency} formally, give a
+construction in Noir over a Pedersen-committed demographic attribute scheme,
+and prove that any redaction batch accepted by the verifier satisfies
+both soundness (the Merkle root reflects the post-redaction state faithfully)
+and indistinguishability (redacted leaves are computationally
+indistinguishable from blank commitments). Empirical evaluation shows proof
+generation costs of approximately 2.1~s per batch of 1{,}000 decisions on a
+commodity server, with constant-size proofs (\textasciitilde3.2~kB).
+NDR composes with Papers~1 and~2 of this series to close the full
+accountability loop: no decision without evidence, no delivery without
+persistence, and no redaction without statistical justification.
