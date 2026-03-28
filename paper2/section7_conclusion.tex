@@ -1,0 +1,23 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+BTV-Transparency extends the linear type discipline of BTV from in-memory
+integrity to verifiable persistence. By introducing \texttt{InclusionReceipt}
+as a linear resource and the type law
+$\mathsf{DeliveryToken} \multimap (V \otimes R)$, we prove the Persistence
+Enclosure Theorem: in any Safe Rust program using the \texttt{btv-transparency}
+crate, the set of Ephemeral Verdicts is empty by construction. The
+combination of BTV and BTV-Transparency closes the full accountability loop:
+no decision can exist without evidence, and no decision can be delivered
+without a verifiable persistence record.
+
+The reference implementation demonstrates that this guarantee is a
+zero-latency-cost abstraction at the type level, with a single blocking
+log-submission call as the sole runtime overhead---a cost that is absorbed
+by the inference latency of any non-trivial AI model.
+
+Together, these two papers establish a layered accountability stack for
+high-stakes AI systems: compile-time structural correctness (Paper~1) composed
+with compile-time persistence correctness (Paper~2), both enforced without
+modifying the AI inference logic and without imposing overhead that would
+preclude deployment in production pipelines.

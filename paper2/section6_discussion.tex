@@ -1,0 +1,56 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Scope and Boundaries}
+
+\paragraph{Log key compromise.}
+The Persistence Enclosure Theorem holds under Axiom~\ref{ax:log-authority}.
+If the Log's private key is compromised, an adversary can forge
+\texttt{InclusionReceipt} values. This boundary is deliberately analogous to
+the \texttt{unsafe} limitation of BTV~\cite{btv2026}: the type system enforces
+structural accountability; cryptographic key security is an orthogonal trust
+assumption. In practice, key protection relies on HSM/TPM deployment for the
+Log server and independent monitoring (CT Gossip~\cite{rfc6962}) for
+misbehaviour detection.
+
+\paragraph{Single-log trust.}
+Relying on a single Log authority creates a trust bottleneck. Production
+deployments should require submission to $k \geq 2$ independent logs (as CT
+browsers require), with the \texttt{DeliveryToken} encoding receipts from all
+$k$ logs. This extension preserves the type law; it widens the
+\texttt{InclusionReceipt} to a $k$-tuple of receipts and is left as future
+work.
+
+\paragraph{Asynchronous submission.}
+The current design blocks delivery until the Log responds. For
+ultra-low-latency pipelines, a two-phase commit pattern---issue a provisional
+token, confirm with the log asynchronously---is possible. The type system can
+encode this as a \texttt{PendingDeliveryToken} that must be upgraded to a
+\texttt{DeliveryToken} before the payload is released. This extension is
+consistent with SCT-based pre-issuance in CT and is left as future work.
+
+\subsection{Relationship to BTV}
+
+BTV-Transparency is a \emph{compositional extension}: it depends on
+\texttt{btv-core} as a library and adds a new invariant without modifying or
+weakening the Constitutional Enclosure Theorem. Programs that already use BTV
+can adopt BTV-Transparency by wrapping their delivery paths in
+\texttt{DeliveryToken::seal}. The two theorems compose: a system satisfying
+both invariants cannot produce a decision that (a) lacks an evidence chain or
+(b) was not verifiably persisted before delivery.
+
+\subsection{Limitations}
+
+\begin{enumerate}
+  \item \textbf{L1 --- In-memory log.} The \texttt{btv-log} reference server is
+  not persistent across restarts. Production use requires a durable backend
+  (e.g., Trillian + PostgreSQL).
+  \item \textbf{L2 --- Loopback latency.} Benchmarks measure loopback
+  submission; WAN latency to a remote log will be higher. The system argument
+  (log latency is dominated by inference latency) remains valid for remote logs
+  in the same cloud region (typical RTT 1--10\,ms).
+  \item \textbf{L3 --- Single-language boundary.} The enclosure perimeter holds
+  within Safe Rust. Polyglot pipelines require the FFI gateway pattern described
+  in BTV~\cite{btv2026} Section~6.2.4, extended to wrap the
+  \texttt{DeliveryToken} before crossing the language boundary.
+\end{enumerate}

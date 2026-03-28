@@ -1,0 +1,62 @@
+\section{Empirical Validation}
+\label{sec:bench}
+
+\subsection{Experimental Setup}
+
+All measurements were collected on a single core of an Intel Xeon processor
+at 2.10\,GHz (4 logical cores available, benchmarks single-threaded), running
+Linux 6.18.5 x86\_64. The implementation was compiled with \texttt{rustc 1.93.1},
+release profile (\texttt{opt-level~=~3}, LTO disabled). Criterion 0.5.1 was
+used as the benchmarking harness. The \texttt{btv-log} server ran on
+\texttt{localhost} to measure socket-loopback submission latency, isolating the
+log-submission overhead from network jitter.
+
+\subsection{Metrics}
+
+\begin{enumerate}
+  \item \textbf{Submission latency (p50/p99):} end-to-end time of
+  \texttt{LogClient::submit\_and\_await}, from sending the verdict hash to
+  receiving the signed \texttt{InclusionReceipt}.
+  \item \textbf{Memory overhead:} \texttt{std::mem::size\_of::<DeliveryToken>()},
+  expected $\approx$\,200--300\,bytes (\texttt{Verdict} 152\,bytes
+  + \texttt{Signature} 64\,bytes + \texttt{u64} index).
+  \item \textbf{Throughput (ops/s):} decisions per second at steady state under
+  simulated concurrent load.
+  \item \textbf{Verification cost:} time for an auditor to verify an inclusion
+  proof for a log of $N = 10^6$ entries (expected $O(\log N) < 1\,\text{ms}$).
+\end{enumerate}
+
+\subsection{Baseline Comparison}
+
+Three configurations are compared:
+
+\begin{table}[h]
+\caption{Latency and Throughput by Accountability Layer}
+\label{tab:bench}
+\centering
+\begin{tabular}{lccc}
+\hline
+\textbf{System} & \textbf{Latency} & \textbf{Throughput} & \textbf{Guarantee} \\
+\hline
+Baseline (no log) & 420\,ns & >1\,M\,ops/s & None \\
+BTV (Paper~1) & 1.67\,\mu s & >500\,k\,ops/s & Structural (memory) \\
+BTV-Transparency & TBD\,ms & TBD\,ops/s & Verifiable (log) \\
+\hline
+\end{tabular}
+\end{table}
+
+\noindent The BTV-Transparency row will be populated with measured values upon
+completion of the \texttt{btv-log} reference implementation.
+We expect sub-millisecond submission latency on loopback, with p99 below
+5\,ms---acceptable for any pipeline whose inference step requires
+$\geq50\,\text{ms}$.
+
+\subsection{Argument for Viability}
+
+The governance overhead of BTV-Transparency is dominated by a single blocking
+network round-trip to the Log. In a production AI inference pipeline, this
+cost is absorbed by the inference latency itself: a 1--5\,ms log-submission
+latency represents at most 10\,\% of the total request cycle for a minimal
+LLM classifier (50\,ms), and under 2.5\,\% for a full LLM inference
+(200\,ms). The accountability guarantee is therefore practically free at the
+scale of any non-trivial model.

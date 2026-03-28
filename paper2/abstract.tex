@@ -1,0 +1,23 @@
+Regulatory frameworks (EU AI Act Art.~86, LGPD Art.~18) mandate strict accountability
+for high-stakes AI decisions. Recent advances in linear type systems---specifically
+Bound-To-Verdict (BTV)~\cite{btv2026}---guarantee that no decision can materialise
+in memory without a causally bound evidence chain. However, structural integrity at
+construction time does not imply verifiable durability: an operator who controls the
+infrastructure can satisfy the BTV invariant while discarding the verdict before it
+reaches persistent storage, leaving affected parties unable to contest decisions that
+never existed on record.
+
+This paper presents \textbf{BTV-Transparency}, a system that extends compile-time
+accountability guarantees to the persistence layer via Transparency Logs. We introduce
+the \textbf{InclusionReceipt}, a linear resource type that encapsulates an
+Ed25519-signed Merkle-tree inclusion proof. The extended type law
+$\mathsf{DeliveryToken} \multimap (V \otimes R)$ enforces that no decision can be
+delivered to an end-user without a cryptographically signed proof of inclusion in a
+public, append-only log operated by an independent authority. We prove the
+\emph{Persistence Enclosure Theorem}: in any Safe Rust program integrating
+BTV-Transparency, the set of Ephemeral Verdicts---decisions delivered without a
+verifiable persistence record---is empty by construction. We provide a reference
+implementation (\texttt{btv-transparency} crate) and a lightweight Transparency Log
+server (\texttt{btv-log} crate). Benchmarks demonstrate that verifiable persistence
+adds sub-millisecond overhead attributable exclusively to log-submission latency,
+negligible relative to the 50--200\,ms inference cost of modern LLM pipelines.

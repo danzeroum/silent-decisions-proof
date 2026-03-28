@@ -1,0 +1,54 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{stmaryrd} % \multimap
+
+\lstset{
+  language=Rust,
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  breaklines=true,
+  frame=single
+}
+
+\begin{document}
+
+\title{Type-Safe Verifiability: Bridging Linear Types and Transparency Logs for AI Accountability}
+
+\author{\IEEEauthorblockN{Daniel Lau Pereira Soares}
+\IEEEauthorblockA{\textit{Independent Researcher} \\
+São Paulo, Brazil \\
+dannielau@gmail.com}}
+
+\maketitle
+
+\begin{abstract}
+\input{abstract.tex}
+\end{abstract}
+
+\begin{IEEEkeywords}
+linear types, transparency logs, AI accountability, verifiable persistence,
+Certificate Transparency, Rust, LGPD, EU AI Act, Ephemeral Verdict
+\end{IEEEkeywords}
+
+\input{section1_introduction.tex}
+\input{section2_related_work.tex}
+\input{section3_formal_model.tex}
+\input{section4_implementation.tex}
+\input{section5_benchmarks.tex}
+\input{section6_discussion.tex}
+\input{section7_conclusion.tex}
+
+\bibliographystyle{IEEEtran}
+\bibliography{refs}
+
+\end{document}

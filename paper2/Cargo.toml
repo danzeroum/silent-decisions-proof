@@ -1,0 +1,22 @@
+[package]
+name = "btv-transparency"
+version = "0.1.0"
+edition = "2021"
+authors = ["Daniel Lau Pereira Soares <dannielau@gmail.com>"]
+description = "BTV-Transparency: linear persistence types for AI accountability"
+repository = "https://github.com/danzeroum/silent-decisions-proof"
+license = "MIT"
+
+[dependencies]
+ed25519-dalek = { version = "2", features = ["serde"] }
+sha2 = "0.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+trybuild = "1"  # compile-fail test harness
+
+[[bench]]
+name = "delivery_bench"
+harness = false

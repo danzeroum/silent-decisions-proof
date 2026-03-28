@@ -1,0 +1,101 @@
+\section{Implementation}
+\label{sec:impl}
+
+This section describes the \texttt{btv-transparency} crate and the lightweight
+\texttt{btv-log} server that backs it. Both are written in Safe Rust; the crate
+graph contains zero \texttt{unsafe} blocks, verifiable via \texttt{cargo-geiger}.
+
+\subsection{The InclusionReceipt Linear Type}
+
+Listing~\ref{lst:receipt} shows the core types. \texttt{InclusionReceipt} is
+linear by construction: it does not implement \texttt{Clone} or \texttt{Copy},
+its fields are private (Protection~A), its sole constructor is
+\texttt{pub(crate)} (Protection~B), and \texttt{\#[must\_use]} on the struct
+prevents silent drops (Protection~C).
+
+\begin{lstlisting}[caption={btv-transparency/src/lib.rs},label={lst:receipt},language=Rust]
+use btv_core::Verdict;
+use ed25519_dalek::{Signature, VerifyingKey};
+
+#[must_use]
+pub struct InclusionReceipt {
+    log_index: u64,          // private: Protection A
+    signed_tree_head: Signature,
+    verifying_key: VerifyingKey,
+}
+
+impl InclusionReceipt {
+    pub(crate) fn new(index: u64, sth: Signature, key: VerifyingKey) -> Self {
+        Self { log_index: index, signed_tree_head: sth, verifying_key: key }
+    }
+
+    pub(crate) fn consume(self) -> (u64, Signature) {
+        (self.log_index, self.signed_tree_head)
+    }
+}
+
+#[must_use]
+pub struct DeliveryToken {
+    verdict: Verdict,
+    receipt: InclusionReceipt,
+}
+
+impl DeliveryToken {
+    pub fn seal(verdict: Verdict, receipt: InclusionReceipt) -> Self {
+        Self { verdict, receipt }
+    }
+
+    #[must_use = "delivery not confirmed"]
+    pub fn deliver(self) -> Result<(Vec<u8>, Vec<u8>), serde_json::Error> {
+        let v_json = serde_json::to_vec(&self.verdict)?;
+        let r_json = serde_json::to_vec(&self.receipt)?;
+        Ok((v_json, r_json))
+    }
+}
+\end{lstlisting}
+
+\subsection{Enclosure Perimeter: Compile-Fail Tests}
+
+The enclosure perimeter is verified by four compile-fail tests in
+\texttt{tests/sui/}, mirroring Cases~A--C of the Constitutional Enclosure
+Thorem~\cite{btv2026}:
+
+\begin{enumerate}
+  \item \texttt{receipt\_struct\_literal.rs} --- struct-literal
+  \texttt{InclusionReceipt~\{..\}} rejected with E0451.
+  \item \texttt{receipt\_consume\_external.rs} --- external call to
+  \texttt{InclusionReceipt::consume} rejected with E0624.
+  \item \texttt{receipt\_drop\_silent.rs} --- ignored \texttt{InclusionReceipt}
+  promotes \texttt{unused\_must\_use} to hard error.
+  \item \texttt{delivery\_without\_receipt.rs} --- constructing
+  \texttt{DeliveryToken::seal} without a valid $R$ fails to type-check,
+  as no path to \texttt{InclusionReceipt::new} exists outside the crate.
+\end{enumerate}
+
+\subsection{The btv-log Server}
+
+\texttt{btv-log} is a lightweight, in-memory Transparency Log server
+implementing a minimal CT-style interface:
+
+\begin{itemize}
+  \item \texttt{POST /submit} --- accepts a 32-byte verdict hash, appends it to
+  the Merkle tree, and returns
+  \texttt{\{index, root\_hash, signature\}}.
+  \item \texttt{GET /proof/:index} --- returns the Merkle inclusion proof for
+  a given index (for auditor verification).
+\end{itemize}
+
+The signing key is an Ed25519 keypair generated at startup and configurable
+via environment variable for production deployments (HSM injection).
+The \texttt{btv-log} server is explicitly scoped as a \emph{reference
+implementation}: it stores the Merkle tree in memory and is not designed for
+distributed operation. Production deployments should substitute Trillian~\cite{trillian}
+or an equivalent distributed log backend.
+
+\subsection{The LogClient}
+
+\texttt{LogClient::submit\_and\_await} sends a synchronous HTTP request to
+\texttt{btv-log} and blocks until the \texttt{InclusionReceipt} is returned.
+If the log is offline, the call returns \texttt{Err}, and by Theorem~\ref{thm:persistence-enclosure}
+no \texttt{DeliveryToken} is produced---the system fails securely, extending
+Corollary~4.7 of~\cite{btv2026} to the persistence layer.

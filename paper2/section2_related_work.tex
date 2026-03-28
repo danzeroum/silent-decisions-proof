@@ -1,0 +1,34 @@
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Transparency Logs and Certificate Transparency}
+Certificate Transparency (CT)~\cite{rfc6962} introduced the concept of
+cryptographically verifiable, append-only logs for X.509 certificates. CT
+requires that every publicly-trusted TLS certificate be submitted to at least
+one log before issuance; browsers enforce this at the policy layer. Trillian~\cite{trillian}
+generalises CT to arbitrary data structures via a Merkle-tree-backed
+persistence layer. Both systems demonstrate that public, auditable logs are
+technically feasible at scale. However, both assume voluntary operator
+participation: the decision to submit is a runtime policy choice, not a
+type-level constraint. BTV-Transparency closes this gap by making submission a
+compile-time precondition for delivery.
+
+\subsection{Linear Types for Resource Correctness}
+Girard's linear logic~\cite{girard1987} treats propositions as resources
+consumed exactly once. Wadler~\cite{wadler1990} connected this discipline to
+programming language semantics, showing that linear types eliminate a class of
+resource-management errors at compile time. The Rust programming
+language~\cite{rust-book} operationalises linear ownership for memory safety.
+BTV~\cite{btv2026} extended this paradigm to \emph{legal correctness},
+encoding LGPD and EU AI Act obligations as linear resources. This paper extends
+the same discipline one layer further, to \emph{persistence correctness}.
+
+\subsection{AI Accountability and Policy-as-Code}
+Policy-as-Code frameworks such as Open Policy Agent~\cite{opa} govern
+infrastructure artefacts but assume a world of declarative configurations
+rather than transient decision acts with legal consequences. Runtime audit
+logs~\cite{nist-ai-rmf} can be truncated under load or dropped by a
+misconfigured sink; they remain procedural promises, not structural invariants.
+BTV demonstrated that the gap between runtime promises and compile-time
+guarantees is bridgeable for in-memory correctness. BTV-Transparency extends
+that bridge to the storage layer.

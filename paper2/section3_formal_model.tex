@@ -1,0 +1,94 @@
+\section{Formal Model}
+\label{sec:formal}
+
+This section extends the formal framework of BTV~\cite{btv2026} to the
+persistence layer. We introduce two new definitions, one axiom governing the
+trust model, and the central theorem of this paper.
+
+\subsection{Inherited Definitions}
+
+\begin{definition}[Materialized Verdict~{\normalfont\cite{btv2026}, Def.~4.1}]
+\label{def:materialized}
+A verdict $V$ is \emph{materialized} if and only if there exist an evidence
+token~$E$, a compliance token~$C$, a decision outcome $d \in \{\Allow,
+\Deny\}$, and an explanation string~$x$ such that
+$V = \mathtt{Verdict{::}new}(E, C, d, x)$.
+The function $\mathtt{Verdict{::}new}$ is the sole constructor of type
+$\mathtt{Verdict}$; no other term of that type is well-typed in Safe Rust.
+\end{definition}
+
+\subsection{New Definitions}
+
+\begin{definition}[Delivered Decision]
+\label{def:delivered}
+A materialized verdict $V$ is \emph{delivered} if the program has invoked
+$\mathtt{DeliveryToken{::}deliver}$, transmitting the decision payload across
+the API boundary to the requesting party.
+\end{definition}
+
+\begin{definition}[Ephemeral Verdict]
+\label{def:ephemeral}
+A verdict $V$ is \emph{ephemeral} if and only if $V$ is materialized
+(Definition~\ref{def:materialized}), delivered (Definition~\ref{def:delivered}),
+but no valid $\mathtt{InclusionReceipt}$~$R$ exists at the time of delivery
+such that $R$ cryptographically attests to the inclusion of $V$ in a public
+Transparency Log. Formally, let $\mathcal{E}$ denote the set of ephemeral
+verdicts; we prove $\mathcal{E} = \emptyset$ by construction
+(Theorem~\ref{thm:persistence-enclosure}).
+\end{definition}
+
+\subsection{Threat Model}
+
+We model a \emph{System Operator} adversary with the following capabilities:
+(i)~full control over the application process memory and deployment
+infrastructure; (ii)~ability to modify, delay, or drop arbitrary network
+requests; (iii)~no access to the private signing key $K_{\mathit{priv}}$ of the
+Transparency Log authority.
+
+\begin{axiom}[Log Authority]
+\label{ax:log-authority}
+Let $K_{\mathit{priv}}$ be the Ed25519 private signing key of the Transparency
+Log. We assume $K_{\mathit{priv}}$ is not accessible to the System Operator.
+Consequently, the operator cannot produce a valid
+$\mathtt{InclusionReceipt}$ without a genuine submission to the Log.
+\end{axiom}
+
+\paragraph{Scope of the guarantee.}
+Axiom~\ref{ax:log-authority} holds under the assumption of an honest Log key.
+If $K_{\mathit{priv}}$ is compromised, a malicious operator could forge
+receipts. This boundary is analogous to the \texttt{unsafe} boundary in
+BTV~\cite{btv2026}: the type system enforces structural correctness; the
+security of cryptographic infrastructure is a separate trust assumption, just
+as Safe Rust relies on the absence of \texttt{unsafe} blocks. Detection of log
+misbehaviour relies on independent monitors (the Gossip model of CT~\cite{rfc6962}),
+ensuring that suppression remains detectable even if the operator controls
+the log server infrastructure.
+
+\subsection{The Persistence Enclosure Theorem}
+
+\begin{theorem}[Persistence Enclosure]
+\label{thm:persistence-enclosure}
+In any Safe Rust program $P$ whose crate graph includes \texttt{btv-transparency},
+the set of Ephemeral Verdicts $\mathcal{E}(P) = \emptyset$.
+Equivalently, $\mathcal{E}(P) \neq \emptyset \Rightarrow P$ does not type-check.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+By the type law~(\ref{eq:delivery-law}), the sole function that crosses the
+API boundary is $\mathtt{DeliveryToken{::}deliver}$, which consumes a
+$\mathtt{DeliveryToken}$ by value. The sole constructor of
+$\mathtt{DeliveryToken}$ is $\mathtt{seal}(V, R)$, which requires both a
+$\mathtt{Verdict}$~$V$ and an $\mathtt{InclusionReceipt}$~$R$.
+By Axiom~\ref{ax:log-authority}, a valid $R$ can only be produced by the Log
+Authority in response to a genuine submission. The encapsulation perimeter of
+$\mathtt{InclusionReceipt}$ (private fields, $\mathtt{pub(crate)}$ constructor,
+$\mathtt{\#[must\_use]}$) mirrors the three-case proof of the Constitutional
+Enclosure Theorem~\cite{btv2026}: struct-literal forging (E0451), external
+consumption (E0624), and silent drop (unused-\texttt{must\_use}) are all
+ill-typed in Safe Rust. Therefore, no delivery path exists without a valid~$R$,
+and $\mathcal{E}(P) = \emptyset$. The compile-fail test suite
+(Section~\ref{sec:impl}) verifies all attack cases exhaustively.
+\end{proof}
+
+The full case-by-case proof, mirroring the structure of~\cite{btv2026}
+Section~4.4, is given in Section~\ref{sec:impl}.
