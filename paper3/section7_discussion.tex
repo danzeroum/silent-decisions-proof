@@ -1,0 +1,105 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Calibration of $\varepsilon$}
+
+The threshold $\varepsilon_g$ in Definition~\ref{def:eps-stat} is a
+policy parameter, not a protocol constant.  Its calibration involves a
+tension between two goals: a small $\varepsilon$ catches even minor
+statistical distortions but may block legitimate erasure requests when
+the log is small; a large $\varepsilon$ permits more deletions but
+weakens the guarantee against selective erasure.
+
+We do not prescribe a universal value.  Instead, we observe that
+$\varepsilon$ should be set by the regulatory authority or auditor as
+part of the fairness policy $\Pi$, informed by the log size $N$, the
+number of protected groups $|\mathcal{G}|$, and the baseline approval
+rates.  A natural starting point is the $4/5$ths rule used in
+disparate-impact analysis (EEOC, 1978): set $\varepsilon_g$ such that
+a redaction batch cannot move the approval-rate ratio across the $80\%$
+threshold.  Formalising this connection between $\varepsilon$ and
+established legal standards is future work.
+
+\subsection{Scalability to Large Logs}
+
+The dominant cost of the ZK circuit is the Merkle path verification
+(Section~\ref{sec:zk}), which scales as $O(B \cdot D)$ constraints
+where $B$ is the batch size and $D$ is the tree depth.  For
+$B = 1{,}000$ and $D = 20$ (approximately $10^6$ entries), the
+estimated constraint count is $\sim$5.2M, yielding proving times of
+$\sim$2--3\,s on current hardware with Barretenberg.
+
+For logs exceeding $10^6$ entries, three mitigation strategies apply:
+(1)~increasing tree depth to $D = 30$ (supporting $\sim 10^9$ entries)
+adds $\sim$50\% to proving time but remains under 5\,s;
+(2)~batching redactions amortises the per-redaction cost; and
+(3)~recursive proof composition (e.g., IVC via Nova~\cite{nova2022})
+could reduce verification to constant time regardless of batch size.
+Empirical validation at scale is future work.
+
+\subsection{Composition with Papers~1 and~2}
+
+The three papers form a layered accountability stack:
+
+\begin{center}
+\small
+\begin{tabular}{lll}
+\toprule
+\textbf{Paper} & \textbf{Layer} & \textbf{Predicate} \\
+\midrule
+1 (BTV)   & Construction  & $V \multimap (E \otimes C)$ \\
+2 (BTV-T) & Persistence   & $\mathsf{DeliveryToken} \multimap (V \otimes R)$ \\
+3 (This)  & Redaction     & $\mathsf{Valid}(L_t \xrightarrow{R} L_{t+1})$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent Papers~1 and~2 enforce invariants at compile time via linear
+resource types in Rust.  Paper~3 operates at the cryptographic layer
+and is checked at runtime by a SNARK verifier.  The layers are
+complementary: the type system ensures no decision escapes without a
+persistence record; the SNARK verifier ensures no persistence record
+can be selectively erased without statistical justification.  Neither
+mechanism subsumes the other.
+
+A system implementing all three layers guarantees: (a)~no decision
+without evidence, (b)~no delivery without verifiable persistence, and
+(c)~no redaction without statistical consistency.  Formal composition
+of the three predicates into a single end-to-end security theorem is
+future work.
+
+\subsection{Privacy Leakage from Commitment Transitions}
+
+As noted in Section~\ref{sec:protocol}, each redaction publishes a
+transition from $\mathsf{Com}(S(L_t); \rho_t)$ to
+$\mathsf{Com}(S(L_{t+1}); \rho_{t+1})$.  An observer who sees $k$
+successive transitions learns $k$ equations in the group counters
+$(s_g, n_g)$.  For small groups, this constitutes $O(\log N)$ bits of
+leakage per redaction.
+
+Two mitigations bound this leakage: (1)~batching multiple redactions
+into a single transition reduces the number of observable transitions;
+(2)~adding differential-privacy noise to the committed statistics
+(at the cost of weakening the $\varepsilon$ guarantee by a controlled
+amount).  Quantifying the privacy--accuracy trade-off under
+differential privacy composition is future work.
+
+\subsection{Limitations}
+
+\begin{itemize}
+  \item The protocol assumes a trusted setup for the SNARK
+  (Groth16/PLONK).  Universal setups (e.g., KZG ceremony) mitigate
+  but do not eliminate this assumption.
+  \item The fairness policy $\Pi$ must be agreed upon before the log
+  begins; changing $\Pi$ mid-stream requires a migration protocol not
+  defined here.
+  \item The circuit operates on committed demographic attributes.  If
+  the operator commits false attributes at ingestion time, the
+  statistical guarantees are vacuous.  This is analogous to the
+  semantic-truthfulness limitation of Paper~1
+  (Section~6.1 of~\cite{btv2026}).
+  \item Proving time scales linearly with batch size.  For real-time
+  redaction of individual entries, the $\sim$2\,s overhead may be
+  acceptable; for bulk GDPR compliance sweeps affecting thousands of
+  entries, parallelisation or recursive composition is needed.
+\end{itemize}

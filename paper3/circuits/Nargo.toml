@@ -1,0 +1,7 @@
+[package]
+name = "accountable_redaction"
+type = "bin"
+authors = ["Daniel Lau Pereira Soares"]
+compiler_version = ">=1.0.0"
+
+[dependencies]

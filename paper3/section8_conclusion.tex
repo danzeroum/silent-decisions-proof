@@ -1,0 +1,27 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+This paper identified the Selective Deletion Attack---a threat model
+in which a system operator exploits individual erasure rights to
+distort the statistical history of an AI decision log---and presented
+Accountable Redaction, a protocol that makes such distortion
+cryptographically detectable.
+
+The core contribution is the $\varepsilon$-statistical consistency
+predicate: a ZK-SNARK over Pedersen-committed demographic attributes
+that proves, without revealing individual decision content, that no
+protected group's conditional approval rate shifted by more than
+$\varepsilon$ after a redaction batch.  The protocol separates
+authorization ($\pi_{\mathit{auth}}$: was this erasure requested by the
+data subject?) from statistical integrity ($\pi_{\mathit{stat}}$: does
+this erasure distort the record?)---closing an attack vector absent
+from all prior redactable data structures.
+
+Together with the BTV series (Papers~1--2), this work establishes a
+three-layer accountability stack for high-stakes AI systems:
+no decision without evidence (compile-time),
+no delivery without verifiable persistence (runtime),
+and no redaction without statistical justification (cryptographic).
+The right to be forgotten and the obligation to be accountable are not
+irreconcilable---they require only that deletion be provably
+non-discriminatory.
