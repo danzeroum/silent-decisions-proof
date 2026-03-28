@@ -11,6 +11,9 @@ license = "MIT"
 name = "btv-log"
 path = "src/main.rs"
 
+[features]
+bench_helpers = []
+
 [dependencies]
 ed25519-dalek = { version = "2", features = ["rand_core"] }
 sha2 = "0.10"
@@ -24,6 +27,9 @@ rand = "0.8"
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
 trybuild = "1"
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
 
 [[bench]]
 name = "delivery_bench"

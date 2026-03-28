@@ -38,7 +38,7 @@ log\_index:~\ldots,~signature\_bytes:~\ldots~\}} directly.
   \item \emph{Compiler error.} \texttt{error[E0451]: field
   `verdict\_bytes` of struct `DeliveryToken` is private}.
   \item \emph{Verified by.} Compile-fail test
-  \texttt{tests/sui/delivery\_struct\_literal.rs}.
+  \texttt{tests/ui/delivery\_struct\_literal.rs}.
 \end{itemize}
 
 \paragraph{Case B: Receipt Forgery via External Constructor (E0603).}
@@ -52,7 +52,7 @@ directly to manufacture a receipt without contacting the Log.
   \item \emph{Compiler error.} \texttt{error[E0603]: function
   `new` is private}.
   \item \emph{Verified by.} Compile-fail test
-  \texttt{tests/sui/receipt\_struct\_literal.rs}.
+  \texttt{tests/ui/delivery\_without\_receipt.rs}.
 \end{itemize}
 
 \paragraph{Case C: Silent Drop of Receipt (\texttt{unused\_must\_use}).}
@@ -70,7 +70,7 @@ path.
   \item \emph{Compiler error.} \texttt{error: unused `InclusionReceipt`
   which must be used}.
   \item \emph{Verified by.} Compile-fail test
-  \texttt{tests/sui/receipt\_drop\_silent.rs}.
+  \texttt{tests/ui/receipt\_drop\_silent.rs}.
 \end{itemize}
 
 \paragraph{Case D: Network MITM / Forged Signature.}

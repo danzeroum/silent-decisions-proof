@@ -139,11 +139,6 @@ pub struct SubmitResponse {
     pub signature_hex: String,
 }
 
-#[derive(Serialize)]
-struct SubmitRequest<'a> {
-    verdict_hash_hex: &'a str,
-}
-
 impl LogClient {
     /// Create a client pinned to a specific log public key.
     /// The verifying key must be obtained out-of-band, not from the server.
@@ -188,6 +183,7 @@ impl LogClient {
     }
 }
 
+/// Error type returned by [`LogClient::submit_and_await`].
 #[derive(Debug)]
 pub enum LogClientError {
     Network(String),

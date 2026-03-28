@@ -1,0 +1,22 @@
+warning: unreachable expression
+  --> tests/ui/receipt_struct_literal.rs:12:24
+   |
+11 |         signed_tree_head: todo!(),
+   |                           ------- any code following this expression is unreachable
+12 |         verifying_key: todo!(),
+   |                        ^^^^^^^ unreachable expression
+   |
+   = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
+   = note: this warning originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0451]: fields `log_index`, `signed_tree_head` and `verifying_key` of struct `InclusionReceipt` are private
+  --> tests/ui/receipt_struct_literal.rs:10:9
+   |
+ 9 |     let _r = InclusionReceipt {
+   |              ---------------- in this type
+10 |         log_index: 0,
+   |         ^^^^^^^^^ private field
+11 |         signed_tree_head: todo!(),
+   |         ^^^^^^^^^^^^^^^^ private field
+12 |         verifying_key: todo!(),
+   |         ^^^^^^^^^^^^^ private field

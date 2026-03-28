@@ -1,0 +1,16 @@
+error: unused `Result` that must be used
+  --> tests/ui/receipt_drop_silent.rs:22:5
+   |
+22 |     client.submit_and_await(&hash);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this `Result` may be an `Err` variant, which should be handled
+note: the lint level is defined here
+  --> tests/ui/receipt_drop_silent.rs:8:9
+   |
+ 8 | #![deny(unused_must_use)]
+   |         ^^^^^^^^^^^^^^^
+help: use `let _ = ...` to ignore the resulting value
+   |
+22 |     let _ = client.submit_and_await(&hash);
+   |     +++++++

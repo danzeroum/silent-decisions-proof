@@ -1,0 +1,21 @@
+error[E0624]: associated function `new` is private
+  --> tests/ui/delivery_without_receipt.rs:19:55
+   |
+19 |     let receipt = btv_transparency::InclusionReceipt::new(0, todo!(), todo!());
+   |                                                       ^^^ private associated function
+   |
+  ::: src/lib.rs
+   |
+   |     pub(crate) fn new(index: u64, sth: Signature, key: VerifyingKey) -> Self {
+   |     ------------------------------------------------------------------------ private associated function defined here
+
+warning: unreachable expression
+  --> tests/ui/delivery_without_receipt.rs:19:71
+   |
+19 |     let receipt = btv_transparency::InclusionReceipt::new(0, todo!(), todo!());
+   |                                                              -------  ^^^^^^^ unreachable expression
+   |                                                              |
+   |                                                              any code following this expression is unreachable
+   |
+   = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
+   = note: this warning originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
