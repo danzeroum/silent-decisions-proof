@@ -1,0 +1,163 @@
+\section{The Accountable Redaction Protocol}
+\label{sec:protocol}
+
+This section presents the Accountable Redaction protocol, which enforces
+the validity predicate defined in Definition~\ref{def:valid-redaction}.
+The protocol governs the transition $L_t \xrightarrow{R} L_{t+1}$ through
+four sequential phases: Authorization, State Commitment, ZK Consistency
+Proof Generation, and Verification.
+
+\subsection{Phase 1: Authorization ($\pi_{\mathit{auth}}$)}
+\label{subsec:auth}
+
+Every redaction request must be authorised by the data subject $\mathcal{S}$
+or a legitimate regulatory authority, preventing the operator from
+self-issuing erasure requests for strategically selected entries.
+
+\begin{enumerate}
+  \item \textbf{Request.} $\mathcal{S}$ generates a signed deletion
+  request:
+  \[
+    \sigma_{\mathit{del}} = \mathsf{Sign}_{\mathit{sk}_S}(
+      \texttt{``DELETE''} \,\|\, i \,\|\, \mathit{timestamp}
+    )
+  \]
+  where $i$ is the log index of the entry to be redacted.
+  \item \textbf{Operator verification.} The operator verifies
+  $\sigma_{\mathit{del}}$ against the public key $\mathit{pk}_S$
+  embedded in entry $\ell_i$ at the time of insertion.
+  \item \textbf{Output.} If valid, the operator constructs:
+  \[
+    \pi_{\mathit{auth}} = (i,\; \sigma_{\mathit{del}},\; \mathit{pk}_S)
+  \]
+  This triple binds the specific redaction to the identity of the
+  authoriser. An auditor can verify that the operator did not initiate the
+  erasure unilaterally, directly enforcing Operator Non-Frameability
+  (Property~4 of Section~\ref{sec:model}) in both directions: the operator
+  cannot falsely claim the subject requested deletion, and the subject
+  cannot frame the operator for an unrequested erasure.
+\end{enumerate}
+
+\subsection{Phase 2: State Commitment}
+\label{subsec:commit}
+
+The operator prepares the proposed post-redaction state and publishes
+cryptographic commitments that will serve as public inputs to the ZK circuit
+in Phase~3.
+
+\begin{enumerate}
+  \item \textbf{Leaf nullification.} The operator replaces the leaf at
+  index $i$ with a null commitment $C_{\bot}$, preserving the tree
+  structure. The Merkle root is updated to $\mathit{rt}_{t+1}$.
+  \item \textbf{Statistical commitment.} Define $S(L)$ as a vector of
+  per-group counts and sums over the log's outcome field:
+  \[
+    S(L) = \bigl(n_g,\; s_g\bigr)_{g \in \mathcal{G}}
+    \quad\text{where }n_g = |\{i : g(\ell_i)=g\}|,
+    \; s_g = |\{i : g(\ell_i)=g \land r(\ell_i)=1\}|
+  \]
+  To avoid leaking $S(L_t)$ to the auditor (which would allow inference
+  of individual entries by differencing), the operator publishes a
+  Pedersen commitment $\mathsf{Com}(S(L_t);\, \rho_t)$ rather than
+  $S(L_t)$ in the clear. The updated commitment
+  $\mathsf{Com}(S(L_{t+1});\, \rho_{t+1})$ is published alongside the
+  new root $\mathit{rt}_{t+1}$.
+  \item \textbf{Policy declaration.} The operator declares the fairness
+  policy $\Pi = \{(g, \varepsilon_g)\}_{g \in \mathcal{G}}$ and the
+  batch redaction set $R \subseteq [n]$.
+\end{enumerate}
+
+\noindent \emph{Privacy note.} Committing to $S(L)$ rather than publishing
+it in the clear is essential: a log with $N$ decisions over two groups
+leaks at most $O(\log N)$ bits of information per redaction to an auditor
+who observes commitment transitions, compared to $O(N)$ bits if the full
+summary is public. Section~\ref{sec:zk} describes how the ZK circuit
+operates over committed summaries without requiring the operator to open them.
+
+\subsection{Phase 3: ZK Consistency Proof ($\pi_{\mathit{stat}}$)}
+\label{subsec:zk}
+
+The operator generates a ZK-SNARK $\pi_{\mathit{stat}}$ attesting that the
+batch $R$ is $\varepsilon$-statistically consistent
+(Definition~\ref{def:eps-stat}) without revealing the content of any
+redacted entry or the plaintext of $S(L_t)$.
+
+\paragraph{Public inputs.}
+\begin{itemize}
+  \item $\mathit{rt}_t$, $\mathit{rt}_{t+1}$: Merkle roots before and
+  after the batch.
+  \item $\mathsf{Com}(S(L_t);\, \rho_t)$,
+  $\mathsf{Com}(S(L_{t+1});\, \rho_{t+1})$: Pedersen commitments to the
+  per-group statistics.
+  \item $\{\pi_{\mathit{auth}}^{(j)}\}_{j \in R}$: Authorization proofs
+  for each redacted index.
+  \item $\Pi$, $\varepsilon$: Fairness policy and tolerance.
+\end{itemize}
+
+\paragraph{Private inputs (witness).}
+\begin{itemize}
+  \item $\{\ell_j\}_{j \in R}$: Plaintext of redacted entries.
+  \item $\{\mathit{path}_j\}_{j \in R}$: Merkle inclusion paths.
+  \item $S(L_t)$, $\rho_t$, $\rho_{t+1}$: Plaintext statistics and
+  commitment randomness.
+\end{itemize}
+
+\paragraph{Circuit $\mathcal{C}$ logic.}
+\begin{enumerate}
+  \item \textbf{Inclusion check.} For each $j \in R$, verify that
+  $\ell_j$ hashes to the leaf reached by $\mathit{path}_j$ and that the
+  resulting root equals $\mathit{rt}_t$.
+  \item \textbf{Authorization check.} For each $j \in R$, verify that
+  $\mathit{pk}_S$ in $\pi_{\mathit{auth}}^{(j)}$ matches the identity
+  field of $\ell_j$.
+  \item \textbf{Commitment opening.} Verify that $S(L_t)$ opens
+  $\mathsf{Com}(S(L_t);\, \rho_t)$.
+  \item \textbf{Statistical update.} For each $j \in R$, subtract
+  $\ell_j$'s contribution from $S(L_t)$ to produce $S(L_{t+1})$, and
+  verify that $S(L_{t+1})$ opens $\mathsf{Com}(S(L_{t+1});\,\rho_{t+1})$.
+  \item \textbf{Consistency check.} Assert that for every $g \in
+  \mathcal{G}$:
+  \[
+    \left|
+      \frac{s_g^{(t)}}{n_g^{(t)}} - \frac{s_g^{(t+1)}}{n_g^{(t+1)}}
+    \right| \leq \varepsilon_g
+  \]
+  Integer arithmetic is used throughout; the division is approximated as
+  a fixed-point comparison with precision $2^{-k}$ for a circuit
+  parameter $k$ (see Section~\ref{sec:zk} for the full circuit).
+\end{enumerate}
+
+\subsection{Phase 4: Verification and Publication}
+\label{subsec:verify}
+
+Any auditor or public monitor can verify the transition without accessing
+the underlying decision content.
+
+\begin{enumerate}
+  \item \textbf{Proof verification.} The verifier runs
+  \[
+    \mathsf{Verify}\bigl(
+      \mathit{vk},\;
+      [\mathit{rt}_t,\, \mathit{rt}_{t+1},\,
+       \mathsf{Com}(S(L_t)),\, \mathsf{Com}(S(L_{t+1})),\,
+       \Pi,\, \varepsilon],\;
+      \pi_{\mathit{stat}}
+    \bigr)
+  \]
+  where $\mathit{vk}$ is the circuit verification key for $\mathcal{C}$.
+  \item \textbf{State transition.} If the proof verifies, the new root
+  $\mathit{rt}_{t+1}$ and updated commitment $\mathsf{Com}(S(L_{t+1}))$
+  are accepted as the canonical log head.
+  \item \textbf{Redaction ledger.} The tuple
+  $(\{\pi_{\mathit{auth}}^{(j)}\}_{j \in R},\; \pi_{\mathit{stat}},\;
+  \mathit{rt}_t \to \mathit{rt}_{t+1})$ is appended to a secondary
+  append-only redaction ledger, making the history of all redaction
+  batches itself immutable and auditable under the same append-only
+  guarantee as the primary log.
+\end{enumerate}
+
+\noindent This protocol satisfies Definition~\ref{def:valid-redaction}:
+any accepted transition has both a verified $\pi_{\mathit{auth}}$
+(establishing authorisation) and a verified $\pi_{\mathit{stat}}$
+(establishing $\varepsilon$-statistical consistency), closing the
+Selective Deletion Attack vector of Definition~\ref{def:sda}.
