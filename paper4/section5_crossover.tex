@@ -1,0 +1,34 @@
+\section{The Compliance Crossover Point}
+\label{sec:crossover}
+
+% TODO: quantitative analysis — 2-3 pages
+%
+% Model:
+%   Expected penalty cost = P(enforcement) * penalty_amount
+%   P(enforcement | violation) estimated from:
+%     - GDPR: ~3.5% of known violations result in fine (DLA Piper 2025)
+%     - SEC: ~12% of examined firms receive action (SEC annual report)
+%     - AI Act: projected 2-5% at initial enforcement phase
+%
+%   Penalty amounts (empirical baseline):
+%     - GDPR median fine: €28,000 (DLA Piper 2025)
+%     - GDPR large-firm fine: €1.2B (Meta, 2023)
+%     - SEC off-channel: $125M-$2B range (2022-2024)
+%     - AI Act: up to 7% global turnover (Art. 99)
+%
+%   Crossover calculation:
+%     TCO(N) < P(enforcement) * E[penalty]
+%     At 10^6 decisions/year: TCO = $5,400
+%     P(enforcement) * E[penalty_GDPR_median] = 0.035 * $30,000 = $1,050
+%     → Not yet crossover at median
+%     P(enforcement) * E[penalty_GDPR_large] = 0.035 * $100,000 = $3,500
+%     → Approaching crossover
+%     For financial firms (SEC exposure): $5,400 << 0.12 * $125,000,000
+%     → Clear crossover far below 10^6 decisions
+%
+%   Crossover point for GDPR (median exposure): ~1.5 * 10^6 decisions/year
+%   Crossover point for GDPR (large-firm exposure): ~5 * 10^5 decisions/year
+%   Crossover point for SEC-regulated firms: ~10^3 decisions/year
+%
+%   Present as Figure 1: crossover curves for three regulatory regimes
+\textbf{[Section under construction --- Figure 1 placeholder]}

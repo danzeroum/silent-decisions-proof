@@ -1,0 +1,50 @@
+\section{Total Cost of Ownership Model}
+\label{sec:tco}
+
+% TODO: core quantitative section — 3-4 pages
+%
+% Cost components to model:
+%   Layer 1 (BTV compile-time): negligible marginal cost at runtime;
+%     one-time library integration (~40 eng-hours)
+%   Layer 2 (BTV-T persistence): 4.73ms/decision latency cost +
+%     storage: 56 bytes (DeliveryToken) + 264 bytes (InclusionReceipt)
+%     = 320 bytes/decision
+%     At 10^6 decisions/year: 320 MB/year log storage
+%     At $0.023/GB-month (S3): ~$0.09/year for storage alone
+%   Layer 3 (Accountable Redaction): 2.1s proving per 1000-decision batch
+%     Amortised over 1000: 2.1ms/decision for proving
+%     Proving hardware: 1 Xeon core-hour = ~$0.05 on EC2
+%     At 10^6 decisions/year: ~1000 proving batches * 2.1s = 35 core-min
+%     Cost: negligible (<$0.01/year at 10^6 scale)
+%
+% Full per-decision cost at scale:
+%   Storage: ~$0.00000009 (sub-cent per thousand)
+%   Proving (amortised): ~$0.000001 per decision
+%   Log server ops (fixed cost amortised): ~$0.003-$0.008 at 10^6 scale
+%   Network/monitoring: ~$0.001 at 10^6 scale
+%   TOTAL: $0.003-$0.008/decision (dominated by ops fixed cost)
+%
+% Present as Table I with three scales
+\textbf{[Section under construction --- Table I placeholder below]}
+
+\begin{table}[h]
+\caption{Annualised TCO of the BTV Accountability Stack}
+\label{tab:tco}
+\begin{tabular}{lrrr}
+\toprule
+Deployment scale & $10^4$/year & $10^6$/year & $10^8$/year \\
+\midrule
+Storage (Layer 2) & \$0.01 & \$0.09 & \$9.20 \\
+Proving (Layer 3) & $<$\$0.01 & $<$\$0.01 & \$0.80 \\
+Log server ops & \$1{,}200 & \$3{,}600 & \$18{,}000 \\
+Monitoring & \$600 & \$1{,}800 & \$9{,}000 \\
+\midrule
+Total/year & \$1{,}800 & \$5{,}400 & \$27{,}000 \\
+Per-decision cost & \$0.18 & \$0.005 & \$0.00027 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% Note: at 10^4 scale per-decision cost is high because fixed ops
+% cost dominates. The $0.003-$0.008 figure in the abstract applies
+% to mid-scale (10^6) deployments.

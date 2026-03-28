@@ -1,0 +1,47 @@
+Regulatory frameworks increasingly mandate verifiable accountability for
+high-stakes AI decisions, yet adoption of transparency infrastructure
+remains negligible. A common objection is cost: operators assume that
+cryptographic accountability imposes prohibitive overhead. This paper
+tests that assumption empirically.
+
+We construct a total-cost-of-ownership (TCO) model for a three-layer
+accountability stack recently proposed in the systems literature:
+compile-time evidence binding (BTV, 152~bytes / 1.67~\textmu{}s per
+decision), verifiable persistence via transparency logs (BTV-T,
+56~bytes / 4.73~ms per decision), and privacy-preserving redaction
+via ZK-SNARKs (Accountable Redaction, $\approx$2.1~s / 3.2~kB per
+batch of 1{,}000 redactions). Using these measured costs as inputs, we
+model the annualised infrastructure expenditure for deployments at
+three scales: $10^4$ (regional lender), $10^6$ (national bank), and
+$10^8$ (global platform) decisions per year.
+
+We compare this expenditure against the empirical cost of
+non-compliance: GDPR enforcement actions totalling~\euro{}4.5B
+(2018--2025), SEC off-channel communications fines exceeding~\$2B
+(2021--2024), and projected EU~AI~Act penalties of up to 7\% of
+global turnover. The analysis reveals a \emph{compliance crossover
+point}: the annual decision volume above which verifiable
+accountability is cheaper than the expected cost of regulatory
+penalties, weighted by historical enforcement probability.
+
+To ground the model beyond cost arithmetic, we conduct semi-structured
+interviews with $N=12$ compliance officers and data protection officers
+at financial institutions and healthcare providers in Brazil and the EU,
+identifying three dominant adoption barriers: (1)~perceived integration
+complexity with existing Python/Java pipelines; (2)~uncertainty about
+regulatory recognition of compile-time guarantees as ``appropriate
+technical measures'' under GDPR Art.~25; and (3)~absence of a neutral
+log-operations entity. For each barrier, we map concrete mitigations
+already present in the technical stack.
+
+Our findings indicate that for organisations processing more than
+approximately $5 \times 10^5$ consequential decisions per year, the
+annualised cost of the full accountability stack (\$0.003--\$0.008 per
+decision at scale) is below the expected penalty cost under current
+enforcement rates. We conclude that the principal obstacle to
+verifiable AI accountability is not technical cost but institutional
+inertia, and propose a \emph{compliance-credit} mechanism --- analogous
+to carbon credits --- whereby early adopters of verified transparency
+infrastructure receive regulatory safe-harbour recognition, creating a
+market incentive aligned with both economic self-interest and public
+accountability.

@@ -1,0 +1,68 @@
+\section{Introduction}
+\label{sec:intro}
+
+The past three years have produced a series of technical advances in
+verifiable AI accountability. Compile-time evidence binding via linear
+resource types~\cite{btv2026} ensures that no AI decision can be
+issued without a cryptographically bound evidence record. Verifiable
+persistence via append-only transparency logs~\cite{btv-t-repo} ensures
+that no decision can be delivered without a permanent audit trail.
+Privacy-preserving redaction via ZK-SNARKs~\cite{btv-ar2026} ensures
+that the right to erasure cannot be weaponised to selectively destroy
+evidence of discrimination. Together, these three layers form a
+complete accountability stack: no decision without evidence, no
+delivery without persistence, no redaction without statistical
+justification.
+
+Yet adoption of any component of this stack by production AI systems
+remains negligible. This paper investigates why, and whether the
+obstacle is economic.
+
+The dominant narrative in AI governance circles is that accountability
+tools are too expensive for deployment at scale. If that narrative is
+correct, the appropriate policy response is subsidy or mandate.
+If it is incorrect --- if transparency infrastructure is, at scale,
+cheaper than the regulatory penalties it helps avoid --- then the
+appropriate response is information: helping compliance officers and
+executives understand the actual cost structure. These two policy
+responses are fundamentally different, and choosing between them
+requires empirical data.
+
+This paper provides that data. We make four contributions:
+
+\begin{enumerate}
+  \item A \textbf{total-cost-of-ownership (TCO) model}
+  (Section~\ref{sec:tco}) derived directly from the measured
+  benchmarks of the BTV accountability stack, covering infrastructure,
+  storage, cryptographic proving, and operations at three deployment
+  scales ($10^4$, $10^6$, $10^8$ decisions/year).
+
+  \item An \textbf{empirical penalty baseline}
+  (Section~\ref{sec:crossover}) constructed from GDPR enforcement
+  data (\euro{}4.5B, 2018--2025~\cite{gdpr-fines-2025}), SEC
+  record-keeping fines (>\$2B, 2021--2024~\cite{sec-fines-2024}),
+  and projected EU~AI~Act penalties, used to compute the
+  \emph{compliance crossover point}: the decision volume above which
+  the stack's annualised cost is below expected penalty exposure.
+
+  \item A \textbf{qualitative adoption-barrier analysis}
+  (Section~\ref{sec:interviews}) based on $N=12$ semi-structured
+  interviews with compliance officers and data protection officers
+  (DPOs) at financial institutions and healthcare providers in Brazil
+  and the EU, identifying and mapping the three dominant barriers to
+  concrete technical mitigations.
+
+  \item A \textbf{compliance-credit mechanism}
+  (Section~\ref{sec:credits}) --- a market instrument analogous to
+  carbon credits~\cite{ellerman2010} --- whereby operators who deploy
+  certified transparency infrastructure receive regulatory safe-harbour
+  recognition, converting the cost of accountability into a
+  transferable compliance asset and creating an adoption incentive
+  without requiring new legislation.
+\end{enumerate}
+
+\noindent This paper is the fourth in the BTV programme of research.
+Where Papers~1--3 answer ``how can AI accountability be enforced?'',
+Paper~4 answers ``under what economic and institutional conditions will
+it be adopted?'' The two questions are equally necessary for any
+practical deployment.
