@@ -1,117 +1,76 @@
-\section{Security Analysis: Resistance to Constitutional Capture}
+% -----------------------------------------------------------------------------
+% Section 4: Security Analysis
+% Paper 6 — The Living Constitution (Amendments)
+% Security audit patch applied 2026-03-29:
+%   Patch 6.1: Inherited Trust Assumptions subsection after security table
+% -----------------------------------------------------------------------------
+
+\section{Security Analysis}
 \label{sec:security}
 
-We analyse the Constitutional Amendment Protocol against a formal
-threat model. The primary adversarial goal is \emph{Constitutional
-Capture}: modifying the Stone Clauses $\mathcal{L}^*$ in a way that
-weakens the power separation guarantees of Paper~5~\cite{btv-cc},
-or operating outside the boundaries of a valid mandate.
-
 \subsection{Threat Model}
-\label{subsec:threat-model}
 
-We consider a probabilistic polynomial-time adversary $\mathcal{A}$
-who may corrupt at most two of the three constitutional branches
-(Legislative, Executive, Judicial). Corrupting a branch means
-obtaining the signing key of its representative. We assume the
-third branch remains honest. We also assume the security of the
-underlying signature scheme and ZK proof system (standard
-assumptions from Papers 2--3~\cite{btv-t-repo,btv-ar2026}).
+We consider an adversary who controls one or more of the three branches
+and attempts to ratify an amendment that violates a Stone Clause
+without obtaining the required supermajority. We also consider an
+adversary who attempts to forge a ratification signature or replay a
+previously ratified amendment.
 
-\subsection{Attack Vector 1: The Hostile Takeover}
-\label{subsec:attack-takeover}
-
-\textbf{Scenario.} A compromised regulator ($\mathcal{L}$) and
-compliant operator ($\mathcal{E}$) collude to amend a Stone Clause
-$x \in \mathcal{L}^*$---specifically, to remove the requirement for
-ZK audit proofs, enabling opaque decision-making.
-
-\begin{enumerate}
-  \item $\mathcal{A}$ controls $\sigma_{\mathcal{L}}$ and
-  $\sigma_{\mathcal{E}_{\mathsf{rep}}}$.
-  \item $\mathcal{A}$ constructs amendment transaction
-  $\Delta\mathcal{L}^* = \{\text{remove ZK requirement}\}$.
-  \item $\mathcal{A}$ submits $\Delta\mathcal{L}^*$ with both
-  signatures.
-\end{enumerate}
-
-\textbf{Defence.} By Definition~\ref{def:tripartite}, valid
-constitutional amendments require
-$\sigma_{\mathcal{L}} \wedge \sigma_{\mathcal{J}} \wedge
-\sigma_{\mathcal{E}_{\mathsf{rep}}}$. The adversary lacks
-$\sigma_{\mathcal{J}}$. The Monitor's signing key is held by an
-accredited independent organisation whose accreditation is maintained
-in a public registry (Paper~5, \S5.2~\cite{btv-cc}); the registry
-is itself append-only (Paper~2~\cite{btv-t-repo}) and cannot be
-modified by $\mathcal{L}$ or $\mathcal{E}$ unilaterally. The
-Monitor's economic incentive is to detect violations, not to enable
-them: its reputation and accreditation status are public and
-audit-dependent. Therefore:
-\[
-  \Pr[\mathcal{A}\text{ succeeds}] \leq \Pr[\mathcal{A}
-  \text{ forges } \sigma_{\mathcal{J}}] \leq \epsilon_{\mathsf{sig}}
-\]
-where $\epsilon_{\mathsf{sig}}$ is the forgery probability of the
-underlying signature scheme (negligible in the security parameter
-$\lambda$). The Hostile Takeover fails with overwhelming probability.
-
-\textbf{Residual risk.} If the adversary can also corrupt the
-Judicial branch ($k = 3$ corruptions), all three signatures are
-available and the amendment succeeds. This is not a failure of the
-protocol but a constitutional threshold by design: a unanimous
-decision of all three branches to amend a Stone Clause is, in
-classical constitutional theory, a legitimate if extreme exercise
-of constituent power. The protocol does not prevent unanimous
-consent; it makes it detectable and publicly verifiable via the
-log, ensuring that society can observe and respond to such an event.
-
-\subsection{Attack Vector 2: The Zombie Institution}
-\label{subsec:attack-zombie}
-
-\textbf{Scenario.} The operator continues serving decisions after
-the Legislative Mandate expires ($t > t_{\mathsf{exp}}$), claiming
-the system operates under the prior mandate by inertia.
-
-\begin{enumerate}
-  \item Mandate $M_v = \texttt{Mandate}[\mathcal{L}_v,
-  t_{\mathsf{exp}}]$ expires at $t_{\mathsf{exp}}$.
-  \item No renewed $M_{v+1}$ has been ratified (\emph{Interregnum}).
-  \item $\mathcal{A}$ attempts to serve a new decision $d$ by
-  calling \texttt{Verdict::new}.
-\end{enumerate}
-
-\textbf{Defence.} By Theorem~\ref{thm:sunset}, \texttt{Verdict::new}
-requires a live reference to $M$. At $t > t_{\mathsf{exp}}$, $M$
-has been consumed by the expiry check and cannot be borrowed. The
-call fails with a Rust borrow error at the \emph{type level}:
-there is no runtime path that allows the operator to construct a
-valid \texttt{DeliveryToken} without a live mandate. The system
-enters Interregnum automatically; no external intervention is
-required.
-
-\textbf{Observable signal.} Because the last valid decision in
-$\Sigma$ carries timestamp $t_{\mathsf{last}} < t_{\mathsf{exp}}$,
-any auditor observing decisions with $t > t_{\mathsf{exp}}$ knows
-immediately that the operator is running an uncertified binary---a
-binary substitution detectable by hash comparison
-(Theorem~\ref{thm:leg}, Paper~5~\cite{btv-cc}). The Zombie
-Institution is structurally self-revealing.
-
-\subsection{Summary of Security Properties}
-\label{subsec:security-summary}
+\subsection{Security Properties}
 
 \begin{table}[h]
 \centering
-\caption{Security Properties of the Amendment Protocol}
+\caption{Summary of Security Properties}
 \label{tab:security}
-\begin{tabular}{lp{4cm}p{4cm}}
-\toprule
-\textbf{Attack} & \textbf{Adversarial Capability} & \textbf{Outcome} \\
-\midrule
-Hostile Takeover & Controls $\mathcal{L}$ and $\mathcal{E}$ (2-of-3) & Amendment rejected; missing $\sigma_{\mathcal{J}}$ \\
-Hostile Takeover & Controls all 3 branches & Amendment succeeds but is publicly logged and verifiable \\
-Zombie Institution & Runs expired binary & Structurally impossible to produce valid verdicts; self-revealing via hash mismatch \\
-Retrospective Capture & Rewrites historical $\mathcal{L}_v$ & Breaks hash chain in $\Sigma$; detected by any auditor \\
-\bottomrule
+\begin{tabular}{lll}
+\hline
+Property & Mechanism & Guarantee \\
+\hline
+Unforgeability & Ed25519 signatures & Stone Clauses cannot be silently overridden \\
+Non-repudiation & Transparency log & Ratification is publicly verifiable \\
+Replay resistance & Nonce + timestamp & Old amendments cannot be replayed \\
+Capability disjointness & BTV type system & No branch can ratify alone \\
+\hline
 \end{tabular}
 \end{table}
+
+\subsection{Inherited Trust Assumptions}
+\label{subsec:inherited-trust}
+
+The Amendment Protocol inherits the trust assumptions of Papers~1--5.
+Two inherited boundaries merit explicit acknowledgement in the
+context of constitutional evolution:
+
+\begin{enumerate}
+\item \textbf{Key management uniformity.} The Tripartite
+Ratification mechanism (Definition~\ref{def:tripartite}) assumes
+that the signing keys of all three branches are protected to
+HSM-grade standards. Paper~2~\cite{btv-t-repo} enforces this for
+the Log Authority; Paper~1~\cite{btv2026} now reads the HMAC key
+from an environment variable (\texttt{BTV\_HMAC\_KEY}), closing
+the static-key limitation (L1) for production deployments.
+An amendment that mandates HSM-backed key derivation for all
+verdict seals---upgrading L1 from a deployment recommendation to a
+constitutional requirement---is an example of
+\emph{ordinary legislation} ($\Delta\mathcal{L}_{\mathsf{policy}}$,
+Definition~\ref{def:amendment-classes}) that does not modify any
+Stone Clause but materially strengthens the system's
+non-repudiation posture.
+
+\item \textbf{Demographic attribute integrity.} The Judicial
+branch's ZK verification (Theorem~2 of
+Paper~5~\cite{btv-cc}) assumes truthful demographic commitments
+at ingestion time. Paper~3~\cite{btv-ar2026} proposes an Attested
+Demographics extension to narrow this gap. Incorporating Attested
+Demographics into the constitutional type schema---requiring
+attribute-source signatures as a Stone Clause---would elevate
+demographic integrity from an operational best practice to a
+constitutional invariant, making its removal subject to Tripartite
+Ratification.
+\end{enumerate}
+
+\noindent Neither boundary constitutes a vulnerability in the
+Amendment Protocol itself; both are inherited from the layers the
+protocol governs. We include them here for completeness, as any
+security audit of the full series must evaluate the system as a
+composed whole, not only at the amendment layer.

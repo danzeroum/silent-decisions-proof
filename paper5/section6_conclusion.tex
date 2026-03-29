@@ -1,55 +1,50 @@
+% -----------------------------------------------------------------------------
+% Section 6: Conclusion
+% Paper 5 — Constitutional Code (Separation of Powers)
+% Security audit patch applied 2026-03-29:
+%   Patch 5.1: Open problem paragraph on formal composition (before Lessig)
+% -----------------------------------------------------------------------------
+
 \section{Conclusion}
 \label{sec:conclusion}
 
-For centuries, the Separation of Powers was a legal ideal enforced
-by social norms, constitutional friction, and the difficulty of
-simultaneously occupying multiple institutional roles. In the age of
-algorithmic governance---where a single operator can define the rules,
-execute the decisions, and control the records of millions of
-individuals---those frictions have dissolved. The response cannot
-be more friction; it must be structure.
+We have shown that the separation of powers---legislative, executive,
+judicial---can be encoded directly in a type system, producing
+guarantees that are structural rather than conventional. The
+Constitutional Completeness Corollary establishes that the three
+branches are capability-disjoint: no program that satisfies the BTV
+type laws can simultaneously legislate policy, execute decisions, and
+adjudicate disputes. This is not a policy recommendation; it is a
+theorem.
 
-We have shown that the properties Montesquieu identified as necessary
-for institutional legitimacy---independence of the three powers and
-mutual checks between them---can be encoded as formal properties of
-software architecture:
+The result builds on Papers~1 and~2 by adding a third invariant: not
+only must every decision be evidenced (Paper~1) and persisted
+(Paper~2), but the actors who set policy, execute decisions, and audit
+outcomes must be structurally prevented from usurping each other's
+roles. Together, the three papers provide a compositional account of
+algorithmic accountability at compile-time, delivery-time, and
+separation-of-powers level.
 
-\begin{itemize}
-  \item \textbf{Legislative Independence} is enforced by the
-  immutability of linear resource types, verifiable via binary
-  hash attestation (Theorem~\ref{thm:leg}).
-  \item \textbf{Judicial Independence} is enforced by public Merkle
-  roots and ZK proof soundness, requiring no operator cooperation
-  (Theorem~\ref{thm:jud}).
-  \item \textbf{Executive Containment} is enforced by the
-  linear type chain that makes decision-without-logging an
-  uncompilable programme (Theorem~\ref{thm:exec}).
-\end{itemize}
-
+\paragraph{Open problem: formal composition.}
 The Constitutional Completeness corollary
-(Corollary~\ref{cor:completeness}) proves that these three conditions
-compose into a system where no single principal holds capabilities
-across more than one constitutional branch. This is, to our
-knowledge, the first formal proof that Montesquieu's separation of
-powers can be satisfied---not merely approximated---by a
-computational architecture.
+(Corollary~\ref{cor:completeness}) proves that the three branches
+are capability-disjoint in a single BTV institution. What it does
+not prove is that the individual security theorems of Papers~1--3
+\emph{compose} into a single end-to-end guarantee without
+introducing new attack surfaces at the layer boundaries. Paper~3
+(Section~7.3 of~\cite{btv-ar2026}) states a composition conjecture;
+proving it---ideally in a proof assistant such as Lean~4---is the
+most important formal task remaining in the series. Until this
+theorem is established, the end-to-end guarantee rests on an
+informal layering argument: the three predicates operate at
+compile-time, delivery-time, and audit-time respectively, with
+non-overlapping trust assumptions. We believe this argument is
+sound, but acknowledge that it has not been machine-checked.
 
-The implications reach beyond AI systems. Any institution that
-operates at scale over digital state---a bank, a government registry,
-a healthcare provider, a content moderation platform---can be
-evaluated against the Constitutional Invariant
-(Definition~\ref{def:invariant}). Those that satisfy it are
-\emph{Verifiable Institutions}: their legitimacy is a mathematical
-property, not a function of the operator's reputation.
-
-Lessig wrote that ``code is law''~\cite{lessig1999}. Constitutional
-Code is the converse: \emph{law is architecture}. The shift from
-geocentric to heliocentric governance moves the centre of trust from
-the operator to the protocol. The constitution is no longer a
-document that constrains behaviour after the fact; it is a type
-system that makes unconstitutional behaviour unrepresentable before
-the first instruction executes.
-
-The violation of the constitution is not a crime to be punished.
-It is a compilation error that prevents the institution from
-ever existing.
+Lessig wrote that ``code is law''; we argue the converse is equally
+true and more actionable: law is code, and its invariants can be
+enforced by a compiler. The accountability crisis in AI governance is
+not primarily a problem of bad intentions but of missing enforcement
+mechanisms. Linear types, transparency logs, and ZK proofs provide
+those mechanisms---not as optional best practices but as compile-time
+constraints that make accountability violations impossible to express.

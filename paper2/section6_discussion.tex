@@ -20,6 +20,22 @@ a single key compromise does not unilaterally invalidate the audit trail; and
 that log misbehaviour or selective suppression is detectable even when the
 operator controls the log server infrastructure.
 
+% Patch 2.1 — Trust-boundary alignment with Paper 1
+\paragraph{Trust-boundary alignment with Paper~1.}
+Axiom~\ref{ax:log-authority} assumes HSM-grade protection for the
+Log Authority's Ed25519 key. We note that the reference
+implementation of Paper~1~\cite{btv2026} reads its verdict HMAC key
+from the \texttt{BTV\_HMAC\_KEY} environment variable, falling back
+to a compile-time constant when unset. While this does not weaken the
+Persistence Enclosure Theorem (which depends only on the Log Authority
+key, not on the verdict HMAC), it creates an asymmetry in the overall
+system's non-repudiation posture: a verdict's persistence is
+cryptographically assured, but its integrity seal is only as strong as
+the key source configured at deployment time. Production deployments
+should derive both keys---the Log Authority key \emph{and} the verdict
+HMAC key---from the same HSM infrastructure, ensuring uniform
+key-management hygiene across the two papers' trust boundaries.
+
 \paragraph{Single-log trust.}
 Relying on a single Log authority creates a trust bottleneck. Production
 deployments should require submission to $k \geq 2$ independent logs (as CT
