@@ -1,0 +1,243 @@
+\section{The Constitutional Amendment Protocol}
+\label{sec:amendments}
+
+A constitution that cannot change is a prison; a constitution that
+changes at the whim of a single entity is a dictatorship. The challenge
+for Verifiable Institutions is to enable evolution without enabling
+capture. We introduce the \emph{Constitutional Amendment Protocol},
+which formally distinguishes between \emph{ordinary legislation}
+(policy changes within the existing type structure) and
+\emph{constituent acts} (structural changes to the type structure
+itself). This distinction maps directly to the classical constitutional
+law separation between \emph{pouvoir constitu\'{e}} (powers exercised
+under the constitution) and \emph{pouvoir constituant} (the power to
+rewrite the constitution)~\cite{sieyes1789}.
+
+\subsection{Temporal Type Versioning}
+\label{subsec:versioning}
+
+The legal state of the system is not a static set of types but a
+versioned chain of type definitions:
+\[
+  \mathcal{L} = \{\mathcal{L}_0, \mathcal{L}_1, \dots, \mathcal{L}_v\}
+\]
+where each $\mathcal{L}_v$ is a complete, self-consistent set of linear
+resource type constraints, and transitions $\mathcal{L}_{v-1} \to
+\mathcal{L}_v$ are governed by the amendment rules of
+\S\ref{subsec:threshold}.
+
+\begin{definition}[Versioned Validity]
+\label{def:versioned-validity}
+A verdict $V$ is \emph{constitutionally valid} only relative to a
+specific legislative version $\mathcal{L}_v$. The validity predicate is:
+\[
+  \mathsf{Valid}_{\mathcal{L}_v}(V) \iff \mathsf{TypeCheck}(V,\; \Gamma_{\mathcal{L}_v}) = \top
+\]
+where $\Gamma_{\mathcal{L}_v}$ is the type context derived from
+$\mathcal{L}_v$.
+\end{definition}
+
+To ensure backward compatibility, the Transparency Log $\Sigma$ stores
+the hash $h_v = \mathsf{hash}(\mathcal{L}_v)$ at every block height
+$b$ where a legislative transition occurs:
+\[
+  \Sigma \ni \langle b,\; h_v,\; t_v,\; \sigma_{\mathsf{amend}} \rangle
+\]
+An auditor $\mathcal{J}$ verifying a historical verdict $V_{b_0}$
+retrieves $\mathcal{L}_v$ active at $b_0$ via the log and runs
+$\mathsf{Valid}_{\mathcal{L}_v}(V_{b_0})$ using the type context of
+\emph{that version}. This implements the constitutional principle of
+\emph{nullum crimen sine lege}: decisions are judged by the law of
+their time, not by retroactively applied future law. A court in 2028
+auditing a 2024 decision does not apply 2028 type constraints.
+
+\begin{remark}[Versioned Certificate Structure]
+\label{rem:versioned-cert}
+To make historical verification efficient without storing full type
+contexts indefinitely, each compliance certificate embeds the
+legislative version hash at issuance:
+\[
+  C_{v} = \langle \mathsf{hash}(\mathcal{L}_v),\;
+                   \mathsf{hash}(E),\;
+                   t_{\mathsf{issued}},\;
+                   \sigma_{\mathcal{L}_v} \rangle
+\]
+An auditor holding $C_v$ and the log entry for $\mathcal{L}_v$ can
+verify the certificate without re-executing the original binary,
+requiring only the published legislative hash chain.
+\end{remark}
+
+\subsection{The Amendment Threshold: Checks on Regulatory Capture}
+\label{subsec:threshold}
+
+The principal risk in any amendment protocol is \emph{regulatory
+capture}~\cite{stigler1971}: a compromised regulator colluding with the
+operator to weaken the oversight guarantees encoded in $\mathcal{L}$.
+If the Legislative Branch ($\mathcal{L}$) alone authorises amendments,
+the system merely transfers absolutism from the operator to the
+regulator---the same structural failure in a different location.
+
+We prevent this by classifying amendments into two classes with
+different authorisation requirements.
+
+\begin{definition}[Ordinary Legislation vs.\ Constitutional Amendment]
+\label{def:amendment-classes}
+Let $\mathcal{L}^* \subset \mathcal{L}$ be the \emph{Stone Clauses}:
+the subset of type definitions whose modification would alter the
+capability partition $P_{\mathcal{L}} \cap P_{\mathcal{E}} \cap
+P_{\mathcal{J}}$ established in Paper~5~\cite{btv-cc}.
+\begin{itemize}
+  \item $\Delta\mathcal{L}_{\mathsf{policy}}$: any change that modifies
+  $\mathcal{L} \setminus \mathcal{L}^*$ (parameter updates, new
+  evidence schema fields, threshold adjustments). Authorised by
+  $\mathcal{L}$ alone: requires $\sigma_{\mathcal{L}}$.
+  \item $\Delta\mathcal{L}^*$: any change that modifies a Stone
+  Clause (the append-only property, the evidence binding invariant, the
+  ZK-audit access). Requires \emph{Tripartite Ratification}
+  (Definition~\ref{def:tripartite}).
+\end{itemize}
+\end{definition}
+
+\begin{definition}[Tripartite Ratification]
+\label{def:tripartite}
+A constitutional amendment $\Delta\mathcal{L}^*$ is
+\emph{constitutionally valid} if and only if it carries valid
+signatures from representatives of all three independent powers:
+\[
+  \mathsf{Valid}(\Delta\mathcal{L}^*) \iff
+  \sigma_{\mathcal{L}} \wedge \sigma_{\mathcal{J}} \wedge
+  \sigma_{\mathcal{E}_{\mathsf{rep}}}
+\]
+where $\sigma_{\mathcal{J}}$ is the signature of an accredited Monitor
+from the Judicial registry (Paper~5, \S5.2~\cite{btv-cc}), and
+$\sigma_{\mathcal{E}_{\mathsf{rep}}}$ is the signature of an elected
+operator representative from a published registry of certified
+operators.
+\end{definition}
+
+\begin{theorem}[Amendment Soundness]
+\label{thm:amendment-soundness}
+Under Tripartite Ratification, no single principal can unilaterally
+weaken the Constitutional Invariant $P_{\mathcal{L}} \cap
+P_{\mathcal{E}} \cap P_{\mathcal{J}} = \emptyset$.
+\end{theorem}
+
+\begin{proof}
+Suppose a regulator $\mathcal{L}$ is captured and wishes to amend
+$\mathcal{L}^*$ to remove the append-only property (Type~2 Stone
+Clause). This requires $\sigma_{\mathcal{J}}$. The Judicial branch
+is structurally independent (Theorem~2, Paper~5~\cite{btv-cc}): its
+signature key is not controlled by $\mathcal{L}$ or $\mathcal{E}$,
+and its accreditation is managed by the public Monitor registry.
+A captured regulator cannot forge $\sigma_{\mathcal{J}}$ without
+compromising the ZK signing key of an accredited Monitor, which is
+a separate cryptographic assumption. Symmetrically, an operator
+cannot unilaterally weaken the evidence-binding constraint without
+$\sigma_{\mathcal{L}} \wedge \sigma_{\mathcal{J}}$. Therefore, no
+pairwise collusion of two principals suffices to amend
+$\mathcal{L}^*$; all three must consent. \qed
+\end{proof}
+
+\begin{remark}[Relation to Supermajority Requirements]
+Tripartite Ratification is the cryptographic analogue of the
+supermajority and multi-chamber ratification requirements in
+constitutional law (e.g., US Constitution Article~V: two-thirds of
+Congress plus three-quarters of states; Brazilian CF/88 Art.~60:
+two-thirds of both chambers in two sessions). The structural logic
+is identical: important rules require broader consent than ordinary
+legislation, making capture or hasty revision harder.
+\end{remark}
+
+\subsection{Sunset Clauses as Linear Resources}
+\label{subsec:sunset}
+
+Static laws accumulate technical debt. A compliance rule written for
+2024 AI systems may be inadequate for 2030 systems without any actor
+being at fault---society's understanding of algorithmic risk evolves.
+Conventional legal systems rely on \emph{legislative inertia}: laws
+remain in force until someone acts to repeal them. This creates a
+default toward the status quo, which in practice means outdated
+constraints persist long past their usefulness.
+
+We invert this default by encoding legislative authority as a
+\emph{linear resource with finite lifetime}.
+
+\begin{definition}[Legislative Mandate Token]
+\label{def:mandate}
+A \emph{Legislative Mandate} is a linear resource:
+\[
+  M : \texttt{Mandate}[\mathcal{L}_v,\; t_{\mathsf{exp}}]
+\]
+where $t_{\mathsf{exp}}$ is the UTC timestamp of expiry,
+determined at ratification time and recorded in $\Sigma$.
+The \texttt{Mandate} token is \emph{linear}: it cannot be duplicated
+or discarded, and it expires at $t_{\mathsf{exp}}$ regardless of
+whether a renewal has been ratified.
+\end{definition}
+
+\begin{theorem}[Mandatory Renewal]
+\label{thm:sunset}
+In a Constitutional Code system with Mandate tokens, if no valid
+$M'$ is ratified before $t_{\mathsf{exp}}$, the system enters
+\emph{Constitutional Interregnum}: the type constructor
+\texttt{Verdict::new} cannot be called and no new decisions
+are produced until a renewed mandate is ratified.
+\end{theorem}
+
+\begin{proof}
+The \texttt{Verdict::new} constructor has the signature:
+\[
+  \texttt{Verdict::new}(e: E,\; c: C,\; m: \&M) \to V
+\]
+where $m$ is a shared reference to a live mandate. At $t >
+t_{\mathsf{exp}}$, the mandate $M$ is consumed by the runtime's
+expiry check and cannot be borrowed. Any call to
+\texttt{Verdict::new} yields a compile-time borrow error on $m$.
+Since \texttt{DeliveryToken::seal} requires $V$ (Theorem~3,
+Paper~5~\cite{btv-cc}), no decision can be delivered during
+Interregnum. The system halts at the boundary between
+$\mathcal{L}_v$ and $\mathcal{L}_{v+1}$ until Tripartite
+Ratification produces $M'$. \qed
+\end{proof}
+
+\paragraph{The Inversion of Default.}
+Conventional systems run under old rules until someone forces a
+change---the inertia of the state. Constitutional Code runs under
+no rules when the mandate expires, and restarts only when citizens
+(via their three-power representatives) actively renew the
+constitution. This is the inertia of the citizenry: the burden of
+proof falls on those who want the system to operate, not on those
+who want it reviewed. It encodes, in type theory, what Jeffersonians
+argued in natural law: that each generation has the right to govern
+itself under laws it has chosen~\cite{jefferson1789}.
+
+\subsection{Composing the Amendment Protocol}
+\label{subsec:composition}
+
+The three mechanisms compose into a single coherent lifecycle:
+
+\begin{enumerate}
+  \item \textbf{Ordinary operation:} the system runs under
+  $\mathcal{L}_v$ with mandate $M_v$ until $t < t_{\mathsf{exp}}$.
+  \item \textbf{Policy update:} $\mathcal{L}$ proposes
+  $\Delta\mathcal{L}_{\mathsf{policy}}$; signed by $\sigma_{\mathcal{L}}$;
+  committed to $\Sigma$; new binary hash published; Monitors detect
+  transition and verify backward compatibility of $C_v$ certificates.
+  \item \textbf{Constitutional amendment:} any party proposes
+  $\Delta\mathcal{L}^*$; requires $\sigma_{\mathcal{L}} \wedge
+  \sigma_{\mathcal{J}} \wedge \sigma_{\mathcal{E}_{\mathsf{rep}}}$;
+  committed to $\Sigma$ only after all three signatures are collected
+  within a ratification window $[t_p, t_p + \tau]$.
+  \item \textbf{Mandate renewal:} Tripartite process ratifies $M_{v+1}
+  = \texttt{Mandate}[\mathcal{L}_{v+1}, t_{\mathsf{exp}}']$; system
+  resumes from Interregnum.
+  \item \textbf{Interregnum (failure to renew):} $t > t_{\mathsf{exp}}$
+  without ratified $M'$; system halts; historical log $\Sigma$ remains
+  publicly verifiable; past decisions remain auditable; new decisions
+  are structurally impossible.
+\end{enumerate}
+
+Note that step~5 is not a bug but a constitutional feature: a system
+that cannot be renewed is a system that should not run. The Interregnum
+is the type-theoretic equivalent of an election: a structured pause
+that forces deliberate recommitment before resuming power.
