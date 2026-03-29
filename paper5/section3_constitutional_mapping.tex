@@ -1,0 +1,235 @@
+\section{The Constitutional Mapping}
+\label{sec:mapping}
+
+We establish a strict correspondence between Montesquieu's trisection of
+institutional power~\cite{montesquieu1748} and the architectural layers
+of the BTV stack. The correspondence is not analogical but
+\emph{structural}: each political requirement maps to a formal property
+that is either enforced at compile-time or cryptographically guaranteed
+at runtime. We first define constitutional invariants, then prove
+independence for each branch.
+
+\subsection{Constitutional Invariants}
+\label{subsec:invariants}
+
+\begin{definition}[Algorithmic Institution]
+\label{def:institution}
+An \emph{algorithmic institution} $\mathcal{I}$ is a tuple
+$\langle \mathcal{L}, \mathcal{E}, \mathcal{J}, \Sigma \rangle$ where:
+\begin{itemize}
+  \item $\mathcal{L}$ is the \emph{legislative layer}: a set of type
+  constraints $\tau \in \mathcal{T}$ encoding compliance rules;
+  \item $\mathcal{E}$ is the \emph{executive layer}: a program
+  $P : \mathcal{T} \to \Sigma$ that produces signed state transitions
+  under the constraints of $\mathcal{L}$;
+  \item $\mathcal{J}$ is the \emph{judicial layer}: a verification
+  function $V : \Sigma \to \{0,1\}$ that audits state integrity without
+  querying $\mathcal{E}$;
+  \item $\Sigma$ is the \emph{global state}: an append-only,
+  content-addressed log of signed state transitions.
+\end{itemize}
+\end{definition}
+
+\begin{definition}[Constitutional Invariant]
+\label{def:invariant}
+An algorithmic institution $\mathcal{I}$ satisfies the
+\emph{Constitutional Invariant} if and only if the following three
+conditions hold simultaneously:
+\begin{align}
+  P_{\mathcal{L}} \cap P_{\mathcal{E}} &= \emptyset \label{eq:leg-exec} \\
+  P_{\mathcal{E}} \cap P_{\mathcal{J}} &= \emptyset \label{eq:exec-jud} \\
+  P_{\mathcal{J}} \cap P_{\mathcal{L}} &= \emptyset \label{eq:jud-leg}
+\end{align}
+where $P_{X}$ denotes the set of capabilities (read, write, delete,
+redefine) held exclusively by layer $X$ over the global state $\Sigma$.
+\end{definition}
+
+The disjointness conditions~(\ref{eq:leg-exec}--\ref{eq:jud-leg})
+formalize Montesquieu's core requirement: no single actor may
+simultaneously define the rules \emph{and} execute them \emph{and}
+judge compliance. We now show that the BTV architecture satisfies
+all three conditions.
+
+\subsection{The Constitutional Mapping Table}
+\label{subsec:table}
+
+Table~\ref{tab:mapping} establishes the correspondence between
+political theory and BTV architecture. Each row names the political
+concept, its BTV implementation, the formal property that discharges
+it, and the paper in this series that provides the proof or
+construction.
+
+\begin{table*}[t]
+\centering
+\caption{Constitutional Correspondence: Montesquieu $\leftrightarrow$ BTV}
+\label{tab:mapping}
+\begin{tabular}{p{2.8cm} p{3.5cm} p{4.5cm} p{2.8cm} p{1.5cm}}
+\toprule
+\textbf{Political Concept} &
+\textbf{BTV Layer} &
+\textbf{Formal Guarantee} &
+\textbf{Mechanism} &
+\textbf{Ref.} \\
+\midrule
+\textbf{Legislative Power}\ (defines the law) &
+Constitutional Type System $\mathcal{L}$ &
+$\forall P \in \mathcal{E}:\; \Gamma \vdash P : \tau \Rightarrow \tau \in \mathcal{L}$\ (type-checks only under declared rules) &
+Linear resource types; compile-time rejection &
+\cite{btv2026} \\
+\addlinespace
+\textbf{Executive Power}\ (runs the state) &
+Operator $\mathcal{E}$ &
+$\forall \sigma \in \Sigma:\; \nexists\ \mathtt{delete}(\sigma)$ by $\mathcal{E}$\ (append-only; evidence cannot be suppressed) &
+Merkle append-only log; non-repudiable receipts &
+\cite{btv-t-repo} \\
+\addlinespace
+\textbf{Judicial Power}\ (verifies the state) &
+Independent Auditor $\mathcal{J}$ &
+$V(\sigma) \in \{0,1\}$ without querying $\mathcal{E}$, and\ $\forall i:\; \neg\mathsf{Reveal}(u_i)$\ (audits without operator permission; privacy-preserving) &
+ZK inclusion proofs; public Merkle root &
+\cite{btv-ar2026} \\
+\addlinespace
+\textbf{Separation}\ (powers are disjoint) &
+Capability partition $P_{\mathcal{L}} \cap P_{\mathcal{E}} \cap P_{\mathcal{J}} = \emptyset$ &
+$\mathcal{E}$ cannot redefine $\mathcal{L}$ types;\ $\mathcal{E}$ cannot block $\mathcal{J}$ verification;\ $\mathcal{J}$ cannot override $\mathcal{L}$ rules &
+Type immutability; public log; ZK soundness &
+This paper \\
+\addlinespace
+\textbf{Checks \& Balances}\ (each constrains the others) &
+Composition guarantee &
+$\mathcal{J}$ can invalidate $\mathcal{E}$ output;\ $\mathcal{L}$ rejects $\mathcal{E}$ programs at compile-time;\ $\mathcal{E}$ cannot forge $\mathcal{J}$-valid proofs &
+Type system + ZK soundness + append-only &
+This paper \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Legislative Independence}
+\label{subsec:leg-independence}
+
+\begin{theorem}[Legislative Independence]
+\label{thm:leg}
+In a BTV institution $\mathcal{I}$, the executive layer $\mathcal{E}$
+cannot modify the constitutional type constraints $\mathcal{L}$ at
+runtime.
+\end{theorem}
+
+\begin{proof}
+By the linear type discipline of Paper~1~\cite{btv2026}, every program
+$P \in \mathcal{E}$ is type-checked at compile time against a fixed
+context $\Gamma$ derived from $\mathcal{L}$. The type context $\Gamma$
+is an immutable artifact of the build process: it is not a runtime
+parameter, not a database entry, and not accessible via any API exposed
+to the operator. Formally, $\Gamma$ is a function of the source
+dependencies $\mathcal{D}$ at compile time:
+\[
+  \Gamma = \Gamma(\mathcal{D}_{t_0})
+\]
+where $t_0$ is the compilation timestamp. Any change to $\mathcal{L}$
+requires recompilation, which produces a new binary with a distinct
+cryptographic hash. The production binary's hash is published to
+$\Sigma$ at deployment (Paper~2~\cite{btv-t-repo}), so any substitution
+of a differently-typed binary is detectable by $\mathcal{J}$. Therefore
+$P_{\mathcal{E}} \cap P_{\mathcal{L}} = \emptyset$ at runtime.
+\end{proof}
+
+\subsection{Judicial Independence}
+\label{subsec:jud-independence}
+
+\begin{theorem}[Judicial Independence]
+\label{thm:jud}
+In a BTV institution $\mathcal{I}$, the auditor $\mathcal{J}$ can
+verify the integrity of any state transition $\sigma \in \Sigma$
+without querying the operator $\mathcal{E}$ and without learning the
+private attributes of any individual decision subject.
+\end{theorem}
+
+\begin{proof}
+The global state $\Sigma$ is a public, append-only Merkle tree
+(Paper~2~\cite{btv-t-repo}). The Merkle root $r$ is published
+periodically to a public bulletin. To audit inclusion of transition
+$\sigma_i$, the auditor constructs or receives a ZK inclusion proof
+$\pi_i$ (Paper~3~\cite{btv-ar2026}) such that:
+\[
+  \mathsf{Verify}(r,\, \pi_i,\, \mathsf{pub}(\sigma_i)) = 1
+\]
+where $\mathsf{pub}(\sigma_i)$ is the public component of the transition
+(decision type, timestamp, compliance tag) and the private attributes
+(individual identity, sensitive inputs) remain hidden behind the ZK
+commitment. The verification call does not involve $\mathcal{E}$: it
+requires only the public root $r$ and the proof $\pi_i$. By the
+soundness property of the ZK proof system~\cite{btv-ar2026}, a forged
+proof for a non-member transition is accepted with probability at most
+$\epsilon_{\mathsf{sound}}$ (negligible in the security parameter).
+Therefore $P_{\mathcal{J}} \cap P_{\mathcal{E}} = \emptyset$.
+\end{proof}
+
+\subsection{Executive Containment}
+\label{subsec:exec-containment}
+
+\begin{theorem}[Executive Containment]
+\label{thm:exec}
+In a BTV institution $\mathcal{I}$, the operator $\mathcal{E}$ cannot
+produce a decision $d$ without generating a non-repudiable evidence
+receipt $e$ bound to $d$, and cannot delete any previously committed
+receipt.
+\end{theorem}
+
+\begin{proof}
+By the linear type invariant of Paper~1~\cite{btv2026},
+$\mathtt{Verdict} \multimap E \otimes C$: a verdict value has
+multiplicty 1 and can only be constructed by consuming exactly one
+evidence token $E$ and one compliance certificate $C$. The linear
+type system prevents duplication or discard of $E$: an unconsumed
+evidence token is a compile-time error. Therefore every decision
+generates exactly one receipt. By the append-only property of
+Paper~2~\cite{btv-t-repo}, once a receipt is committed to $\Sigma$,
+no capability in $P_{\mathcal{E}}$ supports a delete operation:
+the Merkle tree admits only extension, never mutation. Together, these
+two properties establish that $\mathcal{E}$ cannot produce a silent
+decision (no receipt) or destroy an existing receipt. Executive
+behavior is fully contained within the constitutional boundaries
+defined by $\mathcal{L}$.
+\end{proof}
+
+\subsection{Completeness of the Separation}
+\label{subsec:completeness}
+
+\begin{corollary}[Constitutional Completeness]
+\label{cor:completeness}
+A BTV institution $\mathcal{I}$ satisfies the Constitutional Invariant
+(Definition~\ref{def:invariant}): the capability sets of the three
+layers are mutually disjoint.
+\end{corollary}
+
+\begin{proof}
+Direct from Theorems~\ref{thm:leg},~\ref{thm:jud},
+and~\ref{thm:exec}:
+\begin{align*}
+  P_{\mathcal{L}} \cap P_{\mathcal{E}} &= \emptyset
+    &&\text{(Theorem~\ref{thm:leg})} \\
+  P_{\mathcal{E}} \cap P_{\mathcal{J}} &= \emptyset
+    &&\text{(Theorem~\ref{thm:jud})} \\
+  P_{\mathcal{J}} \cap P_{\mathcal{L}} &= \emptyset
+    &&\text{(Definition: $\mathcal{J}$ reads $\Sigma$; does not write
+    $\mathcal{L}$)}
+\end{align*}
+Therefore $P_{\mathcal{L}} \cap P_{\mathcal{E}} \cap P_{\mathcal{J}}
+= \emptyset$.
+\end{proof}
+
+\begin{remark}[Relation to TLA+ and Alloy]
+Existing formal methods tools such as TLA+~\cite{lamport2002} and
+Alloy~\cite{jackson2012} verify that a \emph{given specification}
+satisfies logical invariants. Constitutional Code differs in scope:
+it does not verify that a particular system is correct, but that the
+\emph{architectural separation of capabilities} satisfies a political
+theory requirement. TLA+ can verify Executive Containment
+(Theorem~\ref{thm:exec}) for a specific operator implementation;
+it cannot, without our framework, certify that the resulting institution
+satisfies Legislative Independence or Judicial Independence as
+political properties, because those concepts have no representation
+in its specification language. Our contribution is the mapping between
+political theory and cryptographic architecture, not the verification
+tool.
+\end{remark}
