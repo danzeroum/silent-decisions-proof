@@ -1,21 +1,44 @@
 \section{Conclusion}
 \label{sec:conclusion}
 
-% TODO: 1 page
-%
-% Close the BTV programme:
-%   P1: no decision without evidence (compile-time)
-%   P2: no delivery without persistence (runtime)
-%   P3: no redaction without statistical justification (cryptographic)
-%   P4: no adoption without economic incentive (institutional)
-%
-% The accountability stack is technically complete.
-% The compliance crossover analysis shows it is economically rational
-% for any organisation above ~500k decisions/year.
-% The compliance-credit mechanism converts that rationality into
-% an active market incentive.
-%
-% Final sentence: the four papers together constitute a complete
-% programme from type system to governance model --- the first
-% vertically integrated accountability stack for AI systems.
-\textbf{[Section under construction]}
+This paper completes the BTV accountability programme. Papers~1--3
+established that verifiable AI accountability is \emph{technically}
+feasible --- guaranteeing construction integrity, persistence
+durability, and privacy-preserving maintenance. This paper asks whether
+it is \emph{economically} rational to deploy.
+
+Our analysis shows that the cost of non-repudiable transparency scales
+inversely with decision volume, reaching \$0.005 per decision at
+Enterprise scale ($10^6$ decisions/year) and approaching zero
+marginally at Hyperscale. The fixed infrastructure cost of
+$\sim$\$5{,}000/year is the dominant term below $\sim$50{,}000
+decisions/year and becomes negligible above it.
+
+By introducing a \emph{compliance-credit} mechanism grounded in
+existing legal instruments (GDPR Art.~42, AI Act Art.~69), we show
+that for operators subject to EU~AI~Act enforcement of high-risk AI
+systems, the infrastructure investment breaks even at 500{,}000
+decisions/year. This threshold is surpassed by virtually all
+production-scale credit-scoring, hiring, and healthcare-triage
+systems --- the exact deployments targeted by the regulation.
+Enforcement data from 2021--2024 (\$2B+ in SEC record-keeping fines,
+\euro{}4.5B+ in GDPR actions~\cite{sec-fines-2024,gdpr-fines-2025})
+demonstrate that the penalty exposure the model prices is real, not
+hypothetical.
+
+However, our analysis also identifies a market failure for operators
+below $\sim$250{,}000 decisions/year, where fixed infrastructure costs
+create a Valley of Non-Compliance that rational SMEs may not cross
+without structural intervention. This is the primary policy implication
+of the work: the technology is ready, and for large operators it is
+already economically rational; the remaining obstacle is accessible
+infrastructure for the long tail of AI deployments.
+
+Together, the four papers in this programme constitute a vertically
+integrated accountability stack: structural correctness at construction
+time (Paper~1), verifiable durability at delivery time (Paper~2),
+privacy-preserving integrity at maintenance time (Paper~3), and
+economic rationality at adoption time (Paper~4). The path to
+accountable AI is no longer blocked by scientific unknowns. What
+remains is institutional will and the shared infrastructure to lower
+the fixed cost of transparency for those who cannot yet afford it.

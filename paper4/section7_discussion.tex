@@ -1,24 +1,100 @@
 \section{Discussion}
 \label{sec:discussion}
 
-% TODO: limitations and implications — 1-2 pages
-%
-% Limitations:
-%   1. TCO model uses BTV benchmarks from single hardware config
-%      (Intel Xeon 2.1GHz); cloud costs vary
-%   2. Enforcement probability estimates are historical averages;
-%      AI Act enforcement trajectory is speculative
-%   3. N=12 interviews: small sample, self-selected, sectors limited
-%      to finance and healthcare
-%   4. Compliance-credit mechanism requires regulatory buy-in not
-%      yet obtained
-%   5. Model assumes linear cost scaling; log infrastructure may
-%      have non-linear cost at 10^8+ scale (sharding, replication)
-%
-% Implications:
-%   - For compliance officers: crossover analysis gives concrete
-%     ammunition for internal business case
-%   - For regulators: compliance-credit mechanism is implementable
-%     under existing legal frameworks (GDPR Art.42, AI Act Art.69)
-%   - For researchers: empirical cost data for future TCO analyses
-\textbf{[Section under construction]}
+The economic model presented in Sections~\ref{sec:tco}--\ref{sec:credits}
+reveals a nuanced adoption landscape for verifiable AI accountability.
+While the marginal cost of transparency approaches zero at scale, the
+fixed-cost structure creates distinct strategic dynamics worth examining
+beyond the crossover arithmetic.
+
+\subsection{The Valley of Non-Compliance}
+\label{subsec:valley}
+
+Our analysis identifies a structural gap for small-to-medium enterprises
+(SMEs). For operators processing fewer than $\sim$250{,}000
+decisions/year, the fixed infrastructure cost (\$5{,}000) exceeds
+the expected penalty savings under the compliance-credit model at any
+regime except SEC-regulated finance. This creates a \emph{Valley of
+Non-Compliance}: a range of deployment scales where rational economic
+actors are incentivised to remain opaque, relying on low enforcement
+probability as de-facto protection.
+
+This finding contradicts the implicit assumption in the EU AI Act that
+compliance is uniformly accessible. Without targeted intervention ---
+shared infrastructure, subsidised log servers, or a SME compliance-credit
+transfer market (Section~\ref{sec:credits}) --- the BTV stack risks
+becoming a competitive moat available only to large enterprises,
+reinforcing market concentration rather than diffusing accountability.
+
+\subsection{Adoption Barriers Beyond Cost}
+\label{subsec:barriers}
+
+Even when the economic case is favourable (for $N > N^*_{\text{credit}}$),
+non-economic barriers persist:
+
+\begin{itemize}
+  \item \textbf{Technical friction.} The BTV stack requires Safe Rust
+  and systems-level engineering (Papers~1--2~\cite{btv2026,btv-t-repo}).
+  The prevailing AI development paradigm --- Python-based ML pipelines
+  without ownership semantics --- lacks the compile-time type structure
+  required by the stack. Adoption requires an engineering culture shift
+  analogous to the managed/unmanaged code transition of the early 2000s.
+  The interview data (Section~\ref{sec:interviews}) will quantify how
+  frequently compliance officers identify this as the primary barrier.
+
+  \item \textbf{Strategic opacity.} Opacity is not merely a cost-saving
+  measure; for some operators it is a defence mechanism. Verifiable
+  audit trails expose algorithmic bias and strategic errors that would
+  otherwise remain within plausible-deniability range. Internal
+  resistance from product and legal teams is likely independent of
+  the economic calculus.
+\end{itemize}
+
+\subsection{Sensitivity of the Crossover to Enforcement Credibility}
+\label{subsec:sensitivity}
+
+The crossover point $N^*_{\text{credit}}$ is inversely proportional to
+the risk density $\rho$, which in turn depends on enforcement
+credibility. A 50\% reduction in enforcement probability --- plausible
+if AI Act enforcement ramps slowly or if regulatory capture reduces
+fine magnitudes --- doubles the crossover threshold from 500{,}000 to
+1{,}000{,}000 decisions/year, pricing out a significant fraction of
+mid-market AI operators.
+
+This creates a dependence structure between technical and institutional
+choices that the compliance-credit mechanism partially resolves:
+operators who invest early lock in safe-harbour protection regardless
+of subsequent enforcement trajectory, reducing their exposure to
+regulatory uncertainty. In this sense, early adoption functions as
+a hedge against enforcement volatility, not only against enforcement
+itself.
+
+\subsection{Limitations}
+\label{subsec:limitations}
+
+\begin{enumerate}
+  \item \textbf{TCO model.} Fixed infrastructure costs are estimated
+  from managed cloud pricing as of 2026 and may not reflect
+  on-premises deployments or sovereign-cloud constraints in regulated
+  jurisdictions.
+
+  \item \textbf{Enforcement probability.} $P_{\text{enf}}$ estimates
+  are derived from historical averages; AI Act enforcement trajectory
+  is speculative, and sample sizes for Art.~22 GDPR actions remain
+  small.
+
+  \item \textbf{Interview sample.} $N=12$ is a small, purposive sample.
+  Results from Section~\ref{sec:interviews} should be treated as
+  hypothesis-generating, not representative.
+
+  \item \textbf{Linear cost scaling.} The model assumes linear scaling
+  of variable costs. Log infrastructure may exhibit non-linear cost at
+  $10^8$+ scale due to sharding and replication requirements not
+  captured in Table~\ref{tab:tco}.
+
+  \item \textbf{$\delta$ estimate.} The 50\% mitigation factor is
+  grounded in existing enforcement decisions but has not been formally
+  validated with supervisory authorities. Regulatory recognition of
+  cryptographic compliance guarantees as ``appropriate technical
+  measures'' under GDPR Art.~25 remains an open interpretive question.
+\end{enumerate}
