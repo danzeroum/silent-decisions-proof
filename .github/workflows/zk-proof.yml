@@ -24,14 +24,16 @@ jobs:
       - name: Install Nargo
         run: |
           curl -L https://raw.githubusercontent.com/noir-lang/noirup/main/install | bash
+          source ~/.bashrc || true
+          noirup
           echo "$HOME/.nargo/bin" >> $GITHUB_PATH
 
       - name: Install Barretenberg (bbup — auto-resolves compatible version)
         run: |
-          curl -L https://raw.githubusercontent.com/AztecProtocol/aztec-packages/refs/heads/master/barretenberg/bbup/install | bash
-          echo "$HOME/.bb" >> $GITHUB_PATH
-          # bbup queries installed nargo version and pulls matching bb
+          curl -L https://raw.githubusercontent.com/AztecProtocol/aztec-packages/refs/heads/next/barretenberg/bbup/install | bash
+          source ~/.bashrc || true
           bbup
+          echo "$HOME/.bb" >> $GITHUB_PATH
 
       - name: Print versions
         run: |
