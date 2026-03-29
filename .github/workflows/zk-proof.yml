@@ -48,12 +48,12 @@ jobs:
         run: nargo execute
 
       - name: Generate proof + verification key
-        # Official bb syntax: --write_vk writes vk alongside the proof
+        # Package name is 'accountable_redaction' (from Nargo.toml)
         run: |
           START=$(date +%s%N)
           bb prove \
-            -b ./target/redaction_circuit.json \
-            -w ./target/redaction_circuit.gz \
+            -b ./target/accountable_redaction.json \
+            -w ./target/accountable_redaction.gz \
             --write_vk \
             -o ./target
           END=$(date +%s%N)
@@ -78,7 +78,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-          echo "| Nargo version | $(nargo --version) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Nargo version | $(nargo --version 2>&1 | head -1) |" >> $GITHUB_STEP_SUMMARY
           echo "| bb version | $(bb --version) |" >> $GITHUB_STEP_SUMMARY
           echo "| Proof generation | ${{ env.proof_time_ms }} ms |" >> $GITHUB_STEP_SUMMARY
           echo "| Proof size | ${{ env.proof_size_bytes }} bytes |" >> $GITHUB_STEP_SUMMARY
