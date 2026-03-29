@@ -1,0 +1,32 @@
+Verifiable Institutions, as formalised in the preceding papers of this
+series, guarantee algorithmic accountability by encoding the Separation
+of Powers into type systems and cryptographic logs. However, this
+architecture creates a structural rigidity: the \emph{Dead Hand
+problem}. A constitution that cannot change is a prison; a constitution
+that changes at the whim of a regulator is susceptible to capture.
+Both failure modes are fatal to institutional legitimacy.
+
+This paper introduces the \textbf{Constitutional Amendment Protocol},
+a mechanism for formalising institutional evolution within a Verifiable
+Institution. We distinguish between \emph{ordinary policy updates}
+(parameter changes authorised by the Legislative branch alone) and
+\emph{constitutional amendments} (structural changes to the
+Separation of Powers invariants), requiring \emph{Tripartite
+Ratification}---signatures from all three independent branches---for
+the latter. We prove that this threshold is capture-resistant: no
+pairwise collusion of two principals suffices to weaken the
+fundamental constitutional invariant.
+
+We further encode \emph{Sunset Clauses} as linear resources with
+finite lifetime: legislative authority expires unless actively renewed
+through a ratification process. This forces a periodic
+\emph{Constitutional Interregnum}, ensuring that the algorithm's
+authority is re-legitimised by each generation of stakeholders rather
+than inherited indefinitely from a prior act.
+
+We prove two theorems---Amendment Soundness and Mandatory Renewal---
+and analyse two primary attack vectors: the Hostile Takeover (pairwise
+collusion against Stone Clauses) and the Zombie Institution (operating
+past mandate expiry). Together, these results complete the framework
+for Verifiable Institutions: moving from static \emph{code-as-law}
+to dynamic \emph{architecture-as-democracy}.

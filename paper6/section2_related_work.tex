@@ -1,0 +1,59 @@
+\section{Related Work}
+\label{sec:related}
+
+\paragraph{Blockchain Governance and Self-Amendment.}
+The problem of protocol upgrades is central to blockchain
+systems. Tezos~\cite{goodman2014} introduced self-amending ledgers
+where stakeholders vote on protocol changes through an on-chain
+governance mechanism. However, Tezos and similar systems rely on
+\emph{token-weighted voting}: upgrade authority is proportional to
+economic stake, which is a form of plutocracy rather than
+democracy~\cite{buterin2021}. This maps poorly to the Separation of
+Powers required for algorithmic institutions governing individual
+rights: in such contexts, the operator (with the largest economic
+stake) would have the most influence over the rules constraining
+the operator---a direct inversion of the accountability goal.
+Constitutional Code replaces stake-weighted voting with
+\emph{branch-weighted ratification}: authority is distributed across
+the three constitutional branches, regardless of economic stake.
+
+\paragraph{Regulatory Capture.}
+Stigler~\cite{stigler1971} established that regulatory agencies tend
+over time to be captured by the industries they regulate, because
+the regulated industries have concentrated economic incentives to
+influence regulation while the public has diffuse incentives to
+resist it. Technical proposals such as multi-signature wallets
+mitigate single-point-of-failure risks but are insufficient if all
+keyholders belong to the same equilibrium of interests---as would
+be the case in a regulator-operator coalition. The Tripartite
+Threshold proposed in \S\ref{subsec:threshold} forces a
+\emph{cross-branch} coalition for constitutional amendments,
+making capture significantly more expensive: an adversary must
+simultaneously compromise principals whose interests are
+structurally opposed.
+
+\paragraph{Sunset Legislation.}
+Sunset clauses in legal systems ensure that certain laws expire
+unless renewed by positive legislative action~\cite{kerwin2018}.
+They have been applied in administrative law, fiscal policy, and
+intelligence authorisation. Their purpose---forcing periodic
+democratic recommitment---is well-established; their failure mode
+is equally well-documented: legislative inertia leads to automatic
+renewal without substantive review~\cite{graetz2010}. This paper
+operationalises sunset clauses as \emph{linear resource types},
+enforcing expiration at the type-system level. Unlike statutory
+sunset clauses, which rely on legislative memory to not re-authorise,
+our mechanism relies on the impossibility of constructing a
+\texttt{Verdict} without a live \texttt{Mandate} token: the system
+cannot forget to expire.
+
+\paragraph{Constitutional Amendment Theory.}
+Si\`{e}yes's distinction between \emph{pouvoir constituant} and
+\emph{pouvoir constitu\'{e}}~\cite{sieyes1789} is the foundational
+concept of constitutional theory: the power that creates the
+constitution is categorically different from the powers exercised
+under it. This paper is, to our knowledge, the first formal
+cryptographic implementation of this distinction. The Stone Clauses
+(Definition~\ref{def:amendment-classes}) are the type-theoretic
+realisation of \emph{pouvoir constituant}: they cannot be altered
+by any power that the constitution itself created.

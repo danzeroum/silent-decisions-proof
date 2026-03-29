@@ -1,0 +1,68 @@
+\section{Introduction}
+\label{sec:intro}
+
+The preceding papers in this series constructed a Machine of State
+that enforces Montesquieu's Separation of Powers in software.
+Paper~1~\cite{btv2026} constrained the Executive with linear types;
+Paper~2~\cite{btv-t-repo} created an immutable evidentiary memory;
+Paper~3~\cite{btv-ar2026} enabled privacy-preserving auditing;
+Paper~4~\cite{btv-econ} justified the economics of compliance; and
+Paper~5~\cite{btv-cc} unified these into a theory of Constitutional
+Code. The result is an institution whose constitution is enforced not
+by social contract but by the mathematical properties of its execution
+substrate.
+
+There is a flaw in this edifice: \textbf{time}.
+
+A perfect enforcement of today's law can become the perfect
+perpetuator of tomorrow's injustice. If the type system is immutable,
+the institution cannot adapt to new ethical norms, new scientific
+understanding of algorithmic harm, or new democratic mandates. If the
+type system is mutable by a simple regulatory vote, it is vulnerable
+to \emph{regulatory capture}~\cite{stigler1971}---the very pathology
+it was designed to prevent. We call this the \emph{Capture Paradox}:
+
+\begin{itemize}
+  \item To prevent capture, the constitution must be rigid
+  (immutable types).
+  \item To prevent obsolescence, the constitution must be flexible
+  (upgradeable types).
+  \item A constitution that is both rigid and flexible requires a
+  \emph{formal process of change} that is itself capture-resistant.
+\end{itemize}
+
+This paper resolves the Capture Paradox by formalising the
+\emph{process of constitutional change} as a first-class object in
+the type system. The key insight, drawn from constitutional law, is
+that not all rules are equal: some rules define the game, and some
+rules define who gets to change the rules. The former we call
+\emph{Stone Clauses}; the latter we formalise as the
+\emph{Constitutional Amendment Protocol}.
+
+\paragraph{Contributions.}
+\begin{enumerate}
+  \item \textbf{Temporal Type Versioning
+  (\S\ref{subsec:versioning}):} a formal mechanism for versioning
+  constitutional types so that historical decisions are always
+  verifiable under the law that governed them at the time of
+  execution, implementing the principle of \emph{nullum crimen sine
+  lege} in software.
+  \item \textbf{Stone Clauses and Tripartite Ratification
+  (\S\ref{subsec:threshold}):} a classification of amendments into
+  ordinary legislation (single-branch authorisation) and
+  constitutional amendments (all three branches required), with a
+  formal proof of capture-resistance.
+  \item \textbf{Sunset Clauses as Linear Resources
+  (\S\ref{subsec:sunset}):} encoding legislative authority as
+  a finite-lifetime linear token, forcing periodic democratic
+  renewal and making \emph{Constitutional Interregnum} a structural
+  property of the system.
+  \item \textbf{Security Analysis (\S\ref{sec:security}):}
+  formal characterisation of two primary attack vectors---Hostile
+  Takeover and Zombie Institution---and proofs of resistance
+  derived from Amendment Soundness and Mandatory Renewal.
+\end{enumerate}
+
+Together, these contributions close the gap between static
+constitutional enforcement (Papers 1--5) and dynamic institutional
+evolution, completing the framework for Verifiable Institutions.
