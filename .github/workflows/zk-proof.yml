@@ -4,10 +4,11 @@ on:
   push:
     paths:
       - 'paper3/circuits/**'
+      - '.github/workflows/zk-proof.yml'
   pull_request:
     paths:
       - 'paper3/circuits/**'
-  workflow_dispatch:  # allows manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   prove-and-verify:
@@ -21,17 +22,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Nargo
+      - name: Install Nargo via noirup
         run: |
           curl -L https://raw.githubusercontent.com/noir-lang/noirup/main/install | bash
-          source ~/.bashrc || true
+          export PATH="$HOME/.nargo/bin:$PATH"
           noirup
           echo "$HOME/.nargo/bin" >> $GITHUB_PATH
 
-      - name: Install Barretenberg (bbup — auto-resolves compatible version)
+      - name: Install bb via bbup (auto-resolves version compatible with installed nargo)
         run: |
           curl -L https://raw.githubusercontent.com/AztecProtocol/aztec-packages/refs/heads/next/barretenberg/bbup/install | bash
-          source ~/.bashrc || true
+          export PATH="$HOME/.bb:$PATH"
           bbup
           echo "$HOME/.bb" >> $GITHUB_PATH
 
@@ -46,12 +47,15 @@ jobs:
       - name: Execute (witness generation)
         run: nargo execute
 
-      - name: Generate proof
+      - name: Generate proof + verification key
+        # Official bb syntax: --write_vk writes vk alongside the proof
         run: |
           START=$(date +%s%N)
-          bb prove -b ./target/redaction_circuit.json \
-                   -w ./target/redaction_circuit.gz \
-                   -o ./target/proof
+          bb prove \
+            -b ./target/redaction_circuit.json \
+            -w ./target/redaction_circuit.gz \
+            --write_vk \
+            -o ./target
           END=$(date +%s%N)
           MS=$(( (END - START) / 1000000 ))
           SIZE=$(wc -c < ./target/proof)
@@ -59,13 +63,10 @@ jobs:
           echo "proof_size_bytes=${SIZE}" >> $GITHUB_ENV
           echo "Proof generation: ${MS} ms, ${SIZE} bytes"
 
-      - name: Generate verification key
-        run: bb write_vk -b ./target/redaction_circuit.json -o ./target/vk
-
       - name: Verify proof
         run: |
           START=$(date +%s%N)
-          bb verify -k ./target/vk -p ./target/proof
+          bb verify -p ./target/proof -k ./target/vk
           END=$(date +%s%N)
           MS=$(( (END - START) / 1000000 ))
           echo "verify_time_ms=${MS}" >> $GITHUB_ENV
