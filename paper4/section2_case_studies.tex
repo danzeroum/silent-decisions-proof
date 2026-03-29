@@ -1,0 +1,147 @@
+\section{Anatomy of Algorithmic Failures}
+\label{sec:cases}
+
+To ground the economic model in Section~\ref{sec:tco}, we analyze three
+landmark cases of algorithmic failure between 2018 and 2022. We examine
+these not as ethical lapses in isolation, but as \emph{structural
+failures of accountability mechanisms}: the inability to detect, persist,
+or audit decisions at the point of impact. Each failure maps to a
+specific gap addressed by the BTV stack (Papers~1--3~\cite{btv2026,btv-t-repo,btv-ar2026}).
+
+\subsection{Case 1: Racial Bias in Healthcare Allocation}
+\label{subsec:obermeyer}
+
+\noindent\textit{System:} Optum Impactability Algorithm (US health system, $\sim$200M patients).\\
+\textit{Decision:} Allocation of high-risk care management resources.\\
+\textit{Failure mode:} Proxy discrimination via silent evidence.
+
+Obermeyer et al.~\cite{obermeyer2019dissecting} revealed that the
+algorithm systematically privileged white patients over Black patients
+because it used \emph{healthcare costs} as a proxy for \emph{health
+need}. Since less money is historically spent on Black patients for the
+same severity of illness, the proxy produced a structurally biased
+rankings. The bias was invisible at the decision layer because the
+proxy was never validated against the regulatory intent it was meant to
+operationalise.
+
+\textbf{BTV gap --- Paper~1 (Evidence Binding):} The decision logic was
+not bound to an evidence token that verified the semantic validity of the
+input proxy. Under the Paper~1 invariant, a
+$\texttt{Verdict} \multimap E \otimes C$ type constraint would require
+the input features to be validated against a declared compliance policy
+before a verdict can be constructed. A cost-based feature used as a
+health-need proxy would fail this validation at compile time, surfacing
+the bias before deployment rather than two years into production.
+
+\textbf{Cost:} Optum revised the algorithm following publication;
+latent litigation and reputational exposure remained unquantified at time
+of writing. The case produced no direct regulatory fine, illustrating
+that even ``self-corrected'' opacity carries cost in the form of
+prolonged harm duration.
+
+\subsection{Case 2: Gender Bias in Automated Hiring}
+\label{subsec:amazon}
+
+\noindent\textit{System:} Amazon internal resume screening tool (2014--2018).\\
+\textit{Decision:} Candidate ranking and rejection.\\
+\textit{Failure mode:} Silent decisions; opaque rejections.
+
+Reuters reported in 2018 that Amazon scrapped an AI recruiting tool
+that penalised resumes containing the word ``women's'' or originating
+from women's colleges~\cite{dastin2018amazon}. The model had been trained
+on a decade of resumes submitted predominantly by men, and learned
+gender as a latent penalisation signal. Rejected candidates received no
+auditable rationale.
+
+\textbf{BTV gap --- Paper~1 (Evidence Binding):} The system produced
+rejections without binding each decision to a specific evidence token.
+Under the Paper~1 invariant, a rejection verdict cannot be constructed
+without an evidence token that specifies the operative features. The
+bias would have been visible to auditors at the first audit cycle:
+rejection receipts citing gender-correlated features would produce a
+statistically anomalous evidence distribution.
+
+\textbf{BTV gap --- Paper~2 (Persistence):} Amazon terminated the
+project in 2018, effectively deleting the operational record of the
+bias mechanism. A Paper~2 append-only Transparency Log would have
+preserved the full decision history for regulatory review regardless of
+project lifecycle. Voluntary cessation of an opaque system is not a
+substitute for verifiable accountability.
+
+\textbf{Cost:} Amazon wrote off the R\&D investment and avoided
+regulatory fines by ceasing operations before formal investigation. This
+represents the \emph{opacity-as-retreat} strategy: opacity creates the
+option to quietly discontinue a discriminatory system before legal
+exposure crystallises. The BTV stack closes this option structurally ---
+the record exists regardless of whether the system continues to operate.
+
+\subsection{Case 3: Housing Discrimination via Ad Delivery}
+\label{subsec:meta}
+
+\noindent\textit{System:} Meta ``Special Ad Audiences'' algorithm.\\
+\textit{Decision:} Targeting of housing, credit, and employment advertisements.\\
+\textit{Failure mode:} Selective delivery; black-box persistence.
+
+In 2022, the US Department of Justice settled with Meta over allegations
+that its ad delivery algorithms violated the Fair Housing Act by
+excluding protected demographic classes even when advertisers specified
+neutral targeting~\cite{doj2022meta}. The algorithm optimised for
+engagement in ways that produced discriminatory delivery patterns;
+because decisions occurred at millions of impressions per day, no
+external auditor could inspect individual routing decisions.
+
+\textbf{BTV gap --- Paper~2 (Persistence):} Meta maintained internal
+logs, but the causal reasoning for why a specific user received or was
+excluded from an impression was not externally accessible. Regulators
+were forced to rely on statistical disparity testing rather than direct
+causal reconstruction --- a weaker evidentiary standard that took four
+years of litigation to resolve. A public \texttt{InclusionReceipt} per
+impression batch would have reduced investigation time to the duration
+of a cryptographic verification.
+
+\textbf{BTV gap --- Paper~3 (Privacy-Preserving Audit):} Meta could not
+publish targeting data without violating the privacy of individual users.
+This created a genuine tension between transparency and data protection
+that the DOJ settlement did not resolve technically. A Paper~3
+zero-knowledge consistency proof would have allowed Meta to demonstrate
+statistical non-discrimination across protected attributes without
+revealing any individual's viewing or demographic profile.
+
+\textbf{Cost:} Meta paid no civil monetary penalty in the 2022
+settlement but accepted drastic restrictions on ad-targeting capabilities
+--- a recurring revenue sacrifice estimated at \$200M/year~\cite{meta-settlement-analysis} --- and committed to ongoing third-party audits.
+The absence of a verifiable audit layer converted a tractable compliance
+problem into a multi-year enforcement action with permanent product
+constraints.
+
+\subsection{Synthesis: Opacity as a Structural Choice}
+\label{subsec:synthesis}
+
+Table~\ref{tab:case-gaps} maps the three cases to the BTV stack layers
+they would have engaged.
+
+\begin{table}[h]
+\centering
+\caption{Case Studies Mapped to BTV Accountability Gaps}
+\label{tab:case-gaps}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Case} & \textbf{Paper~1} & \textbf{Paper~2} & \textbf{Paper~3} \\
+              & \footnotesize{Evidence binding} & \footnotesize{Persistence} & \footnotesize{ZK audit} \\
+\midrule
+Obermeyer (Optum, 2019)  & \checkmark & --- & --- \\
+Amazon hiring (2018)     & \checkmark & \checkmark & --- \\
+Meta ad delivery (2022)  & --- & \checkmark & \checkmark \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Across all three cases, opacity was not an accident but a structural
+property of the deployment architecture: no layer required the system to
+produce verifiable, persistent, auditable evidence of its own behaviour.
+The economic question --- whether prevention would have been cheaper than
+remediation --- is addressed quantitatively in
+Section~\ref{sec:forensic}, where we compute the Cost of Opacity ratio
+for 20 enforcement decisions. We show that in every case, the fine or
+sanction paid exceeded the annual cost of the BTV infrastructure by
+between 18$\times$ and 40{,}000$\times$.
