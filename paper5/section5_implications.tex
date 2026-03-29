@@ -1,0 +1,168 @@
+\section{Implications for Regulators}
+\label{sec:regulators}
+
+The Constitutional Code framework does not merely offer a technical
+solution; it mandates a paradigm shift in regulatory practice. Under
+traditional governance models, regulators act as \emph{post-hoc}
+auditors, arriving after the harm has occurred and attempting to
+reconstruct decisions from incomplete records---the configuration that
+produced the 20 enforcement failures analysed in Paper~4~\cite{btv-econ}.
+Under Constitutional Code, regulators become \emph{ex-ante} architects,
+defining the type invariants that constrain the system before it
+executes a single decision. This section formalises that role and
+derives three operational consequences.
+
+\subsection{From Policy Documents to Type Definitions}
+\label{subsec:types-as-law}
+
+Current AI regulations are written in natural language. The EU AI
+Act~\cite{eu-ai-act} Articles~6--7 require ``transparency'' and
+``accuracy''; the LGPD~\cite{lgpd} Article~20 mandates ``clear
+information'' about automated decisions. These requirements are
+necessary but structurally unenforceable: they are satisfied by
+compliance reports, not by code, and therefore depend on the
+operator's good faith---precisely the assumption that the status quo
+counter-examples of Section~\ref{sec:independence} show to be
+insufficient.
+
+In the Constitutional Code framework, each statutory requirement
+corresponds to a type-level invariant:
+
+\begin{table}[h]
+\centering
+\caption{Statutory Requirements as Type Invariants}
+\label{tab:law-to-types}
+\begin{tabular}{p{3.8cm} p{4.2cm} p{2.6cm}}
+\toprule
+\textbf{Statutory Requirement} & \textbf{Constitutional Type} & \textbf{Source} \\
+\midrule
+``Record the decision'' & \texttt{Verdict $\multimap$ E $\otimes$ C} & EU AI Act Art.~12 \\
+``Provide a reason'' & \texttt{EvidenceToken} schema & LGPD Art.~20 \\
+``Enable human override'' & \texttt{OperatorOverrideToken} & EU AI Act Art.~14 \\
+``Preserve the log'' & Append-only Merkle commitment & GDPR Art.~5(e) \\
+``Allow audit'' & Public root + ZK batch proof & EU AI Act Art.~67 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The regulatory burden shifts from verifying \emph{compliance reports}
+(a periodic, resource-intensive process) to verifying
+\emph{interface definitions} (a one-time type-checking operation).
+A regulator does not need to parse millions of lines of source code;
+they need only verify that the declared types in the operator's
+published \texttt{btv-core} dependency satisfy the statutory schema.
+Compliance becomes a property of the compilation artefact, not a
+property of the operator's intentions.
+
+\subsection{The Constituent Role}
+\label{subsec:constituent}
+
+We formalise the regulator's function under Constitutional Code as the
+\emph{Constituent}: the actor who defines the constitutional rules
+before the institution operates, analogous to a constitutional
+convention that precedes the legislature, executive, and judiciary
+it creates.
+
+\begin{enumerate}
+  \item \textbf{Definition (Constitutional Types).} The regulator
+  publishes a \emph{Regulatory Type Schema} $\mathcal{L}_{\mathsf{reg}}$:
+  a set of linear type constraints that any compliant BTV deployment
+  must satisfy. This is analogous to publishing building codes before
+  issuing a construction permit.
+
+  \item \textbf{Certification (Binary Attestation).} The regulator
+  certifies the hash $h$ of the compiled operator binary as
+  ``Constitutionally Compliant'' after verifying that the binary's
+  type context $\Gamma$ satisfies $\mathcal{L}_{\mathsf{reg}}$. This
+  certification is published to a public registry. Operating an
+  uncertified binary becomes a strict liability offense---the
+  algorithmic equivalent of a building without a permit.
+
+  \item \textbf{Monitoring (Judicial Accreditation).} The regulator
+  accredits independent Monitor organisations to serve as the
+  Judicial branch: they subscribe to the operator's public Merkle
+  root, run continuous ZK verification of batch proofs, and report
+  deviations. The regulator does not perform monitoring itself;
+  it defines the qualification criteria for Monitors and maintains
+  their registry.
+\end{enumerate}
+
+This architecture resolves the \emph{resource asymmetry problem} that
+undermines conventional AI oversight: regulatory agencies are
+systematically understaffed relative to the organisations they supervise.
+By enforcing structural constraints (types) rather than process
+constraints (audits), the regulator uses the compiler as a force
+multiplier. A single type schema, once published, enforces 100\%
+coverage of the defined rules across all deployments of the certified
+binary---without requiring the regulator to inspect individual decisions.
+
+\subsection{The Compliance Ladder}
+\label{subsec:ladder}
+
+Section~\ref{sec:credit} of Paper~4~\cite{btv-econ} introduced the
+Compliance Credit $\delta$ as an economic mechanism to internalise
+the externalities of opacity. Constitutional Code provides the
+mechanism to \emph{standardise} that credit across regulatory regimes.
+
+We define three tiers of constitutional compliance:
+
+\begin{table}[h]
+\centering
+\caption{Constitutional Compliance Tiers and Credit Levels}
+\label{tab:ladder}
+\begin{tabular}{clp{4.8cm}c}
+\toprule
+\textbf{Level} & \textbf{Label} & \textbf{Structural Guarantee} & \textbf{Credit $\delta$} \\
+\midrule
+0 & Opaque & No structural accountability. Fine exposure unmitigated. & $0$ \\
+1 & Accountable & Papers~1--2: Linear types + append-only log. Evidence cannot be suppressed. & $0.4$ \\
+2 & Constitutional & Papers~1--3: Full stack with ZK audit proofs. Judicial branch fully independent. & $0.9$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The compliance ladder creates a \emph{regulatory gradient}: operators
+are financially incentivised to ascend toward higher verifiability
+levels, because $\delta$ directly reduces expected fine liability
+(Paper~4, Theorem~5.1~\cite{btv-econ}). Compliance transforms from a
+cost centre into a risk-mitigation asset with a computable expected
+return on investment.
+
+Critically, the $\delta$ credits are not granted on the basis of
+operator self-certification---they are granted on the basis of binary
+attestation (\S\ref{subsec:constituent}). An operator claiming Level~2
+but running an uncertified binary is detectable by any Monitor via
+hash comparison. The credit system is structurally fraud-resistant.
+
+\subsection{The Dissolution of the Trade Secret Defence}
+\label{subsec:trade-secret}
+
+The most persistent structural barrier to AI accountability litigation
+is the \emph{trade secret defence}: operators assert that their
+algorithm constitutes proprietary intellectual property and that
+disclosure to auditors would cause competitive harm~\cite{pasquale2015}.
+Courts in both the EU and US have partially accepted this argument,
+blocking full algorithm disclosure in several enforcement actions.
+
+Constitutional Code dissolves this tension structurally. Because the
+Judicial branch verifies the system via Zero-Knowledge
+proofs~\cite{btv-ar2026}, the auditor confirms the \emph{statistical
+behaviour} and \emph{structural compliance} of the algorithm without
+ever accessing the source code, the model weights, or the training data.
+Formally:
+\[
+  \mathsf{ZKVerify}(\pi^{\mathsf{stat}},\; \mathsf{stmt}) = 1
+  \quad \Rightarrow \quad
+  \text{Auditor learns: stmt is true; learns nothing else.}
+\]
+The operator retains full intellectual property protection over the
+algorithm's implementation. Society gains a cryptographic guarantee
+of the algorithm's fairness properties. The trade secret defence
+becomes obsolete as a shield against accountability---not because
+the law changed, but because the architecture renders disclosure
+unnecessary for verification.
+
+This represents a Pareto improvement over the status quo: the operator
+is not worse off (IP is protected), the regulator is not worse off
+(compliance is verifiable), and decision subjects are strictly better
+off (fairness is guaranteed, not merely asserted).
