@@ -1,0 +1,92 @@
+name: ZK Proof — Paper 3
+
+on:
+  push:
+    paths:
+      - 'paper3/circuits/**'
+  pull_request:
+    paths:
+      - 'paper3/circuits/**'
+  workflow_dispatch:  # allows manual trigger from GitHub UI
+
+jobs:
+  prove-and-verify:
+    name: Generate and Verify ZK Proof
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: paper3/circuits
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nargo
+        run: |
+          curl -L https://raw.githubusercontent.com/noir-lang/noirup/main/install | bash
+          echo "$HOME/.nargo/bin" >> $GITHUB_PATH
+
+      - name: Install Barretenberg (bbup — auto-resolves compatible version)
+        run: |
+          curl -L https://raw.githubusercontent.com/AztecProtocol/aztec-packages/refs/heads/master/barretenberg/bbup/install | bash
+          echo "$HOME/.bb" >> $GITHUB_PATH
+          # bbup queries installed nargo version and pulls matching bb
+          bbup
+
+      - name: Print versions
+        run: |
+          nargo --version
+          bb --version
+
+      - name: Compile circuit
+        run: nargo compile
+
+      - name: Execute (witness generation)
+        run: nargo execute
+
+      - name: Generate proof
+        run: |
+          START=$(date +%s%N)
+          bb prove -b ./target/redaction_circuit.json \
+                   -w ./target/redaction_circuit.gz \
+                   -o ./target/proof
+          END=$(date +%s%N)
+          MS=$(( (END - START) / 1000000 ))
+          SIZE=$(wc -c < ./target/proof)
+          echo "proof_time_ms=${MS}" >> $GITHUB_ENV
+          echo "proof_size_bytes=${SIZE}" >> $GITHUB_ENV
+          echo "Proof generation: ${MS} ms, ${SIZE} bytes"
+
+      - name: Generate verification key
+        run: bb write_vk -b ./target/redaction_circuit.json -o ./target/vk
+
+      - name: Verify proof
+        run: |
+          START=$(date +%s%N)
+          bb verify -k ./target/vk -p ./target/proof
+          END=$(date +%s%N)
+          MS=$(( (END - START) / 1000000 ))
+          echo "verify_time_ms=${MS}" >> $GITHUB_ENV
+          echo "Verification: ${MS} ms — PASS"
+
+      - name: Summary
+        run: |
+          echo "## ZK Proof Benchmark — Paper 3" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Nargo version | $(nargo --version) |" >> $GITHUB_STEP_SUMMARY
+          echo "| bb version | $(bb --version) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Proof generation | ${{ env.proof_time_ms }} ms |" >> $GITHUB_STEP_SUMMARY
+          echo "| Proof size | ${{ env.proof_size_bytes }} bytes |" >> $GITHUB_STEP_SUMMARY
+          echo "| Verification | ${{ env.verify_time_ms }} ms |" >> $GITHUB_STEP_SUMMARY
+          echo "| Result | ✅ PASS |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload proof artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: zk-proof-artifacts
+          path: |
+            paper3/circuits/target/proof
+            paper3/circuits/target/vk
+          retention-days: 90
