@@ -1,0 +1,229 @@
+\section{Independence of Powers: Proofs and Counter-Examples}
+\label{sec:independence}
+
+We now prove the three independence theorems stated in
+Section~\ref{sec:mapping} and contrast each guarantee with the
+corresponding failure mode of traditional best-effort architectures.
+The counter-examples are not hypothetical: each describes a class of
+system that is standard practice in production AI deployments today.
+
+\subsection{Theorem 1: Legislative Independence}
+\label{subsec:proof-leg}
+
+\textit{Claim.} The Operator ($\mathcal{E}$) cannot modify the
+regulatory constraints encoded in the Constitutional Type System
+($\mathcal{L}$) at runtime.
+
+\begin{proof}
+Regulatory constraints in BTV are encoded as linear resource types
+(e.g., \texttt{EvidenceToken}, \texttt{ComplianceCertificate}) in
+the \texttt{btv-core} crate~\cite{btv2026}. By Rust's type system
+semantics, type definitions are resolved at compile time and baked
+into the binary artifact; they admit no runtime reflection or
+modification. We trace the operator's capability:
+
+\begin{enumerate}
+  \item Suppose $\mathcal{E}$ attempts to violate Legislative
+  Independence by altering the constraint $V \multimap E \otimes C$
+  so that a \texttt{Verdict} may be constructed without consuming an
+  \texttt{EvidenceToken}.
+  \item This requires modifying the type definition in
+  \texttt{btv-core/src/types.rs} and recompiling the crate.
+  \item Recompilation produces a binary with a distinct
+  cryptographic hash $h'\neq h$, where $h$ is the hash of the
+  constitutionally-verified binary published to $\Sigma$ at
+  deployment~\cite{btv-t-repo}.
+  \item The Transparency Log $\Sigma$ contains the deployment
+  entry $\langle h, t_0, \sigma_{\mathcal{L}} \rangle$, where
+  $\sigma_{\mathcal{L}}$ is a signature over both the binary hash
+  and the type context $\Gamma$.
+  \item Any auditor $\mathcal{J}$ observing $h' \neq h$ in the
+  log detects the substitution. By Theorem~\ref{thm:jud}, this
+  detection requires no cooperation from $\mathcal{E}$.
+\end{enumerate}
+
+Therefore, legislative modification requires a public, detectable
+``constitutional amendment'' (a new log entry with a new binary hash),
+not a silent runtime change. $P_{\mathcal{E}} \cap P_{\mathcal{L}}
+= \emptyset$ at runtime. \qed
+\end{proof}
+
+\paragraph{Counter-example (status quo).}
+In a standard Python-based AI pipeline, compliance rules are
+implemented as policy configuration files (\texttt{config.json}) or
+branch predicates (\texttt{if threshold > 0.7}). The operator, having
+write access to the production environment, can modify
+\texttt{config.json} in-place without recompilation, without a new
+deployment event, and without any auditable record of the change.
+The ``Legislature'' (the configuration file) resides within the
+``Executive'' jurisdiction (the production server). Legislative
+Independence is structurally impossible: the same principal who executes
+decisions also controls the rules that govern them.
+
+\subsection{Theorem 2: Judicial Independence}
+\label{subsec:proof-jud}
+
+\textit{Claim.} An Auditor ($\mathcal{J}$) can verify the integrity of
+any state transition $\sigma \in \Sigma$ without permission,
+cooperation, or data access from the Operator ($\mathcal{E}$), and
+without learning the private attributes of any decision subject.
+
+\begin{proof}
+Judicial Independence decomposes into two sub-claims: access
+independence and content verifiability.
+
+\textbf{(a) Access independence.}
+The Transparency Log $\Sigma$ is maintained as a public
+content-addressed Merkle tree~\cite{btv-t-repo}. The root
+$r_t$ is published to a public bulletin at each epoch $t$.
+To verify that transition $\sigma_i$ is included in $\Sigma$,
+the auditor constructs a Merkle inclusion proof using only
+$r_t$ and the public components of $\sigma_i$. The verification
+algorithm is:
+\[
+  \mathsf{MerkleVerify}(r_t,\; \pi^{\mathsf{path}}_i,\;
+  H(\sigma_i)) \in \{0,1\}
+\]
+This computation requires no API call to $\mathcal{E}$, no
+authorisation token, and no credential controlled by the operator.
+It runs on the auditor's local hardware against public data.
+
+\textbf{(b) Content verifiability (statistical compliance).}
+To verify statistical non-discrimination across protected attributes
+(e.g., that approval rates are race-neutral), the auditor
+obtains a ZK batch proof $\pi^{\mathsf{stat}}$ from the operator
+(Paper~3~\cite{btv-ar2026}):
+\[
+  \mathsf{ZKVerify}\!\left(
+    \pi^{\mathsf{stat}},\;
+    \mathsf{stmt} = \left[\,
+      \frac{|\{\sigma_i : d_i = 1, a_i = 0\}|}
+           {|\{\sigma_i : a_i = 0\}|} < \varepsilon
+    \,\right]
+  \right) = 1
+\]
+where $a_i$ is a protected attribute and $d_i$ the decision.
+By the soundness of the ZK proof system~\cite{btv-ar2026}, a
+successful verification convinces the auditor of the statistical
+statement without revealing any individual's value of $a_i$ or $d_i$.
+The proof is provided by the operator but its validity is
+operator-independent: a forged proof for a false statement is
+indistinguishable from a valid proof only with probability negligible
+in the security parameter $\lambda$.
+
+Combining (a) and (b): $\mathcal{J}$ verifies both structural inclusion
+and statistical compliance without querying $\mathcal{E}$ and without
+learning private data. $P_{\mathcal{J}} \cap P_{\mathcal{E}} =
+\emptyset$. \qed
+\end{proof}
+
+\paragraph{Counter-example (status quo).}
+In a standard enterprise SQL database, the auditor must request
+\texttt{SELECT} access from the database administrator, who reports to
+the operator. The operator may legitimately deny access citing trade
+secret protection or GDPR data minimisation requirements. Even when
+access is granted, the operator can create filtered views that exclude
+incriminating rows, set \texttt{row\_security} policies that silently
+redact records, or purge logs before the audit window. The judiciary
+is constitutionally subservient to the executive's permission to see.
+This is the configuration that produced the evidence failures catalogued
+in Section~\ref{sec:forensic} of Paper~4~\cite{btv-econ}:
+in 9 of 20 enforcement cases, the auditor's inability to access records
+was the primary obstacle to timely resolution.
+
+\subsection{Theorem 3: Executive Containment}
+\label{subsec:proof-exec}
+
+\textit{Claim.} The Operator ($\mathcal{E}$) cannot execute a
+consequential decision $d$ without generating a non-repudiable
+evidence receipt committed to $\Sigma$.
+
+\begin{proof}
+We trace the only valid code path from decision computation to
+external delivery~\cite{btv2026}:
+
+\begin{enumerate}
+  \item \texttt{DeliveryToken} is a linear type authorising the
+  external API response. By linearity, it must be consumed exactly
+  once; it cannot be duplicated or discarded.
+  \item \texttt{DeliveryToken::seal()} requires consuming an
+  \texttt{InclusionReceipt} as an argument.
+  \item \texttt{InclusionReceipt} is produced exclusively by the
+  Log Server's \texttt{append()} method, which returns a receipt only
+  after the entry is committed to $\Sigma$ and the Merkle root is
+  updated.
+  \item Therefore, the execution path
+  $\mathtt{Decide} \to \mathtt{Deliver}$ is type-constrained to pass
+  through $\mathtt{Log} \to \mathtt{Receipt}$:
+  \[
+    \mathtt{decide}() \to V \multimap E \otimes C
+    \xrightarrow{\mathtt{append}} \mathtt{InclusionReceipt}
+    \xrightarrow{\mathtt{seal}} \mathtt{DeliveryToken}
+    \xrightarrow{\mathtt{send}} \bot
+  \]
+  \item Any attempt to short-circuit this path---constructing a
+  \texttt{DeliveryToken} without an \texttt{InclusionReceipt}---is a
+  compile-time type error (Rust errors E0308, E0061). The
+  executable binary cannot contain this path.
+\end{enumerate}
+
+Since no valid binary can deliver a decision without a committed
+receipt, and since any binary substitution is detectable by
+Theorem~\ref{thm:jud}, executive action without logging is not merely
+prohibited---it is architecturally unreachable. \qed
+\end{proof}
+
+\paragraph{Counter-example (status quo).}
+In standard logging practice, the developer writes
+\texttt{logger.info(``Decision: \{result\}'')} \emph{after} the
+decision logic and \emph{before} the API response. This logging
+call is a procedural instruction, not a structural constraint:
+under high load, the logging buffer may overflow and silently drop
+entries; under infrastructure failure, the log service may be
+unavailable while the API continues to serve decisions; under
+malicious intent, a developer can comment out the line or add a
+conditional that suppresses logging for a specific cohort. In
+all three scenarios, the executive acts without leaving a
+fooprint, and no compile-time or runtime mechanism prevents it.
+The Amazon hiring case (Paper~4, \S2.2~\cite{btv-econ}) is an
+instance of this failure: the bias mechanism operated for
+approximately four years before a procedural audit---not a structural
+one---detected it.
+
+\subsection{Corollary: Constitutional Completeness}
+\label{subsec:completeness-proof}
+
+\begin{corollary}[Constitutional Completeness, restated]
+In a BTV institution $\mathcal{I}$, no single principal holds
+capabilities in more than one constitutional branch simultaneously:
+\[
+  P_{\mathcal{L}} \cap P_{\mathcal{E}} \cap P_{\mathcal{J}} = \emptyset
+\]
+The Operator may \emph{act} but not \emph{conceal} or
+\emph{redefine rules}. The Regulator may \emph{define rules} but not
+\emph{act} or \emph{audit}. The Auditor may \emph{verify} but not
+\emph{act} or \emph{alter rules}.
+\end{corollary}
+
+\begin{proof}
+Direct from Theorems~\ref{thm:leg}, \ref{thm:jud}, \ref{thm:exec}.
+The pairwise disjointness of all three capability sets follows from the
+independence proofs above. The $\mathcal{J} \cap \mathcal{L}$
+disjointness follows by construction: the auditor's verification
+function $V : \Sigma \to \{0,1\}$ is read-only over $\Sigma$ and has
+no write capability over $\mathcal{L}$; this is a capability that the
+auditor never requests and the type system never grants.
+\end{proof}
+
+\begin{remark}[Novelty of the Enforcement Mechanism]
+Montesquieu's original formulation relies on \emph{institutional
+design} and \emph{social contract} to enforce separation: no formal
+mechanism prevents a judge from also acting as legislator, beyond
+political norms and constitutional law. Constitutional Code is the
+first realisation in which the separation is enforced by the
+mathematical properties of the execution substrate---specifically,
+linear type theory (Theorems~\ref{thm:leg},~\ref{thm:exec}) and
+cryptographic soundness (Theorem~\ref{thm:jud}). The institution's
+constitution cannot be violated because the violation is not a
+programme that can be compiled and run.
+\end{remark}
