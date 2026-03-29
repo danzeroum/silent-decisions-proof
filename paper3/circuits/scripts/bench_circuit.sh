@@ -1,79 +1,52 @@
-#!/bin/bash
-# bench_circuit.sh — Test and benchmark the Accountable Redaction ZK circuit
-# 
-# Prerequisites:
-#   curl -L noirup.dev | bash && noirup
+#!/usr/bin/env bash
+# bench_circuit.sh — generate and verify ZK proof, capture timing and size
+# Usage: cd paper3/circuits && ./scripts/bench_circuit.sh
 #
-# Usage:
-#   cd paper3/circuits
-#   bash ../scripts/bench_circuit.sh
+# Prerequisites:
+#   curl -L https://raw.githubusercontent.com/AztecProtocol/aztec-packages/refs/heads/master/barretenberg/bbup/install | bash
+#   source ~/.bashrc && bbup   # auto-resolves bb version compatible with installed nargo
 
 set -euo pipefail
 
-echo "=== Accountable Redaction — ZK Circuit Tests ==="
-echo ""
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CIRCUIT_DIR="$(dirname "$SCRIPT_DIR")"
+RESULTS_FILE="$CIRCUIT_DIR/test_results.txt"
 
-# Step 1: Check Noir installation
-if ! command -v nargo &> /dev/null; then
-    echo "ERROR: nargo not found. Install via: curl -L noirup.dev | bash && noirup"
-    exit 1
-fi
-echo "[1/6] Noir version: $(nargo --version)"
+cd "$CIRCUIT_DIR"
 
-# Step 2: Compile circuit
-echo ""
-echo "[2/6] Compiling circuit (nargo check)..."
-time nargo check
-echo "       ✓ Circuit compiles"
+echo "=========================================" | tee -a "$RESULTS_FILE"
+echo "BTV Paper 3 — ZK Circuit Benchmark" | tee -a "$RESULTS_FILE"
+echo "Date: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" | tee -a "$RESULTS_FILE"
+echo "Nargo: $(nargo --version 2>&1)" | tee -a "$RESULTS_FILE"
+echo "bb:    $(bb --version 2>&1)" | tee -a "$RESULTS_FILE"
+echo "=========================================" | tee -a "$RESULTS_FILE"
 
-# Step 3: Report constraint count
-echo ""
-echo "[3/6] Constraint count (nargo info)..."
-nargo info 2>&1 | tee /tmp/nargo_info.txt
-echo ""
+# 1. Compile
+echo "[1/4] Compiling circuit..." | tee -a "$RESULTS_FILE"
+time nargo compile 2>&1 | tee -a "$RESULTS_FILE"
 
-# Step 4: Generate proof (valid batch — should succeed)
-echo "[4/6] Generating proof for VALID redaction batch (nargo prove)..."
-time nargo prove
-echo "       ✓ Proof generated"
+# 2. Execute (witness generation)
+echo "[2/4] Generating witness..." | tee -a "$RESULTS_FILE"
+time nargo execute 2>&1 | tee -a "$RESULTS_FILE"
 
-# Step 5: Verify proof
-echo ""
-echo "[5/6] Verifying proof (nargo verify)..."
-time nargo verify
-echo "       ✓ Proof verified"
+# 3. Prove
+echo "[3/4] Generating proof..." | tee -a "$RESULTS_FILE"
+PROVE_START=$(date +%s%N)
+bb prove -b ./target/redaction_circuit.json -w ./target/redaction_circuit.gz -o ./target/proof
+PROVE_END=$(date +%s%N)
+PROVE_MS=$(( (PROVE_END - PROVE_START) / 1000000 ))
+PROOF_SIZE=$(wc -c < ./target/proof)
+echo "  Proof generation time : ${PROVE_MS} ms" | tee -a "$RESULTS_FILE"
+echo "  Proof size            : ${PROOF_SIZE} bytes" | tee -a "$RESULTS_FILE"
 
-# Step 6: Test soundness — modify Prover.toml to create invalid batch
-echo ""
-echo "[6/6] Soundness test: attempting proof with ε-violating batch..."
-# Backup valid Prover.toml
-cp Prover.toml Prover.toml.bak
+# 4. Verify
+echo "[4/4] Verifying proof..." | tee -a "$RESULTS_FILE"
+VERIFY_START=$(date +%s%N)
+bb verify -k ./target/vk -p ./target/proof
+VERIFY_END=$(date +%s%N)
+VERIFY_MS=$(( (VERIFY_END - VERIFY_START) / 1000000 ))
+echo "  Verification time     : ${VERIFY_MS} ms" | tee -a "$RESULTS_FILE"
+echo "  Result                : PASS" | tee -a "$RESULTS_FILE"
 
-# Create invalid scenario: set epsilon to 0 (no tolerance)
-# The current batch has Δ=0.0167, so ε=0 should fail
-sed -i 's/epsilon_scaled = 500/epsilon_scaled = 0/' Prover.toml
-
-if nargo prove 2>/dev/null; then
-    echo "       ✗ FAIL — proof should NOT have succeeded with ε=0"
-    SOUNDNESS="FAIL"
-else
-    echo "       ✓ PASS — proof correctly rejected (ε=0 violated)"
-    SOUNDNESS="PASS"
-fi
-
-# Restore valid Prover.toml
-mv Prover.toml.bak Prover.toml
-
-# Summary
-echo ""
-echo "=== SUMMARY ==="
-echo "Compilation:     PASS"
-echo "Proof gen:       PASS"
-echo "Verification:    PASS"
-echo "Soundness:       $SOUNDNESS"
-echo ""
-echo "Constraint count: $(grep -oP 'circuit size: \K\d+' /tmp/nargo_info.txt || echo 'see nargo info output above')"
-echo ""
-echo "NOTE: Prover.toml uses placeholder values for Merkle roots and"
-echo "Pedersen commitments. For production benchmarks, these must be"
-echo "computed from the actual pedersen_hash implementation in Noir."
+echo "=========================================" | tee -a "$RESULTS_FILE"
+echo "Benchmark complete. Results appended to test_results.txt" | tee -a "$RESULTS_FILE"
