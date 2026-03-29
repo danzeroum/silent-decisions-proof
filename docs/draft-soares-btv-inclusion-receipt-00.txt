@@ -1,0 +1,316 @@
+Internet-Draft                                         D. L. P. Soares
+Intended status: Informational                    Independent Researcher
+Expires: 29 September 2026                              29 March 2026
+
+
+         BTV Inclusion Receipt: A Standard Format for
+         Verifiable AI Decision Evidence
+
+         draft-soares-btv-inclusion-receipt-00
+
+Abstract
+
+   This document defines a standard format for an Inclusion Receipt --
+   a cryptographically verifiable record that an AI system's decision
+   was logged in an append-only transparency log before being delivered
+   to the affected party.  An Inclusion Receipt enables any party
+   (the decision subject, a regulator, or an independent auditor) to
+   verify, without operator cooperation, that a specific decision
+   exists in the immutable record and was produced under a declared
+   set of compliance rules.
+
+   This format is designed to support the requirements of the EU AI
+   Act (Arts. 12, 67), GDPR (Art. 22), LGPD (Art. 20), and analogous
+   regulations requiring documented evidence of automated decisions.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current
+   Internet-Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   This Internet-Draft will expire on 29 September 2026.
+
+Table of Contents
+
+   1.  Introduction
+   2.  Terminology
+   3.  The Inclusion Receipt Format
+       3.1.  JSON Representation
+       3.2.  CBOR Representation
+       3.3.  Field Definitions
+   4.  Verification Procedure
+       4.1.  Merkle Inclusion Verification
+       4.2.  Constitutional Hash Verification
+       4.3.  ZK Batch Proof Verification (Optional)
+   5.  Compliance Mappings
+   6.  Security Considerations
+   7.  IANA Considerations
+   8.  References
+
+1.  Introduction
+
+   Automated decision systems increasingly make or influence decisions
+   with significant legal and practical consequences for individuals.
+   Existing regulatory frameworks require that such decisions be
+   documented and explainable, but do not specify a machine-verifiable
+   format for this documentation.
+
+   The result is that "compliance" today means a PDF report generated
+   by the operator -- a document the operator controls, can modify,
+   and can selectively produce.  The decision subject has no
+   independent means of verifying that the report accurately reflects
+   the system's actual behavior at the time of the decision.
+
+   This document specifies the BTV Inclusion Receipt: a compact,
+   cryptographically verifiable artifact that proves:
+
+   (a) A specific decision record was committed to an append-only
+       transparency log (the decision cannot be retroactively altered
+       or deleted);
+
+   (b) The decision was produced by a binary whose cryptographic hash
+       matches the constitutionally-certified hash on record (the
+       operator was running the declared code, not a modified version);
+
+   (c) The legislative version (compliance rule set) active at
+       decision time is identified and verifiable (the decision can
+       be audited against the law that governed it).
+
+   Verification of (a)-(c) requires only the public Merkle root,
+   the receipt itself, and the public constitutional hash registry.
+   It does not require operator cooperation.
+
+2.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in
+   this document are to be interpreted as described in RFC 2119.
+
+   Decision Record:  The complete record of a single automated
+      decision, including inputs, outputs, timestamp, and
+      compliance metadata.
+
+   Transparency Log:  An append-only, content-addressed Merkle tree
+      storing commitments to Decision Records.
+
+   Inclusion Receipt:  The artifact defined in this document.
+      Proves that a specific Decision Record is committed in the
+      Transparency Log.
+
+   Constitutional Hash:  The cryptographic hash of the compiled
+      binary artifact that produced the decision, published to
+      the Constitutional Hash Registry at deployment.
+
+   Legislative Version:  The versioned set of compliance type
+      constraints (L_v) active at the time the decision was made.
+
+3.  The Inclusion Receipt Format
+
+3.1.  JSON Representation
+
+   An Inclusion Receipt is a JSON object with the following structure:
+
+   {
+     "btv_version": "1.0",
+     "receipt_id": "<base64url-encoded 32-byte random nonce>",
+     "decision": {
+       "id":        "<base64url-encoded SHA-256 of Decision Record>",
+       "timestamp": "<RFC 3339 UTC timestamp>",
+       "type":      "<decision type string, e.g. 'credit_approval'>"
+     },
+     "log": {
+       "root":      "<base64url-encoded Merkle root at commit time>",
+       "leaf_hash": "<base64url-encoded SHA-256 of committed leaf>",
+       "path":      ["<base64url node>", ...],
+       "log_id":    "<base64url-encoded public key of Log operator>",
+       "log_sig":   "<base64url-encoded Ed25519 signature over root>"
+     },
+     "constitution": {
+       "binary_hash":    "<base64url-encoded SHA-256 of operator binary>",
+       "legislative_v":  "<integer version number of L_v>",
+       "legislative_hash": "<base64url-encoded SHA-256 of L_v schema>",
+       "registry_url":  "<HTTPS URL of Constitutional Hash Registry>"
+     },
+     "mandate": {
+       "mandate_id":  "<base64url-encoded mandate token hash>",
+       "expires_at":  "<RFC 3339 UTC timestamp>"
+     }
+   }
+
+3.2.  CBOR Representation
+
+   A CBOR representation using the same field names and semantics
+   is RECOMMENDED for bandwidth-constrained environments.  The CBOR
+   encoding MUST use definite-length encoding and MUST NOT include
+   indefinite-length items.
+
+3.3.  Field Definitions
+
+   btv_version:  REQUIRED.  The version of this specification.
+      This document defines version "1.0".
+
+   receipt_id:  REQUIRED.  A globally unique identifier for this
+      receipt, providing replay-attack resistance.
+
+   decision.id:  REQUIRED.  The SHA-256 hash of the canonical
+      serialization of the Decision Record.  Allows the receipt
+      holder to verify that the record has not changed.
+
+   decision.timestamp:  REQUIRED.  The UTC timestamp at which the
+      decision was committed to the log.  MUST NOT precede the
+      log.root timestamp.
+
+   log.root:  REQUIRED.  The Merkle root of the Transparency Log
+      at the time of commitment.
+
+   log.path:  REQUIRED.  The Merkle inclusion proof path from
+      leaf to root.  MUST be sufficient for a verifier to
+      recompute the root from log.leaf_hash.
+
+   log.log_sig:  REQUIRED.  An Ed25519 signature by the Log
+      operator over the concatenation of log.root and
+      decision.timestamp.  Proves the root was signed by the
+      declared log operator.
+
+   constitution.binary_hash:  REQUIRED.  The SHA-256 hash of the
+      deployed operator binary.  MUST match the entry in the
+      Constitutional Hash Registry at decision.timestamp.
+
+   constitution.legislative_v:  REQUIRED.  The integer version
+      of the legislative type schema (L_v) active at
+      decision.timestamp.
+
+   mandate.expires_at:  REQUIRED.  The expiry timestamp of the
+      Legislative Mandate token active at decision.timestamp.
+      A verifier MUST check that decision.timestamp < expires_at.
+
+4.  Verification Procedure
+
+4.1.  Merkle Inclusion Verification
+
+   Given receipt R and claimed Decision Record D:
+
+   1.  Compute leaf = SHA-256(canonical_serialize(D)).
+   2.  Verify leaf == R.log.leaf_hash.
+   3.  Recompute root by iteratively hashing R.log.leaf_hash
+       with each node in R.log.path per the log's tree algorithm.
+   4.  Verify computed_root == R.log.root.
+   5.  Verify Ed25519(R.log.log_sig, R.log.root || R.decision.timestamp,
+       log_public_key) == valid.
+
+   A verifier that completes steps 1-5 MUST conclude that D is
+   committed in the log at the stated root.  This conclusion holds
+   regardless of operator cooperation.
+
+4.2.  Constitutional Hash Verification
+
+   1.  Retrieve the Constitutional Hash Registry entry for
+       R.constitution.registry_url at R.decision.timestamp.
+   2.  Verify that the registry contains an entry where:
+       binary_hash == R.constitution.binary_hash AND
+       legislative_v == R.constitution.legislative_v AND
+       entry.valid_from <= R.decision.timestamp < entry.valid_until.
+   3.  Verify R.mandate.expires_at > R.decision.timestamp.
+
+4.3.  ZK Batch Proof Verification (Optional)
+
+   For statistical compliance verification (e.g., non-discrimination
+   at population level), operators MAY publish a ZK batch proof
+   pi_stat over an epoch of decisions.  Verifiers MAY verify
+   pi_stat using the public verification key for the declared
+   ZK proof system (see [BTV-AR] for the Noir circuit specification).
+
+5.  Compliance Mappings
+
+   The following table maps receipt fields to regulatory requirements:
+
+   +-------------------------+---------------------------+----------+
+   | Regulatory Requirement  | Receipt Field(s)          | Rule     |
+   +-------------------------+---------------------------+----------+
+   | Document the decision   | decision.id, .timestamp   | EU AI Act|
+   |                         |                           | Art. 12  |
+   +-------------------------+---------------------------+----------+
+   | Identify the system     | constitution.binary_hash  | EU AI Act|
+   |                         |                           | Art. 13  |
+   +-------------------------+---------------------------+----------+
+   | Verify against rules    | constitution.legislative_v| EU AI Act|
+   | active at decision time |                           | Art. 9   |
+   +-------------------------+---------------------------+----------+
+   | Enable audit            | log.root, log.path        | EU AI Act|
+   |                         |                           | Art. 67  |
+   +-------------------------+---------------------------+----------+
+   | Automated decision      | decision.id, .type        | GDPR     |
+   | documentation           |                           | Art. 22  |
+   +-------------------------+---------------------------+----------+
+   | Explainability          | constitution.legislative_v| LGPD     |
+   |                         |                           | Art. 20  |
+   +-------------------------+---------------------------+----------+
+
+6.  Security Considerations
+
+   The security of the Inclusion Receipt depends on:
+
+   (a) Collision resistance of SHA-256 for decision.id and
+       leaf_hash computations;
+
+   (b) Unforgeability of Ed25519 for log.log_sig;
+
+   (c) The append-only property of the Transparency Log
+       (the log operator cannot delete committed entries);
+
+   (d) The integrity of the Constitutional Hash Registry
+       (the registry itself should be append-only or
+       independently auditable).
+
+   An adversary who compromises the log operator's signing key
+   can produce fraudulent receipts for non-existent decisions.
+   Implementations SHOULD use hardware security modules (HSMs)
+   for log signing keys and SHOULD publish signed checkpoints
+   to multiple independent witnesses.
+
+7.  IANA Considerations
+
+   This document requests registration of the media type:
+
+      application/btv-inclusion-receipt+json
+
+   under the "application" top-level type in the IANA Media Types
+   registry.
+
+8.  References
+
+8.1.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+   [RFC8032]  Josefsson, S. and I. Liusvaara, "Edwards-Curve Digital
+              Signature Algorithm (EdDSA)", RFC 8032, January 2017.
+
+8.2.  Informative References
+
+   [BTV-P1]   Soares, D. L. P., "Silent Decisions Are Type Errors",
+              Under review, IEEE Computer, 2026.
+
+   [BTV-P2]   Soares, D. L. P., "BTV-Transparency: Verifiable
+              Persistence for AI Decision Logs", Under review,
+              CCS/USENIX, 2026.
+
+   [BTV-AR]   Soares, D. L. P., "Accountable Redaction", Under
+              review, PoPETs 2027.
+
+   [EU-AI-ACT] European Parliament, "Regulation on Artificial
+              Intelligence (EU AI Act)", 2024.
+
+Author's Address
+
+   Daniel Lau Pereira Soares
+   Independent Researcher
+   Sao Paulo, Brazil
+   Email: danniellau@gmail.com
+   URI:   https://github.com/danzeroum/silent-decisions-proof
