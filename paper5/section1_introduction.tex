@@ -1,0 +1,86 @@
+\section{Introduction}
+\label{sec:intro}
+
+Algorithms have become the bureaucrats of the twenty-first century.
+They adjudicate loans, screen job applications, triage medical care,
+and rank electoral information. In function, they exercise what is
+effectively \emph{sovereign power}: the authority to make binding
+decisions that shape individual life chances at scale and at speed
+exceeding any human institution. In structure, they resemble
+\emph{absolutist monarchies}: opaque, centralised, and answerable
+only to the entity that operates them.
+
+The history of political thought offers a canonical solution to such
+concentrated power. Montesquieu argued in \textit{De l'Esprit des
+Lois}~\cite{montesquieu1748} that liberty can only be preserved if
+the power to \emph{make laws} (Legislative), \emph{enforce laws}
+(Executive), and \emph{interpret laws} (Judicial) are held by
+distinct and independent bodies. Crucially, Montesquieu's argument
+was not about the virtue of the rulers---it was about the
+\emph{structure} of the institution. A virtuous king with absolute
+power is still a monarch; a corrupt republic with separated powers
+still has structural safeguards.
+
+Current efforts to govern algorithmic systems treat the separation of
+powers as a matter of \emph{procedural policy}: guidelines for
+fairness, principles for transparency, and auditing regimes that
+arrive after harm has occurred. We argue this is insufficient for
+the same reason Montesquieu found Aristotle's reliance on
+good rulers insufficient: procedural guidelines are easily bypassed,
+ignored, or silently rewritten by the very entity they are meant to
+constrain. The counter-examples of Section~\ref{sec:independence}
+demonstrate that this is not theoretical---it is standard practice.
+
+This paper proposes that Montesquieu's separation of powers can be
+implemented as a \textbf{structural invariant} of the software
+itself. We introduce \emph{Constitutional Code}: an architecture in
+which:
+\begin{itemize}
+  \item \textbf{Legislative Power} is the set of linear resource
+  types~\cite{btv2026} encoding compliance rules---immutable
+  invariants that the operator cannot rewrite at runtime without
+  producing a detectable binary substitution;
+  \item \textbf{Executive Power} is the operator's runtime
+  execution, type-constrained to produce non-repudiable evidence
+  receipts~\cite{btv-t-repo} for every consequential decision; and
+  \item \textbf{Judicial Power} is the verification layer, where
+  independent auditors inspect the system's statistical behaviour
+  via Zero-Knowledge proofs~\cite{btv-ar2026} without requiring the
+  operator's cooperation.
+\end{itemize}
+
+We formalise this mapping in Section~\ref{sec:mapping}, prove the
+mutual independence of the three powers in
+Section~\ref{sec:independence}, and derive operational implications
+for regulators in Section~\ref{sec:regulators}. This is not merely a
+technical proposal. It is a \emph{change of paradigm}: from
+institutions built on the operator's trust and retrospective audit
+trails, to institutions built on protocol verification and
+mathematical guarantees.
+
+In the geocentric model of algorithmic governance, the operator is
+the centre: the algorithm's truth is what the operator's database
+says it is. Constitutional Code is the heliocentric correction:
+the \emph{protocol} is the centre, and the operator is one actor
+executing verifiable computations over a shared state whose integrity
+no single party controls.
+
+\paragraph{Contributions.}
+\begin{enumerate}
+  \item A formal definition of an Algorithmic Institution as a
+  4-tuple $\langle \mathcal{L}, \mathcal{E}, \mathcal{J},
+  \Sigma \rangle$ with a constitutional invariant
+  (Definition~\ref{def:invariant}).
+  \item Three independence theorems (Legislative, Judicial,
+  Executive) and a Constitutional Completeness corollary proving
+  that capability sets are mutually disjoint
+  (Section~\ref{sec:independence}).
+  \item Formal counter-examples showing that standard best-effort
+  architectures fail each independence condition.
+  \item An operational framework for regulators as
+  ``Constituents'' defining the Constitutional Type Schema
+  (Section~\ref{sec:regulators}).
+  \item A statutory-to-type mapping table linking EU AI Act,
+  GDPR, and LGPD requirements to concrete type invariants
+  (Table~\ref{tab:law-to-types}).
+\end{enumerate}

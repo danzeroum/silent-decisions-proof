@@ -1,0 +1,69 @@
+\section{Related Work}
+\label{sec:related}
+
+\paragraph{Formal Methods and Verified Systems.}
+The verification of software against formal specifications is a
+mature field. TLA+~\cite{lamport2002} and its model
+checker TLC verify safety and liveness properties of distributed
+systems; Alloy~\cite{jackson2012} expresses relational invariants
+and finds counter-examples by bounded model checking;
+dependently typed languages such as Coq~\cite{bertot2004} and
+Agda enable machine-checked proofs of program properties. These
+tools verify that a \emph{given specification} satisfies logical
+invariants. Constitutional Code differs in scope: it does not verify
+that a particular implementation is logically correct, but that the
+\emph{architectural separation of capabilities between principals}
+satisfies a political theory requirement. TLA+ can verify Executive
+Containment (Theorem~\ref{thm:exec}) for a specific operator binary;
+it cannot, within its specification language, certify that the
+resulting institution satisfies Legislative Independence as a
+political property, because the concept of ``a principal who may
+not redefine the rules'' has no primitive representation in TLA+.
+Our contribution is the mapping between political theory and
+cryptographic architecture.
+
+\paragraph{Algorithmic Accountability and Transparency.}
+Substantial work documents the harms of opaque algorithmic
+systems~\cite{pasquale2015,obermeyer2019dissecting} and proposes
+normative frameworks for accountability~\cite{doshi2017,
+wachter2017}. The ``right to explanation'' literature traces the
+legal basis for algorithmic transparency under
+GDPR~\cite{wachter2017}. Kearns and Roth~\cite{kearns2019ethical}
+explore the tension between privacy and fairness in machine
+learning. These works define normative goals but stop short of
+proposing enforcement mechanisms that are resistant to the
+operator's self-interest. Constitutional Code provides the missing
+enforcement layer.
+
+\paragraph{Smart Contracts and Algorithmic Law.}
+Szabo~\cite{szabo1997} proposed the concept of self-enforcing
+contracts implemented as code. Blockchain-based smart contracts
+~\cite{buterin2014} realise this vision for financial transactions.
+However, smart contract systems address \emph{consensus}
+(agreement among nodes on a shared state) rather than
+\emph{accountability} (verifying that a specific operator's
+decisions comply with individual-rights obligations). They also
+lack privacy-preserving auditability: the full transaction history
+is public, making them unsuitable for high-stakes AI decisions
+involving sensitive personal data. Constitutional Code addresses
+both gaps through the combination of linear types and ZK proofs.
+
+\paragraph{Zero-Knowledge Proofs in Governance.}
+Recent work applies ZK proofs to privacy-preserving auditing in
+specific domains: tax compliance~\cite{bunz2018bulletproofs},
+voting~\cite{benaloh1994receipt}, and financial
+regulation~\cite{zkledger2018}. Paper~3 of this series~\cite{btv-ar2026}
+extends this to privacy-preserving algorithmic accountability at
+the batch level. Constitutional Code situates Paper~3's construction
+within a broader institutional framework, showing that ZK
+auditability is not merely a privacy tool but a constitutional
+necessity for Judicial Independence.
+
+\paragraph{Political Theory and Computation.}
+Lessig's \emph{Code and Other Laws of Cyberspace}~\cite{lessig1999}
+argued that code \emph{is} law---that the architecture of information
+systems functions as regulation. Constitutional Code operationalises
+this insight in the reverse direction: \emph{law can be architecture}.
+Montesquieu's separation of powers is not merely encoded into code as
+a metaphor; it is proven as a theorem about capability disjointness
+in a formal type system.

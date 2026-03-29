@@ -1,0 +1,33 @@
+Modern AI systems exercise sovereign power over individuals---granting
+credit, denying healthcare, and influencing elections---yet they lack
+the structural checks and balances that govern traditional institutions.
+While technical solutions for transparency and accountability exist,
+they are fragmented: type systems enforce invariants, logs provide
+persistence, and zero-knowledge proofs offer privacy. No unified
+framework exists to verify that these components compose into a
+legitimate ``institution.''
+
+This paper introduces \textbf{Constitutional Code}, a theoretical
+framework that formalizes Montesquieu's \textit{Separation of Powers}
+for algorithmic systems. We demonstrate a strict formal correspondence
+between political theory and verified systems architecture:
+(1)~\textbf{Legislative Power} maps to a Constitutional Type System,
+where regulations are encoded as linear resource types that constrain
+behaviour at compile-time and cannot be overridden by the operator at
+runtime; (2)~\textbf{Executive Power} maps to the Operator, who
+executes decisions but is structurally prevented from suppressing
+evidence or altering the record; and (3)~\textbf{Judicial Power} maps
+to Independent Auditors, who verify state integrity via Zero-Knowledge
+proofs without requiring operator cooperation and without compromising
+individual privacy.
+
+We prove three independence theorems and a completeness corollary
+showing that the capability sets of the three branches are mutually
+disjoint---the first time Montesquieu's separation has been enforced
+not by social contract but by the mathematical properties of the
+execution substrate. We show that traditional ``best-effort''
+architectures fail each independence condition, and we derive
+operational implications for regulators: the shift from post-hoc
+audit to ex-ante constitutional type certification. This framework
+provides regulators with a rigorous tool to evaluate whether AI
+systems are merely compliant or structurally just.

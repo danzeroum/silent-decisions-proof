@@ -1,0 +1,55 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+For centuries, the Separation of Powers was a legal ideal enforced
+by social norms, constitutional friction, and the difficulty of
+simultaneously occupying multiple institutional roles. In the age of
+algorithmic governance---where a single operator can define the rules,
+execute the decisions, and control the records of millions of
+individuals---those frictions have dissolved. The response cannot
+be more friction; it must be structure.
+
+We have shown that the properties Montesquieu identified as necessary
+for institutional legitimacy---independence of the three powers and
+mutual checks between them---can be encoded as formal properties of
+software architecture:
+
+\begin{itemize}
+  \item \textbf{Legislative Independence} is enforced by the
+  immutability of linear resource types, verifiable via binary
+  hash attestation (Theorem~\ref{thm:leg}).
+  \item \textbf{Judicial Independence} is enforced by public Merkle
+  roots and ZK proof soundness, requiring no operator cooperation
+  (Theorem~\ref{thm:jud}).
+  \item \textbf{Executive Containment} is enforced by the
+  linear type chain that makes decision-without-logging an
+  uncompilable programme (Theorem~\ref{thm:exec}).
+\end{itemize}
+
+The Constitutional Completeness corollary
+(Corollary~\ref{cor:completeness}) proves that these three conditions
+compose into a system where no single principal holds capabilities
+across more than one constitutional branch. This is, to our
+knowledge, the first formal proof that Montesquieu's separation of
+powers can be satisfied---not merely approximated---by a
+computational architecture.
+
+The implications reach beyond AI systems. Any institution that
+operates at scale over digital state---a bank, a government registry,
+a healthcare provider, a content moderation platform---can be
+evaluated against the Constitutional Invariant
+(Definition~\ref{def:invariant}). Those that satisfy it are
+\emph{Verifiable Institutions}: their legitimacy is a mathematical
+property, not a function of the operator's reputation.
+
+Lessig wrote that ``code is law''~\cite{lessig1999}. Constitutional
+Code is the converse: \emph{law is architecture}. The shift from
+geocentric to heliocentric governance moves the centre of trust from
+the operator to the protocol. The constitution is no longer a
+document that constrains behaviour after the fact; it is a type
+system that makes unconstitutional behaviour unrepresentable before
+the first instruction executes.
+
+The violation of the constitution is not a crime to be punished.
+It is a compilation error that prevents the institution from
+ever existing.
