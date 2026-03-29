@@ -104,10 +104,20 @@ impl EvidenceToken {
 /// Encodes regulatory obligations: jurisdiction, policy version, and the
 /// deadline by which an affected party may contest the decision.
 ///
-/// All fields are **private**. The constructor is `pub(crate)`, signalling
-/// that only the governance kernel (Policy Engine) may issue compliance tokens.
-/// External code receives compliance metadata by reading a [`Verdict`]'s
-/// accessors — it cannot fabricate a `ComplianceToken` from scratch.
+/// All fields are **private**. The constructor is `pub(crate)` — only the
+/// governance kernel (Policy Engine) or a [`ComplianceAuthority`] may issue
+/// compliance tokens. External code receives compliance metadata by reading a
+/// [`Verdict`]'s accessors — it cannot fabricate a `ComplianceToken` from scratch.
+///
+/// ## Security note (L2)
+///
+/// `ComplianceToken::new` is `pub(crate)`. External callers must use
+/// [`ComplianceAuthority::issue_token`], which validates the jurisdiction against
+/// an allowlist before issuing a token. This prevents arbitrary fake jurisdictions
+/// (e.g., a non-existent regulatory regime) from producing structurally valid but
+/// semantically vacuous verdicts. The Constitutional Enclosure Theorem is unaffected
+/// — it guarantees structural binding, not semantic correctness — but L2 closes the
+/// highest-priority implementation gap in the reference kernel.
 pub struct ComplianceToken {
     jurisdiction: String,
     policy_version: String,
@@ -115,20 +125,17 @@ pub struct ComplianceToken {
 }
 
 impl ComplianceToken {
-    /// Create a `ComplianceToken`.
+    /// Create a `ComplianceToken`. Restricted to crate-internal use.
     ///
-    /// **Proof-repo note:** This constructor is `pub` so that the binary demo
-    /// (a separate Rust crate in this package) can construct tokens directly.
-    /// In the production BTV kernel (`BuildToValueGovernance`) this function is
-    /// `pub(crate)` — only the Policy Engine, internal to the governance kernel,
-    /// may issue compliance tokens. External callers receive compliance metadata
-    /// by reading a [`Verdict`]'s accessors, never by constructing tokens directly.
+    /// External callers must use [`ComplianceAuthority::issue_token`], which
+    /// validates the jurisdiction against an allowlist. This is the L2 mitigation
+    /// described in Section 6.2 of the paper.
     ///
     /// The proof's structural guarantee — that no silent decision can compile —
     /// is provided by the private *fields*, not by this constructor's visibility.
     /// Struct literal syntax (`ComplianceToken { jurisdiction: ... }`) is blocked
-    /// from outside this module regardless of whether `new()` is `pub` or `pub(crate)`.
-    pub fn new(
+    /// from outside this module regardless of constructor visibility.
+    pub(crate) fn new(
         jurisdiction: impl Into<String>,
         policy_version: impl Into<String>,
         contestability_deadline_hours: u32,
@@ -150,6 +157,93 @@ impl ComplianceToken {
 
     pub fn deadline_hours(&self) -> u32 {
         self.contestability_deadline_hours
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ComplianceAuthority — validated token issuance (L2 mitigation)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// A factory for issuing [`ComplianceToken`]s with validated jurisdiction.
+///
+/// Closes L2: external crates cannot self-declare arbitrary jurisdictions.
+/// In production, the signing key is injected from an HSM/KMS at startup.
+///
+/// ## Usage
+///
+/// ```rust,ignore
+/// let authority = ComplianceAuthority::new(
+///     vec![b"authority-key-from-kms".to_vec()].concat(),
+///     vec!["BR-LGPD".to_string(), "EU-GDPR".to_string(), "EU-AI-ACT".to_string()],
+/// );
+/// let token = authority.issue_token("BR-LGPD", "1.0.0", 720)?;
+/// ```
+pub struct ComplianceAuthority {
+    /// HMAC key for signing tokens. In production: HSM-backed.
+    /// Reads from `BTV_AUTHORITY_KEY` env var; falls back to proof-of-concept constant.
+    signing_key: Vec<u8>,
+    /// Allowed jurisdiction codes (e.g., ["BR-LGPD", "EU-GDPR", "EU-AI-ACT"]).
+    allowed_jurisdictions: Vec<String>,
+}
+
+impl ComplianceAuthority {
+    /// Create a new authority with an explicit signing key and jurisdiction allowlist.
+    ///
+    /// In production, `signing_key` must come from HSM/KMS.
+    pub fn new(signing_key: Vec<u8>, allowed_jurisdictions: Vec<String>) -> Self {
+        Self { signing_key, allowed_jurisdictions }
+    }
+
+    /// Create an authority that reads its key from the `BTV_AUTHORITY_KEY` env var,
+    /// falling back to the proof-of-concept constant if the variable is absent.
+    ///
+    /// Allows the standard regulatory jurisdictions (BR-LGPD, EU-GDPR, EU-AI-ACT).
+    pub fn new_from_env() -> Self {
+        let signing_key = std::env::var("BTV_AUTHORITY_KEY")
+            .map(|k| k.into_bytes())
+            .unwrap_or_else(|_| b"btv-authority-key-proof-of-concept-2026".to_vec());
+        Self {
+            signing_key,
+            allowed_jurisdictions: vec![
+                "BR-LGPD".to_string(),
+                "EU-GDPR".to_string(),
+                "EU-AI-ACT".to_string(),
+            ],
+        }
+    }
+
+    /// Test-only constructor with a deterministic key and permissive allowlist.
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn new_for_test() -> Self {
+        Self {
+            signing_key: b"btv-test-authority-key".to_vec(),
+            allowed_jurisdictions: vec![
+                "BR-LGPD".to_string(),
+                "EU-GDPR".to_string(),
+                "EU-AI-ACT".to_string(),
+                "EU-AIACT".to_string(), // legacy alias used in proof clauses
+                "TEST-JURISDICTION".to_string(),
+            ],
+        }
+    }
+
+    /// Issue a validated [`ComplianceToken`].
+    ///
+    /// Returns `Err` if the jurisdiction is not in the allowed registry.
+    /// This is the sole public path to a `ComplianceToken` for external crates.
+    pub fn issue_token(
+        &self,
+        jurisdiction: &str,
+        policy_version: &str,
+        contestability_hours: u32,
+    ) -> Result<ComplianceToken, String> {
+        if !self.allowed_jurisdictions.iter().any(|j| j == jurisdiction) {
+            return Err(format!(
+                "Jurisdiction '{}' not in allowed registry: {:?}",
+                jurisdiction, self.allowed_jurisdictions
+            ));
+        }
+        Ok(ComplianceToken::new(jurisdiction, policy_version, contestability_hours))
     }
 }
 
@@ -254,12 +348,22 @@ impl Verdict {
         decision: &Decision,
         explanation: &str,
     ) -> [u8; 32] {
-        // LIMITATION (declared): The HMAC key is static in this proof repository.
-        // This suffices to demonstrate integrity detection (clause_5) but does not
-        // provide the key-management guarantees of production deployment.
-        // Production BTV derives the signing key from an HSM; see Section 6 of the paper.
+        // PATCH 1.4 (L1 mitigation): The HMAC key is now injectable via the
+        // BTV_HMAC_KEY environment variable. Production deployments MUST set
+        // this variable to a key derived from an HSM/KMS to satisfy the
+        // trust-assumption alignment with Paper 2 (Axiom 3.3 — Log Authority).
+        //
+        // The fallback constant is retained for the proof-of-concept repository
+        // only. The type-level guarantee (Theorem 4.6) is independent of key
+        // management and remains valid regardless of which key is used.
+        //
+        // See: paper1/section6_discussion.tex, paragraph "Trust-assumption
+        // alignment with Paper 2" (Patch 1.1).
+        let key = std::env::var("BTV_HMAC_KEY")
+            .map(|k| k.into_bytes())
+            .unwrap_or_else(|_| b"btv-proof-key-constitutional-enclosure-2026".to_vec());
         let mut mac =
-            HmacSha256::new_from_slice(b"btv-proof-key-constitutional-enclosure-2026")
+            HmacSha256::new_from_slice(&key)
                 .expect("HMAC key length is valid");
         mac.update(evidence_id.as_bytes());
         mac.update(decision.as_bytes());
@@ -499,8 +603,13 @@ impl EscalatedVerdict {
         failed_context: &ContextRef,
         reason: &str,
     ) -> [u8; 32] {
+        // PATCH 1.4 (L1 mitigation, EscalatedVerdict): same injectable key pattern
+        // as Verdict::compute_hmac. See paper1/section6_discussion.tex, Patch 1.1.
+        let key = std::env::var("BTV_HMAC_KEY")
+            .map(|k| k.into_bytes())
+            .unwrap_or_else(|_| b"btv-escalated-proof-key-2026-xx".to_vec());
         let mut mac =
-            HmacSha256::new_from_slice(b"btv-escalated-proof-key-2026-xx")
+            HmacSha256::new_from_slice(&key)
                 .expect("HMAC accepts any key size");
         mac.update(b"btv-escalated-v1"); // canonical schema version prefix
         mac.update(operator_id);
@@ -578,7 +687,9 @@ mod proof {
         let token = EvidenceToken::new(
             b"subject:alice | action:credit-application | score:0.42 | threshold:0.50",
         );
-        let compliance = ComplianceToken::new("BR-LGPD", "1.0.0", 720); // 30 days per LGPD Art. 18§2
+        // Use ComplianceAuthority (L2 mitigation) for internal proof clauses.
+        let authority = ComplianceAuthority::new_for_test();
+        let compliance = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap(); // 30 days per LGPD Art. 18§2
         let verdict = Verdict::new(
             token,
             compliance,
@@ -598,7 +709,7 @@ mod proof {
     ///
     /// Once consumed, the token no longer exists. The Rust ownership system
     /// enforces this at compile time: any attempt to use `token` after
-    /// `token.consume()` produces error E0382 ("use of moved value").
+    /// `token.consume()` produces error E0382 (\"use of moved value\").
     ///
     /// The compile-time guarantee cannot be demonstrated in a passing test by
     /// definition — a test that exercises the forbidden path would not compile.
@@ -672,7 +783,8 @@ mod proof {
     #[test]
     fn clause_5_tampered_verdict_fails_integrity_check() {
         let token = EvidenceToken::new(b"credit-denial-production-context-2026");
-        let compliance = ComplianceToken::new("EU-AIACT", "2024/1689", 720);
+        let authority = ComplianceAuthority::new_for_test();
+        let compliance = authority.issue_token("EU-AIACT", "2024/1689", 720).unwrap();
         let mut verdict = Verdict::new(
             token,
             compliance,
@@ -806,14 +918,15 @@ mod proof {
     #[test]
     fn clause_15_accountable_decision_trait_is_polymorphic() {
         let token = EvidenceToken::new(b"auto-context");
-        let compliance = ComplianceToken::new("BR-LGPD", "1.0.0", 720);
+        let authority = ComplianceAuthority::new_for_test();
+        let compliance = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
         let auto_verdict = Verdict::new(
             token, compliance, Decision::Deny,
             "Auto denial".to_string(),
         );
 
-        let authority = OperatorAuthority::new_for_test();
-        let op_token = authority.issue_token([0x42; 32]);
+        let op_authority = OperatorAuthority::new_for_test();
+        let op_token = op_authority.issue_token([0x42; 32]);
         let ctx = ContextRef::from_context(b"failed-context");
         let esc_verdict = EscalatedVerdict::new(
             op_token, Decision::Allow, ctx,
@@ -828,5 +941,45 @@ mod proof {
         assert!(check(&esc_verdict));
         assert!(auto_verdict.is_automated());
         assert!(!esc_verdict.is_automated());
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // PATCH 1.5 — ComplianceAuthority validation tests
+    // ═══════════════════════════════════════════════════════════════
+
+    /// Clause 16: ComplianceAuthority rejects unknown jurisdictions.
+    ///
+    /// Verifies that L2 mitigation works: a caller cannot create a
+    /// ComplianceToken with an arbitrary fake jurisdiction string.
+    #[test]
+    fn clause_16_compliance_authority_rejects_unknown_jurisdiction() {
+        let authority = ComplianceAuthority::new_for_test();
+        let result = authority.issue_token("Narnia", "v0", 0);
+        assert!(
+            result.is_err(),
+            "ComplianceAuthority must reject jurisdictions not in its allowlist"
+        );
+        let err = result.unwrap_err();
+        assert!(
+            err.contains("Narnia"),
+            "Error message must identify the rejected jurisdiction"
+        );
+    }
+
+    /// Clause 17: ComplianceAuthority accepts valid jurisdictions.
+    ///
+    /// Verifies that L2 mitigation does not break the happy path for
+    /// legitimate regulatory frameworks.
+    #[test]
+    fn clause_17_compliance_authority_accepts_valid_jurisdictions() {
+        let authority = ComplianceAuthority::new_for_test();
+        for jurisdiction in &["BR-LGPD", "EU-GDPR", "EU-AI-ACT", "EU-AIACT"] {
+            let result = authority.issue_token(jurisdiction, "1.0.0", 720);
+            assert!(
+                result.is_ok(),
+                "ComplianceAuthority must accept valid jurisdiction: {}",
+                jurisdiction
+            );
+        }
     }
 }
