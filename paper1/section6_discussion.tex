@@ -10,6 +10,10 @@
 %   Gap 2: FFI gateway + BTV sidecar for polyglot pipelines
 %   Gap 3: ComplianceAuthority factory replaces public constructor
 %   Gap 4: CAL demoted to design trade-off; CAP analogy removed
+% Rev 3: 29 March 2026 — security audit patches:
+%   Patch 1.1: Trust-assumption alignment with Paper 2 (HMAC vs HSM asymmetry)
+%   Patch 1.2: Urgency note on ComplianceToken public constructor (L2)
+%   Patch 1.3: Sixth future-work item — formal composition theorem
 % -----------------------------------------------------------------------------
 
 \section{Discussion}
@@ -96,6 +100,24 @@ Production deployments should integrate an HSM or a
 key-management service (e.g., AWS KMS, HashiCorp Vault)
 for key issuance and rotation.
 
+% Patch 1.1 — Trust-assumption alignment with Paper 2
+\paragraph{Trust-assumption alignment with Paper~2.}
+The static HMAC key creates an asymmetry with the trust model of
+BTV-Transparency~\cite{btv-t-repo}: Paper~2's Persistence Enclosure
+Theorem relies on Axiom~3.3 (Log Authority), which assumes the Log's
+Ed25519 private key is held in an HSM inaccessible to the System
+Operator. The verdict integrity seal in this paper offers a weaker
+guarantee: a compile-time constant is extractable from the binary.
+Production deployments \emph{must} align the two trust boundaries
+by deriving the HMAC key from the same HSM infrastructure that
+protects the Log Authority key. Without this alignment, the
+system's overall non-repudiation guarantee is bounded by the
+weakest key-management practice---currently, a string literal.
+The reference implementation accepts this asymmetry as a
+proof-of-concept simplification; the type-level guarantee
+(Theorem~\ref{thm:enclosure}) is independent of key management
+and remains valid regardless.
+
 \paragraph{L2 — Public \texttt{ComplianceToken} constructor.}
 The \texttt{ComplianceToken::new} constructor is currently
 \texttt{pub}, allowing any caller to self-declare a jurisdiction
@@ -134,6 +156,16 @@ This change is backward-compatible with the existing Axioms
 1--3: the encapsulation boundary is preserved; the factory
 simply adds a pre-issuance validation step before
 \texttt{ComplianceToken} enters the linear resource pipeline.
+% Patch 1.2 — Urgência L2: nota sobre o gap mais crítico de implementação
+We note that without this extension, the current public
+constructor permits any external crate to instantiate a
+\texttt{ComplianceToken} with an arbitrary jurisdiction string
+(e.g., a non-existent regulatory regime), producing a
+structurally valid but semantically vacuous verdict.
+The Constitutional Enclosure Theorem is unaffected---it
+guarantees structural binding, not semantic correctness---but
+reviewers and adopters should understand that L2 is the
+highest-priority implementation gap in the reference kernel.
 
 \paragraph{L3 — Single-node evidence chain.}
 The current \texttt{EvidenceToken} captures a single BLAKE3 hash
@@ -265,3 +297,15 @@ composed invariant $(V_{\mathrm{auto}} \oplus V_{\mathrm{esc}})
 \multimap R$, where $R$ is the linear resource appropriate to
 each branch, would complete the type-theoretic account of
 mixed human-automated decision pipelines.
+% Patch 1.3 — Sixth future-work item: formal composition theorem
+Sixth, proving a formal composition theorem showing that the
+Constitutional Enclosure (this paper), Persistence Enclosure
+(Paper~2~\cite{btv-t-repo}), and $\varepsilon$-Statistical
+Consistency (Paper~3~\cite{btv-ar2026}) compose into a single
+end-to-end accountability invariant---specifically, that a system
+satisfying all three predicates simultaneously guarantees
+$\mathcal{S} = \emptyset \;\land\; \mathcal{E} = \emptyset
+\;\land\; \forall R:\,|\Delta\rho_g| \leq \varepsilon_g$---would
+close the composition gap identified in Paper~3
+and provide the unified security statement that the series
+currently lacks.
