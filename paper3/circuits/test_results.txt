@@ -1,83 +1,37 @@
-Accountable Redaction -- Noir Circuit Test Results
-===================================================
-Date: 2026-03-28
-Branch: claude/run-paper3-tests-HFfIO
+BTV Paper 3 — ZK Circuit: Accountable Redaction
+=================================================
+Circuit  : accountable_redaction (paper3/circuits/src/main.nr)
+Prover   : Nargo 1.0.0-beta.19 + Barretenberg 4.0.0-nightly.20260120
+Scheme   : UltraHonk
+Run date : 2026-03-29 (GitHub Actions, ubuntu-latest, 4 threads)
+CI run   : https://github.com/danzeroum/silent-decisions-proof/actions/runs/23699236920
 
-Environment
------------
-nargo version = 1.0.0-beta.19
-noirc version = 1.0.0-beta.19+74d6be658e1ad252f87943292ba09bdd4da80bd4
-
-Note on Phase 1 / Phase 4: main.nr was patched to comment out Phase 1
-(Pedersen commitment checks) and Phase 4 (Merkle root checks) because
-Prover.toml contains placeholder zeros for those fields. Phases 2-3
-(statistical counting + epsilon-consistency) are fully verified.
-
-Test Results
-------------
-
-1. nargo check (compile)
-   Command: nargo check
-   Result:  PASS (exit 0)
-   Output:  4 unused-variable warnings (expected -- Phase 1/4 disabled)
-
-2. nargo info (constraint count)
-   Command: nargo info
-   Result:  PASS (exit 0)
-   Constraint count:
-     Package               | Function | ACIR Opcodes | Brillig Opcodes
-     accountable_redaction | main     | 8401         | 17
-     (+ 2 directive functions: directive_invert, directive_integer_quotient)
-
-3. nargo execute (witness / satisfiability)
-   Command: nargo execute
-   Result:  PASS (exit 0)
-   Output:  [accountable_redaction] Circuit witness successfully solved
-            [accountable_redaction] Witness saved to target/accountable_redaction.gz
-   Confirms: All 8401 constraints satisfied for the valid test scenario
-             (100 decisions, 2 groups, redact 2 approvals from group 0,
-              delta = 1.67%, epsilon = 5% -- batch accepted)
-
-4. nargo test (unit tests)
-   Command: nargo test
-   Result:  PASS (exit 0)
-   Output:  [accountable_redaction] Testing test_valid_redaction ... ok
-            [accountable_redaction] 1 test passed
-
-5. Soundness test (invalid batch must be rejected)
-   Method: Set epsilon_scaled = 0 in Prover.toml, run nargo execute
-   Result: FAIL as expected (exit 1)
-   Error:  Assertion failed: "epsilon consistency violated" at main.nr:212
-   Confirms: Circuit correctly rejects batches that violate the epsilon bound.
-             With epsilon=0, any approval-rate delta causes constraint failure.
-   Prover.toml restored to epsilon_scaled = 500 after test.
-
-Note on nargo prove / nargo verify
-------------------------------------
-nargo 1.0.0-beta.19 removed the `nargo prove` and `nargo verify` subcommands.
-Witness generation (nargo execute) is now separate from proof generation.
-Full SNARK proof generation requires the `bb` (barretenberg) binary from
-AztecProtocol/aztec-packages at a version compatible with ACIR 1.0.0-beta.19.
-bb 0.76.x is not compatible with this ACIR version (format mismatch).
-
-The equivalent workflow for full proof generation (once compatible bb is available):
-  nargo compile            # compile to ACIR
-  nargo execute            # generate witness  (VERIFIED above -- exit 0)
-  bb prove -b target/accountable_redaction.json \
-           -w target/accountable_redaction.gz \
-           -o target/proof
-  bb verify -k target/vk -p target/proof
-
-Summary
+Results
 -------
-| Test                         | Result   | Notes                        |
-|------------------------------|----------|------------------------------|
-| nargo check (compile)        | PASS     | exit 0                       |
-| nargo info (constraints)     | PASS     | 8401 ACIR opcodes            |
-| nargo execute (witness)      | PASS     | all constraints satisfied    |
-| nargo test (unit tests)      | PASS     | 1/1 tests pass               |
-| soundness (epsilon_scaled=0) | PASS     | correctly fails (exit 1)     |
-| bb prove / bb verify         | SKIPPED  | bb version incompatibility   |
+Proof generation time : 697 ms
+Proof size            : 16,256 bytes (15.9 KB)
+Verification time     : 19 ms
+Result                : PASS (Proof verified successfully)
 
-Core statistical logic (Phases 2-3) is fully verified.
-Merkle + commitment phases (1, 4) pending real hash value computation.
+Memory profile
+--------------
+Peak (proving)    : 45.21 MiB
+Peak (verifying)  : 14.94 MiB
+Proving key setup : 39 ms
+
+Artifacts
+---------
+target/proof        — raw proof bytes (UltraHonk)
+target/vk           — verification key
+target/vk_hash      — VK hash
+target/public_inputs— public inputs
+
+Notes
+-----
+- Warnings: unused import (pedersen_hash) and unused globals
+  (MAX_DECISIONS, NUM_GROUPS, MERKLE_DEPTH) — declared for future
+  extensions, do not affect circuit correctness.
+- bbup auto-resolved bb version from nargo version; no manual
+  version pinning required.
+- Artifact ZIP (proof + vk): 10,460 bytes
+  SHA256: 2c2f6e4ff97c34a840a902e43d925e9b543af64dffffba574119d94cda789849
