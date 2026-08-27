@@ -1,0 +1,57 @@
+# TCO model parameters for the BTV compliance crossover analysis.
+# Values are documented in paper4/section3_tco_model.tex and
+# paper4/section5_crossover.tex. Edit this file to recompute N*.
+#
+# All monetary values in USD.
+
+# Fixed annual cost of full-stack BTV accountability infrastructure.
+# Components (paper4/section3_tco_model.tex):
+#   - HSM-backed key management (shared): $1,500/yr
+#   - SIEM integration (Buffer + parsing): $1,000/yr
+#   - Storage (WORM, 7-year retention): $1,500/yr
+#   - Audit pipeline maintenance: $1,000/yr
+# Total: $5,000/yr
+c_fixed_usd_per_year: 5000
+
+# Per-regime rho (expected penalty per decision, USD).
+# rho = P_enf * E[fine] / N_controller
+# Computed in paper4/section5_crossover.tex.
+regimes:
+  GDPR:
+    enforcement_prob_per_year: 0.01
+    expected_fine_usd: 10_800_000   # €10M ≈ $10.8M
+    avg_controller_decisions_per_year: 1_000_000
+    rho_usd_per_decision: 0.01      # rounded; exact = 0.108 * 10^-1
+  EU_AI_ACT:
+    enforcement_prob_per_year: 0.02
+    expected_fine_usd: 3_000_000    # 3% of $100M mid-market turnover
+    avg_controller_decisions_per_year: 3_000_000
+    rho_usd_per_decision: 0.02
+  SEC:
+    enforcement_prob_per_year: 0.05
+    expected_fine_usd: 125_000_000  # average 2021-2024
+    avg_controller_decisions_per_year: 6_000_000
+    rho_usd_per_decision: 1.04
+  BR_LGPD:
+    enforcement_prob_per_year: 0.005
+    expected_fine_usd: 500_000      # ANPD median 2023
+    avg_controller_decisions_per_year: 500_000
+    rho_usd_per_decision: 0.005
+
+# Compliance credit delta (paper4/section6_compliance_credit.tex).
+# A documented BTV framework reduces the effective fine by factor (1-delta).
+# For AI Act Art. 99 mitigated penalty: delta = 0.50 (50% reduction).
+compliance_credit:
+  EU_AI_ACT_delta: 0.50
+  GDPR_delta: 0.10     # Art. 83(2) mitigating measures
+  SEC_delta: 0.0       # no formal mitigation framework
+  BR_LGPD_delta: 0.0
+
+# Sensitivity analysis ranges (for appendix_b_pgfplots.tex).
+sensitivity:
+  rho_min: 0.005
+  rho_max: 0.050
+  rho_steps: 50
+  c_fixed_min: 1000
+  c_fixed_max: 50000
+  c_fixed_steps: 50

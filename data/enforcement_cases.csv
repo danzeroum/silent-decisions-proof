@@ -1,0 +1,21 @@
+case_id,regime,representative_case,jurisdiction,year,t1_evidence,t2_destruction,t3_audit,fine_usd_millions,enforcement_prob_per_year,avg_controller_decisions_per_year,rho_usd_per_decision
+1,GDPR,Clearview AI (Italy),EU-GDPR,2022,1,0,1,22.2,0.01,1000000,0.01
+2,GDPR,CNIL vs Credit Mutuel,EU-GDPR,2023,1,1,1,4.5,0.01,1000000,0.01
+3,GDPR,Meta (Ireland automated ads),EU-GDPR,2023,0,0,1,14.0,0.01,1000000,0.01
+4,GDPR,Spotify (Sweden),EU-GDPR,2023,1,0,1,5.4,0.01,1000000,0.01
+5,GDPR,TikTok (Ireland),EU-GDPR,2023,0,1,1,368.0,0.01,1000000,0.01
+6,GDPR,H&M (Hamburg),EU-GDPR,2020,1,0,0,35.3,0.01,1000000,0.01
+7,GDPR,Deutsche Wohnen (Berlin),EU-GDPR,2019,0,1,0,14.5,0.01,1000000,0.01
+8,GDPR,Eni Gas (Italy),EU-GDPR,2021,1,0,1,11.5,0.01,1000000,0.01
+9,GDPR,Enel Energia (Italy),EU-GDPR,2022,1,1,1,26.5,0.01,1000000,0.01
+10,GDPR,Vodafone (Italy),EU-GDPR,2022,1,0,1,12.2,0.01,1000000,0.01
+11,SEC,JPMorgan Chase (off-channel),US-SEC,2021,0,1,0,200.0,0.05,6000000,1.04
+12,SEC,Goldman Sachs (off-channel),US-SEC,2023,0,1,0,6.0,0.05,6000000,1.04
+13,SEC,Morgan Stanley (off-channel),US-SEC,2022,0,1,0,35.0,0.05,6000000,1.04
+14,SEC,Deutsche Bank (off-channel),US-SEC,2023,0,1,0,19.0,0.05,6000000,1.04
+15,SEC,Robinhood (algo disclosure),US-SEC,2022,1,0,1,65.0,0.05,6000000,1.04
+16,BR,Serasa Experian (ANPD),BR-LGPD,2023,1,0,1,0.1,0.005,500000,0.001
+17,BR,Clear Sale (ANPD),BR-LGPD,2023,1,0,1,0.05,0.005,500000,0.001
+18,BR,Banco Inter (CVM notice),BR-LGPD,2022,0,1,0,1.2,0.005,500000,0.001
+19,BR,iFood (ANPD),BR-LGPD,2023,1,0,1,0.08,0.005,500000,0.001
+20,BR,Mercado Livre (ANPD),BR-LGPD,2022,1,1,1,0.15,0.005,500000,0.001

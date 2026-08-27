@@ -1,0 +1,5 @@
+regime,rho_usd_per_decision,delta_credit,n_star_no_credit,n_star_with_credit,enforcement_prob,expected_fine_usd,avg_controller_decisions
+GDPR,0.01,0.1,500000.0,555555.5555555555,0.01,10800000,1000000
+EU_AI_ACT,0.02,0.5,250000.0,500000.0,0.02,3000000,3000000
+SEC,1.04,0.0,4807.692307692308,4807.692307692308,0.05,125000000,6000000
+BR_LGPD,0.005,0.0,1000000.0,1000000.0,0.005,500000,500000

@@ -1,0 +1,6 @@
+implementation,p50_us,p95_us,p99_us,mean_us,stdev_us,throughput_ops_per_s,n_samples
+"BTV-Rust-native (criterion, mean only)",1.098,1.098,1.098,1.098,0.010,910576,100
+BTV-PyO3 (Python bench),2.225,3.397,5.745,2.385,1.067,419257,5000
+"BTV-Rust+SQLite WAL+FULL (criterion, mean only)",10.335,10.335,10.335,10.335,0.263,96755,100
+OpenTelemetry pós-hoc (BatchProcessor+NullExporter),17.697,24.548,47.061,20.871,33.049,47912,5000
+SQLite ACID bare (BEGIN..COMMIT),8.613,13.076,23.105,9.800,4.503,102039,5000

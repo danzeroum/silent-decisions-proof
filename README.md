@@ -1,164 +1,157 @@
-# The Accountability Stack
-## A Unified Architecture for Verifiable Institutions
+# Silent Decisions Are Type Errors — Artifact v2
 
-> *"The violation of the constitution is not a crime to be punished.  
-> It is a compilation error that prevents the institution from ever existing."*
-> — Paper 5
+Reference implementation and test artifact for the IEEE Computer major-revision of *"Silent Decisions Are Type Errors: Enforcing AI Accountability via Linear Resource Types"*.
 
-This repository contains the source code, proofs, circuits, and LaTeX
-source for a six-paper series on algorithmic accountability. Together,
-they form a complete, layered architecture — the **Accountability Stack** —
-for building AI systems that are not merely compliant, but
-**structurally just**.
+**Branch:** `artifact-v2` (local; based on `main` @ `6f3cf39`)
+**Date:** 2026-08-27
 
----
-
-## The Stack at a Glance
+## What's in this artifact
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  P6  The Living Constitution   │ Evolution without capture       │
-│      Amendment Protocol        │ Change ⊸ Consensus ⊗ Legitimacy │
-├─────────────────────────────────────────────────────────────────┤
-│  P5  Constitutional Code       │ Separation of Powers in code    │
-│      Montesquieu ↔ BTV         │ P_L ∩ P_E ∩ P_J = ∅            │
-├─────────────────────────────────────────────────────────────────┤
-│  P4  Economics of Opacity      │ CoO ratio: fines vs infra cost  │
-│      20 enforcement cases      │ TCO(N) < ρ · N                  │
-├─────────────────────────────────────────────────────────────────┤
-│  P3  Accountable Redaction     │ Privacy-preserving audit        │
-│      ZK proofs in Noir         │ Redaction ⟺ π_auth ∧ π_stat    │
-├─────────────────────────────────────────────────────────────────┤
-│  P2  BTV-Transparency          │ Append-only verifiable log      │
-│      Merkle persistence        │ Delivery ⊸ Verdict ⊗ Receipt    │
-├─────────────────────────────────────────────────────────────────┤
-│  P1  Silent Decisions          │ Evidence at compile time        │
-│      Linear types in Rust      │ Verdict ⊸ Evidence ⊗ Cert       │
-└─────────────────────────────────────────────────────────────────┘
+artifact-v2/
+├── btv-core/                # Rust crate — BTV framework (#![forbid(unsafe_code)])
+│   ├── src/lib.rs           # Verdict, EvidenceToken, ComplianceToken, LogSink trait
+│   ├── benches/verdict_construction.rs   # Criterion benchmarks (3)
+│   └── tests/
+│       ├── trybuild.rs      # Test 1: 8 compile-fail UI tests
+│       ├── ui/              # .rs + .stderr for each compile-fail case
+│       ├── test_partition.rs # Test 5: 5 fail-secure partition tests
+│       └── test_load.rs     # Test 6: concurrent load + p50/p95/p99 stats
+├── btv-python/              # PyO3 binding for Python orchestrators
+│   ├── src/lib.rs           # SealedVerdict, LogConfig, TestingLogConfig
+│   └── Cargo.toml           # (cdylib, abi3-py37)
+├── tests/
+│   └── pyo3/test_binding.py # Test 3: 13 PyO3 unit tests (context manager, forged-hash, etc.)
+├── scripts/
+│   ├── benchmark_baseline.py        # Test 4: BTV vs OpenTelemetry vs SQLite ACID
+│   ├── cargo_geiger_replacement.py  # Test 2: unsafe inventory (cargo-geiger equivalent)
+│   ├── compute_crossover.py         # Test 8: TCO/N* reproducibility
+│   └── locust_btv.py                # Future use: HTTP load test (not run by pipeline)
+├── data/
+│   ├── enforcement_cases.csv        # 20 regulatory cases (T1/T2/T3 + fine)
+│   ├── policy_parameters.yaml       # ρ, C_fixed, compliance credit deltas
+│   ├── n_star_by_regime.csv         # Computed N* per regime (auto-generated)
+│   └── tco_plot_data.csv            # Sensitivity grid (auto-generated)
+├── reports/
+│   ├── tcb_summary.md               # Test 2: TCB + unsafe audit + cargo audit + clippy
+│   ├── cargo_audit_raw.txt          # Test 2: cargo audit raw output
+│   ├── cargo_geiger_unsafe_inventory.csv  # Test 2: 113 deps, 63 with unsafe
+│   ├── cargo_geiger_unsafe_inventory.md
+│   ├── clippy_pedantic_raw.txt      # Test 2: clippy output (49 warnings, 0 errors)
+│   ├── benchmark_baseline.md        # Test 4: comparative table
+│   ├── benchmark_baseline.csv
+│   ├── failure_behavior.md          # Test 5: fail-secure analysis
+│   ├── load_stats.csv               # Test 6: x86-64 native p50/p95/p99
+│   ├── load_stats_arm64_qemu.csv   # Test 7: ARM64 QEMU p50/p95/p99
+│   ├── hardware_comparison.md      # Test 7: x86-64 vs ARM64
+│   └── tco_summary.md               # Test 8: N* derivation summary
+├── paper1/                  # LaTeX manuscript (under revision) + original src/lib.rs
+├── paper2/                  # Paper 2 — durable log (related)
+├── paper3/                  # Paper 3 — ZK circuits (related)
+├── paper4/                  # Paper 4 — TCO/economics (source of N*)
+├── paper5/                  # Paper 5 — constitutional mapping
+├── paper6/                  # Paper 6 — amendments
+├── .github/workflows/ci.yml # CI: fmt, clippy, audit, tests (x86 + ARM64 QEMU), TCO
+├── appendix_b_pgfplots.tex  # LaTeX PGFPlots snippet for Appendix B (TCO)
+├── appendix_benchmarks.pgfplots.tex  # LaTeX PGFPlots for benchmark figures
+├── README.md                # This file
+└── RELEASE_NOTES.md         # What was tested and validated
 ```
 
----
+## Quick start
 
-## End-to-End Data Flow
+### Prerequisites
 
-This is what happens when an AI system makes a single decision under
-the full Accountability Stack:
+- Rust stable (1.98+) with `rustfmt`, `clippy`, target `aarch64-unknown-linux-gnu` (optional)
+- Python 3.10+
+- `maturin`, `pytest`, `opentelemetry-sdk`, `pyyaml`, `numpy`
 
-```
-[1] INPUT
-    User submits credit application → raw features arrive at Operator
+### Run all tests (x86-64)
 
-[2] TYPE CHECK (P1 — Linear Types)
-    btv-core type system verifies:
-      EvidenceToken is consumed exactly once
-      ComplianceCertificate is produced
-    ┌──────────────────────────────────────┐
-    │  fn decide(e: EvidenceToken,         │
-    │            rules: &ConstitType)      │
-    │  -> (Verdict, ComplianceCert) { .. } │
-    └──────────────────────────────────────┘
-    ↓ compile-time error if evidence is missing or duplicated
+```bash
+# 1. Format + lint + audit
+cd btv-core
+cargo fmt --check
+cargo clippy --all-targets --features test-support -- -D clippy::pedantic
+cargo audit --deny warnings
 
-[3] LOG COMMIT (P2 — Merkle Persistence)
-    Verdict + Cert → LogServer.append()
-    LogServer returns: InclusionReceipt { leaf_hash, merkle_path, root }
-    Root is published to public bulletin board
-    ┌──────────────────────────────────────┐
-    │  DeliveryToken::seal(receipt)        │
-    │  // only valid with InclusionReceipt │
-    └──────────────────────────────────────┘
-    ↓ decision cannot be delivered without committed receipt
+# 2. Unit + integration tests
+cargo test --features test-support --lib
+cargo test --features test-support --test trybuild
+cargo test --features test-support --test test_partition
+cargo test --features test_support --test test_load -- --nocapture
 
-[4] DELIVERY
-    DeliveryToken::send() → external API response to user
-    Operator receives: denial/approval + opaque receipt ID
+# 3. Benchmarks
+cargo bench --features test-support --bench verdict_construction
 
-[5] AUDIT (P3 — ZK Proofs)
-    Auditor requests batch proof for epoch T
-    Operator generates π_stat: ZK proof that
-      approval_rate(group_A) / approval_rate(group_B) ∈ [1-ε, 1+ε]
-    Auditor verifies: ZKVerify(π_stat, stmt) = 1
-    ↓ auditor learns: system is fair. Learns nothing else.
+# 4. PyO3 binding
+cd ../btv-python
+maturin build --release --features test-support
+pip install --force-reinstall target/wheels/*.whl
+cd ..
+pytest tests/pyo3/test_binding.py -v
 
-[6] ECONOMIC SIGNAL (P4)
-    Compliance Credit δ = 0.9 (Level 2 Constitutional)
-    Expected fine liability reduced by factor (1 - δ)
-    TCO_annual ≈ $5,000–$50,000 depending on decision volume
-
-[7] CONSTITUTIONAL LAYER (P5)
-    The type system = Legislative branch  (defines the rules)
-    The operator    = Executive branch    (executes, cannot hide)
-    The auditor     = Judicial branch     (verifies, no permission needed)
-    P_L ∩ P_E ∩ P_J = ∅  ← Constitutional Completeness
-
-[8] AMENDMENT (P6)
-    Legislative mandate M = Mandate[L_v, t_exp]
-    Policy updates: signed by L alone
-    Stone Clause changes: require σ_L ∧ σ_J ∧ σ_E_rep
-    At t > t_exp: Verdict::new() fails → Constitutional Interregnum
+# 5. TCO reproducibility
+python3 scripts/compute_crossover.py
 ```
 
----
+### Run tests on ARM64 (via QEMU)
 
-## Repository Structure
+Requires `qemu-user-static`, `gcc-aarch64-linux-gnu`, `libc6-dev-arm64-cross`, `libgcc-14-dev-arm64-cross`.
 
-```
-silent-decisions-proof/
-├── paper1/          Silent Decisions Are Type Errors (IEEE Computer)
-│   ├── main.tex
-│   ├── section*.tex
-│   └── refs.bib
-├── paper2/          BTV-Transparency (CCS/USENIX)
-│   ├── main.tex
-│   └── ...
-├── paper3/          Accountable Redaction (PoPETs 2027)
-│   ├── main.tex
-│   ├── circuits/    Noir ZK circuits
-│   └── ...          CI: 697ms proof, 16KB, verified
-├── paper4/          Economics of Opacity (FAccT 2027)
-│   ├── main.tex
-│   └── ...          20 enforcement cases, CoO analysis
-├── paper5/          Constitutional Code (CACM / Nature MI)
-│   ├── main.tex
-│   └── ...          3 independence theorems + completeness corollary
-├── paper6/          The Living Constitution (ACM TOCS / JCPE)
-│   ├── main.tex
-│   └── ...          Amendment Soundness + Mandatory Renewal
-├── docs/
-│   ├── BOOK_PROPOSAL.md          MIT Press / O'Reilly proposal
-│   └── draft-soares-btv-inclusion-receipt-00.txt   IETF Internet Draft
-├── ROADMAP.md
-└── README.md        ← you are here
+```bash
+rustup target add aarch64-unknown-linux-gnu
+
+# Configure cargo:
+cat > btv-core/.cargo/config.toml << 'EOF'
+[target.aarch64-unknown-linux-gnu]
+linker = "aarch64-linux-gnu-gcc"
+runner = "qemu-aarch64-static -L /usr/aarch64-linux-gnu"
+EOF
+
+cd btv-core
+cargo test --target aarch64-unknown-linux-gnu --features test-support --lib
+cargo test --target aarch64-unknown-linux-gnu --features test-support --test test_partition
+BTV_UNDER_QEMU=1 cargo test --target aarch64-unknown-linux-gnu --features test-support --test test_load -- --nocapture
 ```
 
----
+## Test results summary
 
-## Submission Status
-
-| Paper | Venue | Deadline | Status |
+| # | Test | Status (x86-64) | Status (ARM64 QEMU) |
 |---|---|---|---|
-| P1 | IEEE Computer | 13 Apr 2026 | ✅ Ready |
-| P2 | CCS / USENIX SEC | TBD (CFP) | ✅ Ready |
-| P3 | PoPETs 2027 | Jan 2027 | ✅ CI green |
-| P4 | FAccT 2027 | Jan 2027 | ⚠️ Verify fine amounts |
-| P5 | CACM / Nature MI | Rolling | ✅ Ready |
-| P6 | ACM TOCS / JCPE | Rolling | ✅ Ready |
+| 1 | trybuild compile-fail (8 cases) | ✅ 8/8 | ⚠️ skipped (see `reports/hardware_comparison.md`) |
+| 2 | TCB / unsafe audit | ✅ `#![forbid(unsafe_code)]`, 0 vulns, 0 clippy errors | n/a |
+| 3 | PyO3 binding (13 tests) | ✅ 13/13 | n/a (PyO3 is x86 only) |
+| 4 | Baseline comparative (3 impls) | ✅ see `reports/benchmark_baseline.md` | n/a |
+| 5 | Fail-secure partition (5 tests) | ✅ 5/5 | ✅ 5/5 |
+| 6 | Concurrent load (p50/p95/p99) | ✅ p99=28.77μs, 63k ops/s | ✅ p99=611.78μs, 2.9k ops/s (QEMU) |
+| 7 | Multi-hardware | ✅ native | ✅ QEMU emulation (see note) |
+| 8 | TCO reproducibility | ✅ N* = 500,000 (GDPR); see `reports/tco_summary.md` | n/a |
 
----
+## Trusted Computing Base (TCB)
 
-## How to Cite
+See `reports/tcb_summary.md` for the full TCB declaration. Summary:
 
-Until papers are published, cite the series as:
+- `rustc` 1.98.0 stable, `std`
+- `blake3`, `hmac`, `sha2`, `subtle` (cryptographic primitives)
+- `rusqlite` + `libsqlite3-sys` (persistence backend)
+- `BTV_HMAC_KEY` / `BTV_AUTHORITY_KEY` (HSM/KMS in production)
+- `LogSink` implementation (durability depends on backend)
 
-```bibtex
-@misc{btv-stack-2026,
-  author = {Soares, Daniel Lau Pereira},
-  title  = {The Accountability Stack: Source Repository},
-  year   = {2026},
-  url    = {https://github.com/danzeroum/silent-decisions-proof}
-}
-```
+The `btv-core` crate is `#![forbid(unsafe_code)]`. Transitive dependencies contain 5,146 `unsafe` occurrences across 63 crates (see `reports/cargo_geiger_unsafe_inventory.csv`).
 
----
+## Epistemic footers
 
-*From bits to Montesquieu to Jefferson — São Paulo, March 2026.*
+Every test report includes an epistemic footer that documents what is and is NOT being validated:
+
+> *Este teste valida [X] sob hipóteses explícitas de [Y]. Ele NÃO garante [Z] (fora do escopo desta implementação).*
+
+See individual reports for the specific footers.
+
+## License
+
+MIT (see `btv-core/Cargo.toml`).
+
+## Contact
+
+For questions about this artifact, contact the corresponding author of the IEEE Computer submission.

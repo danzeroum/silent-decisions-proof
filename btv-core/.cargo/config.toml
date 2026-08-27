@@ -1,0 +1,6 @@
+[target.aarch64-unknown-linux-gnu]
+linker = "/home/z/cross-shim/aarch64-linux-gnu-gcc"
+runner = "/home/z/cross/usr/bin/qemu-aarch64-static -L /home/z/cross/usr/aarch64-linux-gnu"
+
+[build]
+target = "x86_64-unknown-linux-gnu"
