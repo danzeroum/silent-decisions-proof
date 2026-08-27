@@ -23,6 +23,15 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::redundant_closure_for_method_calls,
+    clippy::uninlined_format_args,
+    clippy::map_unwrap_or
+)]
 fn concurrent_load_in_memory_p50_p95_p99() {
     let n_threads = num_cpus();
     let ops_per_thread = 1_000;
@@ -76,7 +85,10 @@ fn concurrent_load_in_memory_p50_p95_p99() {
     let variance: f64 =
         sorted_us.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / sorted_us.len() as f64;
     let stdev = variance.sqrt();
-    let total_time_s: f64 = latencies.iter().map(|d| d.as_secs_f64()).sum::<f64>();
+    let total_time_s: f64 = latencies
+        .iter()
+        .map(std::time::Duration::as_secs_f64)
+        .sum::<f64>();
     let throughput = total_ops as f64 / total_time_s;
 
     println!(
@@ -100,8 +112,7 @@ fn concurrent_load_in_memory_p50_p95_p99() {
     );
     assert!(
         throughput > 1_000.0,
-        "throughput must exceed 1k ops/s; got {:.0}",
-        throughput
+        "throughput must exceed 1k ops/s; got {throughput:.0}"
     );
 
     // Detect if we're under QEMU emulation; if so, write a separate CSV.
@@ -143,9 +154,7 @@ fn concurrent_load_in_memory_p50_p95_p99() {
 // Bring in num_cpus if not available as a crate
 mod num_cpus {
     pub fn get() -> usize {
-        std::thread::available_parallelism()
-            .map(|n| n.get())
-            .unwrap_or(1)
+        std::thread::available_parallelism().map_or(1, std::num::NonZero::get)
     }
 }
 use num_cpus::get as num_cpus;

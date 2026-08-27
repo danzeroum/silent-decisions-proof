@@ -457,7 +457,10 @@ impl ComplianceAuthority {
     /// proof-of-concept constant if absent.
     #[must_use]
     pub fn new_from_env() -> Self {
-        let signing_key = std::env::var("BTV_AUTHORITY_KEY").map_or_else(|_| b"btv-authority-key-proof-of-concept-2026".to_vec(), std::string::String::into_bytes);
+        let signing_key = std::env::var("BTV_AUTHORITY_KEY").map_or_else(
+            |_| b"btv-authority-key-proof-of-concept-2026".to_vec(),
+            std::string::String::into_bytes,
+        );
         Self {
             signing_key,
             allowed_jurisdictions: vec![
@@ -932,7 +935,10 @@ impl AccountableDecision for EscalatedVerdict {
 // ============================================================================
 
 fn hmac_key() -> Vec<u8> {
-    std::env::var("BTV_HMAC_KEY").map_or_else(|_| b"btv-proof-key-constitutional-enclosure-2026".to_vec(), std::string::String::into_bytes)
+    std::env::var("BTV_HMAC_KEY").map_or_else(
+        |_| b"btv-proof-key-constitutional-enclosure-2026".to_vec(),
+        std::string::String::into_bytes,
+    )
 }
 
 // ============================================================================

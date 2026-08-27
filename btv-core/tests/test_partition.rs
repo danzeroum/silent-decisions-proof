@@ -134,7 +134,8 @@ fn concurrent_failures_all_rejected() {
 
 #[test]
 fn append_failure_also_rejected() {
-    /// A LogSink that fails on append even though is_available() == true.
+    /// A `LogSink` that fails on append even though `is_available()` == true.
+    #[allow(clippy::doc_markdown)]
     struct FailOnAppendSink;
     impl LogSink for FailOnAppendSink {
         fn append(&self, _: &btv_core::VerdictRecord) -> Result<(), BtvError> {
