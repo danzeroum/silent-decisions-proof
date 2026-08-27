@@ -17,9 +17,7 @@
 
 #![cfg(test)]
 
-use btv_core::{
-    issue_verdict, ComplianceAuthority, Decision, EvidenceToken, InMemoryLogSink,
-};
+use btv_core::{issue_verdict, ComplianceAuthority, Decision, EvidenceToken, InMemoryLogSink};
 use rayon::prelude::*;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -45,9 +43,13 @@ fn concurrent_load_in_memory_p50_p95_p99() {
                 let compliance = auth.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
                 let t0 = Instant::now();
                 let verdict = issue_verdict(
-                    token, compliance, Decision::Allow,
-                    "load test".to_string(), &*sink,
-                ).expect("issue_verdict should succeed under load");
+                    token,
+                    compliance,
+                    Decision::Allow,
+                    "load test".to_string(),
+                    &*sink,
+                )
+                .expect("issue_verdict should succeed under load");
                 let elapsed = t0.elapsed();
                 assert!(verdict.verify_integrity());
                 local_latencies.push(elapsed);
@@ -81,18 +83,34 @@ fn concurrent_load_in_memory_p50_p95_p99() {
         "[load_stats] threads={n_threads} ops={total_ops} \
          p50={:.2}us p95={:.2}us p99={:.2}us mean={:.2}us stdev={:.2}us \
          throughput={:.0}ops/s",
-        p(0.50), p(0.95), p(0.99), mean, stdev, throughput
+        p(0.50),
+        p(0.95),
+        p(0.99),
+        mean,
+        stdev,
+        throughput
     );
 
     // Soft assertions (with wide margins — never use tight bounds)
     // Under QEMU emulation, ARM64 throughput is ~20-30× slower than native.
-    assert!(p(0.99) < 5000.0, "p99 must be under 5ms in-memory; got {:.2}us", p(0.99));
-    assert!(throughput > 1_000.0, "throughput must exceed 1k ops/s; got {:.0}", throughput);
+    assert!(
+        p(0.99) < 5000.0,
+        "p99 must be under 5ms in-memory; got {:.2}us",
+        p(0.99)
+    );
+    assert!(
+        throughput > 1_000.0,
+        "throughput must exceed 1k ops/s; got {:.0}",
+        throughput
+    );
 
     // Detect if we're under QEMU emulation; if so, write a separate CSV.
-    let is_qemu = std::env::var("BTV_UNDER_QEMU").is_ok()
-        || p(0.50) > 100.0;  // heuristic: native p50 is <30us, QEMU is >200us
-    let csv_name = if is_qemu { "load_stats_arm64_qemu.csv" } else { "load_stats.csv" };
+    let is_qemu = std::env::var("BTV_UNDER_QEMU").is_ok() || p(0.50) > 100.0; // heuristic: native p50 is <30us, QEMU is >200us
+    let csv_name = if is_qemu {
+        "load_stats_arm64_qemu.csv"
+    } else {
+        "load_stats.csv"
+    };
     let csv_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("..")
         .join("reports")
@@ -112,7 +130,12 @@ fn concurrent_load_in_memory_p50_p95_p99() {
          stdev_us,{:.3}\n\
          throughput_ops_per_s,{:.0}\n\
          emulated,{is_qemu}\n",
-        p(0.50), p(0.95), p(0.99), mean, stdev, throughput
+        p(0.50),
+        p(0.95),
+        p(0.99),
+        mean,
+        stdev,
+        throughput
     );
     std::fs::write(&csv_path, csv).expect("write load_stats csv");
 }

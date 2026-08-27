@@ -15,8 +15,8 @@
 #![cfg(test)]
 
 use btv_core::{
-    issue_verdict, BtvError, ComplianceAuthority, Decision, EvidenceToken,
-    InMemoryLogSink, LogSink, SqliteLogSink,
+    issue_verdict, BtvError, ComplianceAuthority, Decision, EvidenceToken, InMemoryLogSink,
+    LogSink, SqliteLogSink,
 };
 use std::sync::Arc;
 use std::thread;
@@ -32,12 +32,18 @@ fn partition_in_memory_no_verdict_emitted() {
     let compliance = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
 
     let result = issue_verdict(
-        token, compliance, Decision::Allow,
-        "post-partition attempt".to_string(), &sink,
+        token,
+        compliance,
+        Decision::Allow,
+        "post-partition attempt".to_string(),
+        &sink,
     );
 
-    assert!(matches!(result, Err(BtvError::LogUnavailable)),
-        "must return LogUnavailable, got: {:?}", result.err());
+    assert!(
+        matches!(result, Err(BtvError::LogUnavailable)),
+        "must return LogUnavailable, got: {:?}",
+        result.err()
+    );
     assert_eq!(sink.len(), 0, "no record should be appended");
 }
 
@@ -52,8 +58,11 @@ fn partition_sqlite_no_verdict_emitted() {
     let compliance = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
 
     let result = issue_verdict(
-        token, compliance, Decision::Allow,
-        "post-partition".to_string(), &sink,
+        token,
+        compliance,
+        Decision::Allow,
+        "post-partition".to_string(),
+        &sink,
     );
 
     assert!(matches!(result, Err(BtvError::LogUnavailable)));
@@ -68,7 +77,11 @@ fn recovery_allows_subsequent_verdicts() {
     let authority = ComplianceAuthority::new_for_test();
     let compliance = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
     let _ = issue_verdict(
-        token, compliance, Decision::Allow, "first".to_string(), &sink,
+        token,
+        compliance,
+        Decision::Allow,
+        "first".to_string(),
+        &sink,
     );
     assert_eq!(sink.len(), 0);
 
@@ -78,8 +91,13 @@ fn recovery_allows_subsequent_verdicts() {
     let token2 = EvidenceToken::new(b"second-attempt");
     let compliance2 = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
     let verdict = issue_verdict(
-        token2, compliance2, Decision::Allow, "second".to_string(), &sink,
-    ).expect("recovery should allow issuance");
+        token2,
+        compliance2,
+        Decision::Allow,
+        "second".to_string(),
+        &sink,
+    )
+    .expect("recovery should allow issuance");
     assert!(verdict.verify_integrity());
     assert_eq!(sink.len(), 1);
 }
@@ -99,8 +117,11 @@ fn concurrent_failures_all_rejected() {
             let token = EvidenceToken::new(format!("ctx-{i}").as_bytes());
             let compliance = auth_clone.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
             let result = issue_verdict(
-                token, compliance, Decision::Allow,
-                format!("concurrent-{i}"), &*sink_clone,
+                token,
+                compliance,
+                Decision::Allow,
+                format!("concurrent-{i}"),
+                &*sink_clone,
             );
             assert!(matches!(result, Err(BtvError::LogUnavailable)));
         }));
@@ -119,7 +140,9 @@ fn append_failure_also_rejected() {
         fn append(&self, _: &btv_core::VerdictRecord) -> Result<(), BtvError> {
             Err(BtvError::Backend("simulated append failure".to_string()))
         }
-        fn is_available(&self) -> bool { true }
+        fn is_available(&self) -> bool {
+            true
+        }
     }
 
     let sink = FailOnAppendSink;
@@ -127,7 +150,11 @@ fn append_failure_also_rejected() {
     let authority = ComplianceAuthority::new_for_test();
     let compliance = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
     let result = issue_verdict(
-        token, compliance, Decision::Allow, "test".to_string(), &sink,
+        token,
+        compliance,
+        Decision::Allow,
+        "test".to_string(),
+        &sink,
     );
     assert!(matches!(result, Err(BtvError::Backend(_))));
 }

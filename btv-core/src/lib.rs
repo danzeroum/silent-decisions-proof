@@ -111,9 +111,7 @@ impl VerdictRecord {
         mac.update(&self.appeal_deadline_hours.to_be_bytes());
         let expected = mac.finalize().into_bytes();
         match (hex::decode(&self.hmac_hex), expected) {
-            (Ok(got), exp) => {
-                got.len() == exp.len() && got.ct_eq(&exp).into()
-            }
+            (Ok(got), exp) => got.len() == exp.len() && got.ct_eq(&exp).into(),
             _ => false,
         }
     }
@@ -141,12 +139,14 @@ impl InMemoryLogSink {
 
     /// Simulate a network partition or log-server crash.
     pub fn fail(&self) {
-        self.available.store(false, std::sync::atomic::Ordering::SeqCst);
+        self.available
+            .store(false, std::sync::atomic::Ordering::SeqCst);
     }
 
     /// Restore availability.
     pub fn recover(&self) {
-        self.available.store(true, std::sync::atomic::Ordering::SeqCst);
+        self.available
+            .store(true, std::sync::atomic::Ordering::SeqCst);
     }
 
     /// Number of records successfully appended.
@@ -252,12 +252,14 @@ impl SqliteLogSink {
 
     /// Simulate a partition.
     pub fn fail(&self) {
-        self.available.store(false, std::sync::atomic::Ordering::SeqCst);
+        self.available
+            .store(false, std::sync::atomic::Ordering::SeqCst);
     }
 
     /// Restore availability.
     pub fn recover(&self) {
-        self.available.store(true, std::sync::atomic::Ordering::SeqCst);
+        self.available
+            .store(true, std::sync::atomic::Ordering::SeqCst);
     }
 }
 
@@ -437,7 +439,10 @@ pub struct ComplianceAuthority {
 impl ComplianceAuthority {
     /// Create a new authority with an explicit signing key and jurisdiction allowlist.
     pub fn new(signing_key: Vec<u8>, allowed_jurisdictions: Vec<String>) -> Self {
-        Self { signing_key, allowed_jurisdictions }
+        Self {
+            signing_key,
+            allowed_jurisdictions,
+        }
     }
 
     /// Read the signing key from `BTV_AUTHORITY_KEY`; fall back to a
@@ -481,7 +486,11 @@ impl ComplianceAuthority {
         if !self.allowed_jurisdictions.iter().any(|j| j == jurisdiction) {
             return Err(BtvError::UnknownJurisdiction(jurisdiction.to_string()));
         }
-        Ok(ComplianceToken::new(jurisdiction, policy_version, contestability_hours))
+        Ok(ComplianceToken::new(
+            jurisdiction,
+            policy_version,
+            contestability_hours,
+        ))
     }
 }
 
@@ -600,14 +609,9 @@ impl Verdict {
         }
     }
 
-    fn compute_hmac(
-        evidence_id: &Blake3Hash,
-        decision: &Decision,
-        explanation: &str,
-    ) -> [u8; 32] {
+    fn compute_hmac(evidence_id: &Blake3Hash, decision: &Decision, explanation: &str) -> [u8; 32] {
         let key = hmac_key();
-        let mut mac =
-            HmacSha256::new_from_slice(&key).expect("HMAC key length is valid");
+        let mut mac = HmacSha256::new_from_slice(&key).expect("HMAC key length is valid");
         mac.update(evidence_id.as_bytes());
         mac.update(decision.as_bytes());
         mac.update(explanation.as_bytes());
@@ -717,14 +721,17 @@ pub struct OperatorToken {
 
 impl OperatorToken {
     fn new_signed(operator_id: [u8; 32], signing_key: &[u8; 32]) -> Self {
-        let mut mac = <HmacSha256 as Mac>::new_from_slice(signing_key)
-            .expect("HMAC accepts any key size");
+        let mut mac =
+            <HmacSha256 as Mac>::new_from_slice(signing_key).expect("HMAC accepts any key size");
         mac.update(&operator_id);
         mac.update(b"operator-token-v1");
         let result = mac.finalize().into_bytes();
         let mut signature = [0u8; 32];
         signature.copy_from_slice(&result[..32]);
-        OperatorToken { operator_id, signature }
+        OperatorToken {
+            operator_id,
+            signature,
+        }
     }
 
     pub fn operator_id(&self) -> &[u8; 32] {
@@ -751,7 +758,9 @@ impl OperatorAuthority {
 
     #[cfg(any(test, feature = "test-support"))]
     pub fn new_for_test() -> Self {
-        OperatorAuthority { signing_key: [0xAA; 32] }
+        OperatorAuthority {
+            signing_key: [0xAA; 32],
+        }
     }
 
     pub fn issue_token(&self, operator_id: [u8; 32]) -> OperatorToken {
@@ -788,7 +797,14 @@ impl EscalatedVerdict {
             &failed_context,
             &reason,
         );
-        EscalatedVerdict { operator_id, operator_signature, decision, failed_context, reason, hmac }
+        EscalatedVerdict {
+            operator_id,
+            operator_signature,
+            decision,
+            failed_context,
+            reason,
+            hmac,
+        }
     }
 
     pub fn verify_integrity(&self) -> bool {
@@ -830,8 +846,7 @@ impl EscalatedVerdict {
         reason: &str,
     ) -> [u8; 32] {
         let key = hmac_key();
-        let mut mac =
-            HmacSha256::new_from_slice(&key).expect("HMAC accepts any key size");
+        let mut mac = HmacSha256::new_from_slice(&key).expect("HMAC accepts any key size");
         mac.update(b"btv-escalated-v1");
         mac.update(operator_id);
         mac.update(operator_signature);
@@ -904,7 +919,9 @@ mod tests {
         let authority = ComplianceAuthority::new_for_test();
         let compliance = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
         let verdict = Verdict::new(
-            token, compliance, Decision::Deny,
+            token,
+            compliance,
+            Decision::Deny,
             "Below threshold".to_string(),
         );
         assert!(verdict.verify_integrity());
@@ -924,10 +941,7 @@ mod tests {
         let token = EvidenceToken::new(b"context");
         let authority = ComplianceAuthority::new_for_test();
         let compliance = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
-        let mut verdict = Verdict::new(
-            token, compliance, Decision::Deny,
-            "Original".to_string(),
-        );
+        let mut verdict = Verdict::new(token, compliance, Decision::Deny, "Original".to_string());
         assert!(verdict.verify_integrity());
         verdict.explanation = "Tampered".to_string(); // bypass HMAC (test only)
         assert!(!verdict.verify_integrity());
@@ -955,10 +969,7 @@ mod tests {
         let token = EvidenceToken::new(b"ctx");
         let authority = ComplianceAuthority::new_for_test();
         let compliance = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
-        let result = issue_verdict(
-            token, compliance, Decision::Allow,
-            "ok".to_string(), &sink,
-        );
+        let result = issue_verdict(token, compliance, Decision::Allow, "ok".to_string(), &sink);
         assert!(matches!(result, Err(BtvError::LogUnavailable)));
         assert_eq!(sink.len(), 0, "no record should have been appended");
     }
@@ -970,10 +981,7 @@ mod tests {
         let token = EvidenceToken::new(b"ctx");
         let authority = ComplianceAuthority::new_for_test();
         let compliance = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
-        let result = issue_verdict(
-            token, compliance, Decision::Allow,
-            "ok".to_string(), &sink,
-        );
+        let result = issue_verdict(token, compliance, Decision::Allow, "ok".to_string(), &sink);
         assert!(result.is_err());
         assert_eq!(sink.len(), 0);
     }
@@ -984,10 +992,8 @@ mod tests {
         let token = EvidenceToken::new(b"ctx");
         let authority = ComplianceAuthority::new_for_test();
         let compliance = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
-        let verdict = issue_verdict(
-            token, compliance, Decision::Allow,
-            "ok".to_string(), &sink,
-        ).unwrap();
+        let verdict =
+            issue_verdict(token, compliance, Decision::Allow, "ok".to_string(), &sink).unwrap();
         assert!(verdict.verify_integrity());
         assert_eq!(sink.len(), 1);
     }
@@ -998,10 +1004,8 @@ mod tests {
         let token = EvidenceToken::new(b"ctx");
         let authority = ComplianceAuthority::new_for_test();
         let compliance = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
-        let verdict = issue_verdict(
-            token, compliance, Decision::Allow,
-            "ok".to_string(), &sink,
-        ).unwrap();
+        let verdict =
+            issue_verdict(token, compliance, Decision::Allow, "ok".to_string(), &sink).unwrap();
         assert_eq!(verdict.jurisdiction(), "BR-LGPD");
     }
 
