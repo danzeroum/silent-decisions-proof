@@ -63,7 +63,7 @@ type HmacSha256 = Hmac<Sha256>;
 /// ## Implementations
 ///
 /// - [`InMemoryLogSink`] — testing only; not durable.
-/// - [`SqliteLogSink`] — SQLite WAL mode with `synchronous=FULL`.
+/// - [`SqliteLogSink`] — `SQLite` WAL mode with `synchronous=FULL`.
 /// - User-provided — for Postgres, S3, Kafka, etc.
 ///
 /// ## Out of scope
@@ -100,6 +100,7 @@ impl VerdictRecord {
     /// Re-verify the HMAC after deserialization.
     ///
     /// Returns `false` if any field was modified in transit or storage.
+    #[must_use]
     pub fn verify_integrity(&self) -> bool {
         let key = hmac_key();
         let mut mac = HmacSha256::new_from_slice(&key).expect("HMAC key length valid");
@@ -130,6 +131,7 @@ pub struct InMemoryLogSink {
 }
 
 impl InMemoryLogSink {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             available: std::sync::atomic::AtomicBool::new(true),
@@ -197,7 +199,7 @@ pub struct SqliteLogSink {
 }
 
 impl SqliteLogSink {
-    /// Open or create a SQLite log database at `path`.
+    /// Open or create a `SQLite` log database at `path`.
     ///
     /// Configures WAL mode and `synchronous=FULL` for ACID durability.
     pub fn open(path: &str) -> Result<Self, BtvError> {
@@ -225,7 +227,7 @@ impl SqliteLogSink {
         })
     }
 
-    /// Open an in-memory SQLite database (for tests).
+    /// Open an in-memory `SQLite` database (for tests).
     pub fn open_in_memory() -> Result<Self, BtvError> {
         let conn = rusqlite::Connection::open_in_memory()
             .map_err(|e| BtvError::Backend(format!("sqlite open: {e}")))?;
@@ -327,10 +329,12 @@ impl Blake3Hash {
         Blake3Hash(*hash.as_bytes())
     }
 
+    #[must_use]
     pub fn as_bytes(&self) -> &[u8; 32] {
         &self.0
     }
 
+    #[must_use]
     pub fn to_hex(&self) -> String {
         hex::encode(self.0)
     }
@@ -410,14 +414,17 @@ impl ComplianceToken {
         }
     }
 
+    #[must_use]
     pub fn jurisdiction(&self) -> &str {
         &self.jurisdiction
     }
 
+    #[must_use]
     pub fn policy_version(&self) -> &str {
         &self.policy_version
     }
 
+    #[must_use]
     pub fn deadline_hours(&self) -> u32 {
         self.contestability_deadline_hours
     }
@@ -438,6 +445,7 @@ pub struct ComplianceAuthority {
 
 impl ComplianceAuthority {
     /// Create a new authority with an explicit signing key and jurisdiction allowlist.
+    #[must_use]
     pub fn new(signing_key: Vec<u8>, allowed_jurisdictions: Vec<String>) -> Self {
         Self {
             signing_key,
@@ -447,10 +455,9 @@ impl ComplianceAuthority {
 
     /// Read the signing key from `BTV_AUTHORITY_KEY`; fall back to a
     /// proof-of-concept constant if absent.
+    #[must_use]
     pub fn new_from_env() -> Self {
-        let signing_key = std::env::var("BTV_AUTHORITY_KEY")
-            .map(|k| k.into_bytes())
-            .unwrap_or_else(|_| b"btv-authority-key-proof-of-concept-2026".to_vec());
+        let signing_key = std::env::var("BTV_AUTHORITY_KEY").map_or_else(|_| b"btv-authority-key-proof-of-concept-2026".to_vec(), std::string::String::into_bytes);
         Self {
             signing_key,
             allowed_jurisdictions: vec![
@@ -463,6 +470,7 @@ impl ComplianceAuthority {
 
     /// Test-only constructor with a deterministic key and permissive allowlist.
     #[cfg(any(test, feature = "test-support"))]
+    #[must_use]
     pub fn new_for_test() -> Self {
         Self {
             signing_key: b"btv-test-authority-key".to_vec(),
@@ -513,6 +521,7 @@ impl Decision {
         }
     }
 
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             Decision::Allow => "allow",
@@ -547,6 +556,7 @@ impl Verdict {
     /// Moves `token` and `compliance` by value, consuming both linearly.
     /// Does NOT persist the verdict to a [`LogSink`]; use
     /// [`issue_verdict`] for the fail-secure path that also persists.
+    #[must_use]
     pub fn new(
         token: EvidenceToken,
         compliance: ComplianceToken,
@@ -567,36 +577,44 @@ impl Verdict {
     }
 
     /// Verify that the Verdict has not been tampered with since construction.
+    #[must_use]
     pub fn verify_integrity(&self) -> bool {
         let expected = Self::compute_hmac(&self.evidence_id, &self.decision, &self.explanation);
         expected.ct_eq(&self.hmac).into()
     }
 
+    #[must_use]
     pub fn evidence_id(&self) -> &Blake3Hash {
         &self.evidence_id
     }
 
+    #[must_use]
     pub fn decision(&self) -> &Decision {
         &self.decision
     }
 
+    #[must_use]
     pub fn explanation(&self) -> &str {
         &self.explanation
     }
 
+    #[must_use]
     pub fn appeal_deadline_hours(&self) -> u32 {
         self.appeal_deadline_hours
     }
 
+    #[must_use]
     pub fn jurisdiction(&self) -> &str {
         self.compliance.jurisdiction()
     }
 
+    #[must_use]
     pub fn policy_version(&self) -> &str {
         self.compliance.policy_version()
     }
 
     /// Serialize to a [`VerdictRecord`] for persistence.
+    #[must_use]
     pub fn to_record(&self) -> VerdictRecord {
         VerdictRecord {
             evidence_id_hex: self.evidence_id.to_hex(),
@@ -689,19 +707,23 @@ pub fn issue_verdict(
 pub struct ContextRef([u8; 32]);
 
 impl ContextRef {
+    #[must_use]
     pub fn from_context(context: &[u8]) -> Self {
         let hash = blake3::hash(context);
         ContextRef(*hash.as_bytes())
     }
 
+    #[must_use]
     pub fn from_bytes(bytes: [u8; 32]) -> Self {
         ContextRef(bytes)
     }
 
+    #[must_use]
     pub fn as_bytes(&self) -> &[u8; 32] {
         &self.0
     }
 
+    #[must_use]
     pub fn to_hex(&self) -> String {
         hex::encode(self.0)
     }
@@ -734,6 +756,7 @@ impl OperatorToken {
         }
     }
 
+    #[must_use]
     pub fn operator_id(&self) -> &[u8; 32] {
         &self.operator_id
     }
@@ -752,11 +775,13 @@ pub struct OperatorAuthority {
 }
 
 impl OperatorAuthority {
+    #[must_use]
     pub fn new(signing_key: [u8; 32]) -> Self {
         OperatorAuthority { signing_key }
     }
 
     #[cfg(any(test, feature = "test-support"))]
+    #[must_use]
     pub fn new_for_test() -> Self {
         OperatorAuthority {
             signing_key: [0xAA; 32],
@@ -783,6 +808,7 @@ pub struct EscalatedVerdict {
 
 impl EscalatedVerdict {
     /// The sole constructor. Enforces `V_esc ⊸ (O ⊗ 1)`.
+    #[must_use]
     pub fn new(
         operator: OperatorToken,
         decision: Decision,
@@ -807,6 +833,7 @@ impl EscalatedVerdict {
         }
     }
 
+    #[must_use]
     pub fn verify_integrity(&self) -> bool {
         let expected = Self::compute_hmac(
             &self.operator_id,
@@ -818,22 +845,27 @@ impl EscalatedVerdict {
         expected.ct_eq(&self.hmac).into()
     }
 
+    #[must_use]
     pub fn operator_id(&self) -> &[u8; 32] {
         &self.operator_id
     }
 
+    #[must_use]
     pub fn operator_id_hex(&self) -> String {
         hex::encode(self.operator_id)
     }
 
+    #[must_use]
     pub fn decision(&self) -> &Decision {
         &self.decision
     }
 
+    #[must_use]
     pub fn failed_context(&self) -> &ContextRef {
         &self.failed_context
     }
 
+    #[must_use]
     pub fn reason(&self) -> &str {
         &self.reason
     }
@@ -900,9 +932,7 @@ impl AccountableDecision for EscalatedVerdict {
 // ============================================================================
 
 fn hmac_key() -> Vec<u8> {
-    std::env::var("BTV_HMAC_KEY")
-        .map(|k| k.into_bytes())
-        .unwrap_or_else(|_| b"btv-proof-key-constitutional-enclosure-2026".to_vec())
+    std::env::var("BTV_HMAC_KEY").map_or_else(|_| b"btv-proof-key-constitutional-enclosure-2026".to_vec(), std::string::String::into_bytes)
 }
 
 // ============================================================================
