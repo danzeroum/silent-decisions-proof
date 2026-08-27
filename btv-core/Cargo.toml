@@ -1,0 +1,31 @@
+[package]
+name = "btv-core"
+version = "0.2.0"
+edition = "2021"
+description = "BTV Framework — Bill of Materials for Trustworthy Verdicts (artifact-v2)"
+license = "MIT"
+repository = "https://github.com/danzeroum/silent-decisions-proof"
+
+[features]
+default = []
+test-support = []
+
+[dependencies]
+blake3 = { version = "1", default-features = false, features = ["std", "no_neon"] }
+hmac = "0.12"
+sha2 = "0.10"
+hex = "0.4"
+subtle = "2"
+serde = { version = "1", features = ["derive"] }
+rusqlite = { version = "0.32", features = ["bundled"] }
+thiserror = "1"
+
+[dev-dependencies]
+trybuild = "1"
+criterion = { version = "0.5", features = ["html_reports"] }
+rayon = "1"
+
+[[bench]]
+name = "verdict_construction"
+harness = false
+required-features = ["test-support"]

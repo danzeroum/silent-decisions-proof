@@ -1,0 +1,19 @@
+[package]
+name = "btv-python"
+version = "0.2.0"
+edition = "2021"
+description = "Python bindings for btv-core (PyO3)"
+license = "MIT"
+repository = "https://github.com/danzeroum/silent-decisions-proof"
+
+[lib]
+name = "btv_python"
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+test-support = ["btv-core/test-support"]
+
+[dependencies]
+btv-core = { path = "../btv-core" }
+pyo3 = { version = "0.22", features = ["extension-module", "abi3-py37"] }

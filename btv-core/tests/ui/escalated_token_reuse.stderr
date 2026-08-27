@@ -1,0 +1,11 @@
+error[E0382]: use of moved value: `token`
+  --> tests/ui/escalated_token_reuse.rs:24:9
+   |
+11 |     let token = authority.issue_token([0x01; 32]);
+   |         ----- move occurs because `token` has type `OperatorToken`, which does not implement the `Copy` trait
+...
+16 |         token,
+   |         ----- value moved here
+...
+24 |         token,
+   |         ^^^^^ value used here after move

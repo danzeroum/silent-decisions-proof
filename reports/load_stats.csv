@@ -1,0 +1,11 @@
+metric,value
+threads,2
+ops_per_thread,1000
+total_ops,2000
+p50_us,14.478
+p95_us,19.708
+p99_us,28.765
+mean_us,15.733
+stdev_us,3.503
+throughput_ops_per_s,63562
+emulated,false

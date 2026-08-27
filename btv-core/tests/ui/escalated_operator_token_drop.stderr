@@ -1,0 +1,16 @@
+error: unused `OperatorToken` that must be used
+  --> tests/ui/escalated_operator_token_drop.rs:10:5
+   |
+10 |     authority.issue_token([0x01; 32]);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: OperatorToken must be consumed via EscalatedVerdict::new(); dropping it without use means an operator was authenticated but no escalation was recorded — a logic error in the governance pipeline
+note: the lint level is defined here
+  --> tests/ui/escalated_operator_token_drop.rs:5:9
+   |
+ 5 | #![deny(unused_must_use)]
+   |         ^^^^^^^^^^^^^^^
+help: use `let _ = ...` to ignore the resulting value
+   |
+10 |     let _ = authority.issue_token([0x01; 32]);
+   |     +++++++

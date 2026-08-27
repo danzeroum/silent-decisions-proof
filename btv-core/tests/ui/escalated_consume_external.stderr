@@ -1,0 +1,10 @@
+error[E0624]: method `consume` is private
+  --> tests/ui/escalated_consume_external.rs:10:27
+   |
+10 |     let _consumed = token.consume(); // Should fail: method is private
+   |                           ^^^^^^^ private method
+   |
+  ::: src/lib.rs
+   |
+   |     pub(crate) fn consume(self) -> ([u8; 32], [u8; 32]) {
+   |     --------------------------------------------------- private method defined here

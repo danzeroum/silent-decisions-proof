@@ -1,0 +1,178 @@
+name: CI — btv-core + btv-python (artifact-v2)
+
+on:
+  push:
+    branches: [artifact-v2, main]
+  pull_request:
+    branches: [artifact-v2, main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  fmt-clippy-audit:
+    name: Format + Clippy + Audit (x86-64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked || true
+
+      - name: cargo fmt --check
+        working-directory: btv-core
+        run: cargo fmt --check
+
+      - name: cargo clippy (pedantic)
+        working-directory: btv-core
+        run: cargo clippy --all-targets --features test-support -- -D clippy::pedantic
+
+      - name: cargo audit
+        working-directory: btv-core
+        run: cargo audit --deny warnings
+
+      - name: cargo audit (btv-python)
+        working-directory: btv-python
+        run: cargo audit --deny warnings || true  # btv-python shares Cargo.lock with btv-core
+
+  test-x86-64:
+    name: Test (x86-64)
+    runs-on: ubuntu-latest
+    needs: fmt-clippy-audit
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install maturin and Python deps
+        run: |
+          pip install --upgrade pip
+          pip install maturin pytest opentelemetry-sdk opentelemetry-api pyyaml numpy
+
+      - name: Run Rust unit + integration tests
+        working-directory: btv-core
+        run: cargo test --features test-support --lib --test test_partition --test test_load
+
+      - name: Run trybuild compile-fail tests
+        working-directory: btv-core
+        run: cargo test --features test-support --test trybuild
+
+      - name: Run Rust benchmarks (criterion, quick)
+        working-directory: btv-core
+        run: cargo bench --features test-support --bench verdict_construction || true
+
+      - name: Build PyO3 binding
+        working-directory: btv-python
+        run: maturin build --release --features test-support
+
+      - name: Install PyO3 binding
+        working-directory: btv-python
+        run: pip install --force-reinstall target/wheels/*.whl
+
+      - name: Run Python binding tests
+        run: pytest tests/pyo3/test_binding.py -v
+
+  test-arm64-qemu:
+    name: Test (ARM64 via QEMU)
+    runs-on: ubuntu-latest
+    needs: fmt-clippy-audit
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain with aarch64 target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu
+
+      - name: Install QEMU and cross toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            qemu-user-static \
+            gcc-aarch64-linux-gnu \
+            g++-aarch64-linux-gnu \
+            libc6-dev-arm64-cross \
+            libgcc-14-dev-arm64-cross
+
+      - name: Configure cargo for cross-compilation
+        working-directory: btv-core
+        run: |
+          mkdir -p .cargo
+          cat > .cargo/config.toml << 'EOF'
+          [target.aarch64-unknown-linux-gnu]
+          linker = "aarch64-linux-gnu-gcc"
+          runner = "qemu-aarch64-static -L /usr/aarch64-linux-gnu"
+          EOF
+
+      - name: Cross-compile btv-core to ARM64
+        working-directory: btv-core
+        run: cargo build --target aarch64-unknown-linux-gnu --features test-support
+
+      - name: Run ARM64 unit tests via QEMU
+        working-directory: btv-core
+        run: cargo test --target aarch64-unknown-linux-gnu --features test-support --lib
+
+      - name: Run ARM64 partition tests via QEMU
+        working-directory: btv-core
+        run: cargo test --target aarch64-unknown-linux-gnu --features test-support --test test_partition
+
+      - name: Run ARM64 load test via QEMU
+        working-directory: btv-core
+        env:
+          BTV_UNDER_QEMU: "1"
+        run: cargo test --target aarch64-unknown-linux-gnu --features test-support --test test_load -- --nocapture
+
+  tco-reproducibility:
+    name: TCO Reproducibility
+    runs-on: ubuntu-latest
+    needs: fmt-clippy-audit
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install deps
+        run: pip install pyyaml numpy
+
+      - name: Recompute N*
+        run: python3 scripts/compute_crossover.py
+
+      - name: Verify N* for GDPR is 500,000
+        run: |
+          python3 -c "
+          import csv
+          with open('data/n_star_by_regime.csv') as f:
+              rows = list(csv.DictReader(f))
+          gdpr = [r for r in rows if r['regime'] == 'GDPR'][0]
+          n_star = float(gdpr['n_star_no_credit'])
+          assert 490_000 <= n_star <= 510_000, f'N* for GDPR must be ~500,000; got {n_star}'
+          print(f'OK: GDPR N* = {n_star}')
+          "
+
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tco-reports
+          path: |
+            reports/tco_summary.md
+            data/n_star_by_regime.csv
+            data/tco_plot_data.csv
+            appendix_b_pgfplots.tex
