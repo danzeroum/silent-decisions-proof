@@ -3,10 +3,27 @@
 //! Usa `rayon` para disparar `issue_verdict` de múltiplas threads
 //! concorrentemente contra um `InMemoryLogSink` compartilhado (via `Arc`).
 //!
-//! Métricas reportadas em `reports/load_stats.csv`:
-//! - p50, p95, p99 (em μs)
-//! - throughput agregado (ops/s)
-//! - variância (stdev)
+//! OS-08 (COMSI-2026-04-0112, closes F8/F9) — measurement/evidence
+//! separation, enforced here:
+//!
+//! 1. THIS TEST NEVER WRITES INTO `reports/`. Output goes to
+//!    `CARGO_TARGET_TMPDIR` (build artifact, gitignored). Committed
+//!    evidence under `reports/` is produced ONLY by
+//!    `scripts/collect_load_stats.sh`, which runs this test and copies the
+//!    result beside an environment fingerprint — the act of running the
+//!    test suite can no longer overwrite the committed record (F9).
+//! 2. `n_threads` comes from `BTV_TEST_THREADS` with an EXPLICIT default
+//!    of 2 (clamped to the machine's parallelism) — not
+//!    `available_parallelism()`, which made the committed CSV
+//!    irreproducible across machines.
+//! 3. The QEMU/ARM64 routing uses the TARGET TRIPLE
+//!    (`std::env::consts::ARCH`) and the `BTV_UNDER_QEMU` env var. The old
+//!    `p50 > 100 µs` heuristic is REMOVED: a loaded native machine grava
+//!    seus números no CSV rotulado "emulado" — provenance poisoning.
+//! 4. Throughput = `total_ops / wall_clock` of the whole parallel section
+//!    (the old value was `total_ops / sum(per-op latencies)`, which is the
+//!    RECIPROCAL of mean latency and overstates throughput under any
+//!    contention — F8).
 //!
 //! Epistemic footer:
 //!   Este teste valida a latência do BTV sob contenção multi-thread em
@@ -22,6 +39,21 @@ use rayon::prelude::*;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+/// Explicit thread-count default (OS-08): reproducible across machines;
+/// override with `BTV_TEST_THREADS=<n>`.
+const DEFAULT_TEST_THREADS: usize = 2;
+
+fn test_threads() -> usize {
+    let configured = std::env::var("BTV_TEST_THREADS")
+        .ok()
+        .and_then(|v| v.trim().parse::<usize>().ok())
+        .unwrap_or(DEFAULT_TEST_THREADS);
+    let available = std::thread::available_parallelism()
+        .map(std::num::NonZeroUsize::get)
+        .unwrap_or(1);
+    configured.clamp(1, available)
+}
+
 #[test]
 #[allow(
     clippy::too_many_lines,
@@ -33,13 +65,16 @@ use std::time::{Duration, Instant};
     clippy::map_unwrap_or
 )]
 fn concurrent_load_in_memory_p50_p95_p99() {
-    let n_threads = num_cpus();
+    let n_threads = test_threads();
     let ops_per_thread = 1_000;
     let total_ops = n_threads * ops_per_thread;
 
     let sink = Arc::new(InMemoryLogSink::new());
     let authority = Arc::new(ComplianceAuthority::new_for_test());
 
+    // Wall clock over the WHOLE parallel section (OS-08): throughput is
+    // total_ops / wall_time, not the reciprocal of mean per-op latency.
+    let wall_start = Instant::now();
     let latencies: Vec<Duration> = (0..n_threads)
         .into_par_iter()
         .flat_map(|thread_id| {
@@ -66,6 +101,7 @@ fn concurrent_load_in_memory_p50_p95_p99() {
             local_latencies
         })
         .collect();
+    let wall = wall_start.elapsed();
 
     assert_eq!(latencies.len(), total_ops);
     assert_eq!(sink.len(), total_ops);
@@ -85,21 +121,18 @@ fn concurrent_load_in_memory_p50_p95_p99() {
     let variance: f64 =
         sorted_us.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / sorted_us.len() as f64;
     let stdev = variance.sqrt();
-    let total_time_s: f64 = latencies
-        .iter()
-        .map(std::time::Duration::as_secs_f64)
-        .sum::<f64>();
-    let throughput = total_ops as f64 / total_time_s;
+    let throughput = total_ops as f64 / wall.as_secs_f64();
 
     println!(
         "[load_stats] threads={n_threads} ops={total_ops} \
          p50={:.2}us p95={:.2}us p99={:.2}us mean={:.2}us stdev={:.2}us \
-         throughput={:.0}ops/s",
+         wall_ms={:.1} throughput={:.0}ops/s",
         p(0.50),
         p(0.95),
         p(0.99),
         mean,
         stdev,
+        wall.as_secs_f64() * 1e3,
         throughput
     );
 
@@ -115,22 +148,23 @@ fn concurrent_load_in_memory_p50_p95_p99() {
         "throughput must exceed 1k ops/s; got {throughput:.0}"
     );
 
-    // Detect if we're under QEMU emulation; if so, write a separate CSV.
-    let is_qemu = std::env::var("BTV_UNDER_QEMU").is_ok() || p(0.50) > 100.0; // heuristic: native p50 is <30us, QEMU is >200us
-    let csv_name = if is_qemu {
+    // Architecture provenance from the TARGET TRIPLE (OS-08) — never from a
+    // latency heuristic. `BTV_UNDER_QEMU=1` (set by CI) adds the flag.
+    let arch = std::env::consts::ARCH;
+    let is_qemu = std::env::var("BTV_UNDER_QEMU").is_ok();
+    let csv_name = if arch == "aarch64" || is_qemu {
         "load_stats_arm64_qemu.csv"
     } else {
         "load_stats.csv"
     };
-    let csv_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("reports")
-        .join(csv_name);
-    if let Some(parent) = csv_path.parent() {
-        std::fs::create_dir_all(parent).ok();
-    }
+    // OS-08: NEVER write into reports/ from a test. CARGO_TARGET_TMPDIR is
+    // the build artifact area (gitignored); committed evidence is produced
+    // exclusively by scripts/collect_load_stats.sh + fingerprint.
+    let csv_path = std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join(csv_name);
     let csv = format!(
         "metric,value\n\
+         arch,{arch}\n\
+         under_qemu,{is_qemu}\n\
          threads,{n_threads}\n\
          ops_per_thread,{ops_per_thread}\n\
          total_ops,{total_ops}\n\
@@ -139,22 +173,16 @@ fn concurrent_load_in_memory_p50_p95_p99() {
          p99_us,{:.3}\n\
          mean_us,{:.3}\n\
          stdev_us,{:.3}\n\
+         wall_ms,{:.1}\n\
          throughput_ops_per_s,{:.0}\n\
-         emulated,{is_qemu}\n",
+         throughput_definition,total_ops_per_wall_clock\n",
         p(0.50),
         p(0.95),
         p(0.99),
         mean,
         stdev,
+        wall.as_secs_f64() * 1e3,
         throughput
     );
-    std::fs::write(&csv_path, csv).expect("write load_stats csv");
+    std::fs::write(&csv_path, csv).expect("write load_stats csv to CARGO_TARGET_TMPDIR");
 }
-
-// Bring in num_cpus if not available as a crate
-mod num_cpus {
-    pub fn get() -> usize {
-        std::thread::available_parallelism().map_or(1, std::num::NonZero::get)
-    }
-}
-use num_cpus::get as num_cpus;

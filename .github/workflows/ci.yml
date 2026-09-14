@@ -85,7 +85,10 @@ jobs:
 
       - name: Run Rust benchmarks (criterion, quick)
         working-directory: btv-core
-        run: cargo bench --features test-support --bench verdict_construction || true
+        # No `|| true`: masking bench failures hid regressions (audit, Parte
+        # C/D). The durable bench (OS-07) opens a real file — still fast
+        # enough for --quick on CI.
+        run: cargo bench --features test-support --bench verdict_construction -- --quick
 
       - name: Build PyO3 binding
         working-directory: btv-python
@@ -150,6 +153,7 @@ jobs:
         working-directory: btv-core
         env:
           BTV_UNDER_QEMU: "1"
+          BTV_TEST_THREADS: "2"
         run: cargo test --target aarch64-unknown-linux-gnu --features test-support --test test_load -- --nocapture
 
   tco-reproducibility:
