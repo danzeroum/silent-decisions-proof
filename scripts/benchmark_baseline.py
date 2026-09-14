@@ -50,18 +50,21 @@ def bench_btv_pyo3(n: int = N_SAMPLES) -> list[float]:
     cfg = TestingLogConfig()
     latencies = []
     # warmup
-    for _ in range(50):
+    # Unique context per decision (OS-03): the log is append-only, so
+    # replaying the same evidence_id with a different explanation is a
+    # rejected conflict — production evidence is unique, so is this bench.
+    for i in range(50):
         with issue_verdict(
-            raw_context=RAW_CONTEXT, decision="deny",
+            raw_context=RAW_CONTEXT + f',"i":"w{i}"'.encode(), decision="deny",
             jurisdiction="BR-LGPD", policy_version="1.0.0",
             explanation="warmup", contestability_hours=720,
             log_config=cfg,
         ):
             pass
-    for _ in range(n):
+    for i in range(n):
         t0 = time.perf_counter_ns()
         with issue_verdict(
-            raw_context=RAW_CONTEXT, decision="deny",
+            raw_context=RAW_CONTEXT + f',"i":{i}'.encode(), decision="deny",
             jurisdiction="BR-LGPD", policy_version="1.0.0",
             explanation="bench", contestability_hours=720,
             log_config=cfg,
@@ -207,7 +210,8 @@ def main():
     print(f"Running {N_SAMPLES}-sample benchmarks on x86-64...", file=sys.stderr)
 
     # Read criterion results for BTV native (Rust)
-    criterion_dir = REPO_ROOT / "btv-core" / "target" / "criterion"
+    # Unified workspace: a single target/ sits at the repository ROOT.
+    criterion_dir = REPO_ROOT / "target" / "criterion"
     btv_native_stats = None
     if criterion_dir.exists():
         try:
@@ -372,8 +376,9 @@ def main():
         f.write("};\n")
         f.write("\\end{axis}\n")
         f.write("\\end{tikzpicture}\n")
-        f.write("\\caption{Latência p95 por implementação ($N=5{,}000$ para Python; $N=100$ para Rust/criterion). "
-                "BTV-Rust e BTV+SQLite sãoCriterion means (não p95); ver Tabela~\\ref{tab:bench-stats}.}\n")
+        f.write("\\caption{Latência MÉDIA por implementação ($N=5{,}000$ para Python; $N=100$ para Rust/Criterion). "
+                "Todas as barras plotam médias (Criterion fornece média, não percentis — OS-08/F8); "
+                "ver Tabela~\\ref{tab:bench-stats}.}\n")
         f.write("\\label{fig:bench-baseline}\n")
         f.write("\\end{figure}\n\n")
         f.write("\\begin{table}[t]\n")
