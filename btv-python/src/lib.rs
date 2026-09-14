@@ -330,11 +330,16 @@ pub fn issue_verdict<'py>(
     let sink: &dyn LogSink = log_config_obj.backend.as_ref();
 
     // Build the authority. In production, this would come from env / HSM.
-    let authority = if cfg!(feature = "test-support") {
-        ComplianceAuthority::new_for_test()
-    } else {
-        ComplianceAuthority::new_from_env()
-    };
+    // Attribute-based cfg, NOT `if cfg!(...)`: both arms of an `if cfg!()`
+    // are type-checked, and `new_for_test` only exists when btv-core's
+    // `test-support` feature is enabled (it is `#[cfg(any(test, feature =
+    // "test-support"))]` there). Building btv-python without the feature
+    // must still compile — `cfg!()` masked this by never being exercised
+    // in CI, which always passes `--features test-support`.
+    #[cfg(feature = "test-support")]
+    let authority = ComplianceAuthority::new_for_test();
+    #[cfg(not(feature = "test-support"))]
+    let authority = ComplianceAuthority::new_from_env();
     let compliance = authority
         .issue_token(jurisdiction, policy_version, contestability_hours)
         .map_err(to_py_err)?;
