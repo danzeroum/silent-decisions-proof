@@ -52,7 +52,9 @@ outside the scope of this crate.
   test-support` + `pytest tests/pyo3/test_binding.py` run on every push
   (see `.github/workflows/ci.yml`). `#![forbid(unsafe_code)]` is enforced
   in this crate.
-- **abi3-py37** stable-ABI wheel: one build covers CPython 3.7+.
+- **abi3-py38** stable-ABI wheel: one build covers CPython 3.8+ (see
+  [Python compatibility](#python-compatibility) below for the breaking
+  change from 3.7).
 - **Not published to PyPI**; consume via `maturin develop` / `maturin
   build` from this repository.
 - **Out of scope** (documented, deliberate): end-to-end non-repudiation
@@ -61,6 +63,13 @@ outside the scope of this crate.
   FFI); durability of the `LogSink` beyond what the configured backend
   provides. The signing key is proof-of-concept unless `BTV_AUTHORITY_KEY`
   is injected from an HSM/KMS in production.
+
+## Python compatibility
+
+As of version 0.2.0, this binding requires **Python ≥ 3.8** (wheel
+`abi3-py38`), due to the pyo3 0.22 → 0.29 upgrade (Round 2 of the audit,
+clearing RUSTSEC-2025-0020 and RUSTSEC-2026-0177). Python 3.7 reached
+end of life in June 2023 and is no longer supported by this library.
 
 ## Usage
 

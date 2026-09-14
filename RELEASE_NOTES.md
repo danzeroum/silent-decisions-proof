@@ -7,6 +7,15 @@
 
 This artifact implements, tests, and documents the BTV (Bill of Materials for Trustworthy Verdicts) framework for the IEEE Computer major-revision of *"Silent Decisions Are Type Errors"*. All 8 tests from the test plan were executed, with full passing status on x86-64 and ARM64 (via QEMU emulation where hardware access was unavailable).
 
+## Breaking change: Python ≥ 3.8 required (pyo3 0.22 → 0.29)
+
+The security upgrade of `pyo3` 0.22 → 0.29 (Round 2 of the audit, clearing
+RUSTSEC-2025-0020 and RUSTSEC-2026-0177) raised the minimum supported
+Python from 3.7 to **3.8**: the binding now ships an `abi3-py38` wheel
+(`btv_python-0.2.0-cp38-abi3-*.whl`). Python 3.7 reached end of life in
+June 2023 and is no longer supported by this library. See
+`btv-python/README.md` ("Python compatibility") for the policy statement.
+
 ## Test execution results
 
 | # | Test | Outcome | Evidence |
