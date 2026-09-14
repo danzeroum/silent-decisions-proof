@@ -79,7 +79,7 @@ cargo audit --deny warnings
 cargo test --features test-support --lib
 cargo test --features test-support --test trybuild
 cargo test --features test-support --test test_partition
-cargo test --features test_support --test test_load -- --nocapture
+cargo test --features test-support --test test_load -- --nocapture
 
 # 3. Benchmarks
 cargo bench --features test-support --bench verdict_construction
@@ -92,6 +92,7 @@ cd ..
 pytest tests/pyo3/test_binding.py -v
 
 # 5. TCO reproducibility
+pip install -r scripts/requirements.txt
 python3 scripts/compute_crossover.py
 ```
 

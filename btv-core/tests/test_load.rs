@@ -3,10 +3,13 @@
 //! Usa `rayon` para disparar `issue_verdict` de múltiplas threads
 //! concorrentemente contra um `InMemoryLogSink` compartilhado (via `Arc`).
 //!
-//! Métricas reportadas em `reports/load_stats.csv`:
-//! - p50, p95, p99 (em μs)
-//! - throughput agregado (ops/s)
-//! - variância (stdev)
+//! OS-08 (COMSI-2026-04-0112, closes F9): este teste NÃO escreve mais em
+//! `reports/` — essa era exatamente a falha F9 (o teste sobrescrevia a
+//! evidência commitada com os números da máquina local a cada `cargo test`,
+//! e a heurística `p50 > 100us` rotulava incorretamente uma máquina nativa
+//! carregada como "ARM64 emulado"). Este teste agora só mede e afirma limites
+//! amplos; a evidência commitada é gerada deliberadamente por
+//! `examples/load_report.rs` (mesmo padrão de `examples/rss_probe_fail_secure.rs`).
 //!
 //! Epistemic footer:
 //!   Este teste valida a latência do BTV sob contenção multi-thread em
@@ -20,32 +23,46 @@
 use btv_core::{issue_verdict, ComplianceAuthority, Decision, EvidenceToken, InMemoryLogSink};
 use rayon::prelude::*;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
+
+/// Thread count for the load test: explicit default, overridable via
+/// `BTV_LOAD_THREADS` (OS-08 — no more silent `available_parallelism()`,
+/// which produced a different, non-reproducible number on every machine).
+fn load_threads() -> usize {
+    std::env::var("BTV_LOAD_THREADS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(4)
+}
 
 #[test]
 #[allow(
-    clippy::too_many_lines,
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
     clippy::redundant_closure_for_method_calls,
-    clippy::uninlined_format_args,
-    clippy::map_unwrap_or
+    clippy::uninlined_format_args
 )]
 fn concurrent_load_in_memory_p50_p95_p99() {
-    let n_threads = num_cpus();
+    let n_threads = load_threads();
     let ops_per_thread = 1_000;
     let total_ops = n_threads * ops_per_thread;
 
     let sink = Arc::new(InMemoryLogSink::new());
     let authority = Arc::new(ComplianceAuthority::new_for_test());
 
-    let latencies: Vec<Duration> = (0..n_threads)
+    // Wall-clock throughput (OS-08, closes F8's throughput half): total_ops /
+    // wall_clock across the whole concurrent batch. Summing per-op latencies
+    // and dividing into total_ops (the old approach) is not throughput under
+    // concurrency — it is closer to the reciprocal of mean single-op latency,
+    // which undercounts real throughput by roughly a factor of n_threads.
+    let wall_start = Instant::now();
+    let latencies_ns: Vec<u64> = (0..n_threads)
         .into_par_iter()
         .flat_map(|thread_id| {
             let sink = Arc::clone(&sink);
             let auth = Arc::clone(&authority);
-            let mut local_latencies: Vec<Duration> = Vec::with_capacity(ops_per_thread);
+            let mut local_latencies: Vec<u64> = Vec::with_capacity(ops_per_thread);
             for i in 0..ops_per_thread {
                 let ctx = format!("thread-{thread_id}-op-{i}");
                 let token = EvidenceToken::new(ctx.as_bytes());
@@ -61,20 +78,17 @@ fn concurrent_load_in_memory_p50_p95_p99() {
                 .expect("issue_verdict should succeed under load");
                 let elapsed = t0.elapsed();
                 assert!(verdict.verify_integrity());
-                local_latencies.push(elapsed);
+                local_latencies.push(elapsed.as_nanos() as u64);
             }
             local_latencies
         })
         .collect();
+    let wall_elapsed = wall_start.elapsed();
 
-    assert_eq!(latencies.len(), total_ops);
+    assert_eq!(latencies_ns.len(), total_ops);
     assert_eq!(sink.len(), total_ops);
 
-    // Compute stats
-    let mut sorted_us: Vec<f64> = latencies
-        .iter()
-        .map(|d| d.as_nanos() as f64 / 1000.0)
-        .collect();
+    let mut sorted_us: Vec<f64> = latencies_ns.iter().map(|&ns| ns as f64 / 1000.0).collect();
     sorted_us.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
     let p = |q: f64| -> f64 {
@@ -82,79 +96,28 @@ fn concurrent_load_in_memory_p50_p95_p99() {
         sorted_us[idx.min(sorted_us.len() - 1)]
     };
     let mean: f64 = sorted_us.iter().sum::<f64>() / sorted_us.len() as f64;
-    let variance: f64 =
-        sorted_us.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / sorted_us.len() as f64;
-    let stdev = variance.sqrt();
-    let total_time_s: f64 = latencies
-        .iter()
-        .map(std::time::Duration::as_secs_f64)
-        .sum::<f64>();
-    let throughput = total_ops as f64 / total_time_s;
+    let throughput = total_ops as f64 / wall_elapsed.as_secs_f64();
 
     println!(
-        "[load_stats] threads={n_threads} ops={total_ops} \
-         p50={:.2}us p95={:.2}us p99={:.2}us mean={:.2}us stdev={:.2}us \
-         throughput={:.0}ops/s",
+        "[load_test] threads={n_threads} ops={total_ops} wall={:.3}ms \
+         p50={:.2}us p95={:.2}us p99={:.2}us mean={:.2}us throughput={:.0}ops/s",
+        wall_elapsed.as_secs_f64() * 1000.0,
         p(0.50),
         p(0.95),
         p(0.99),
         mean,
-        stdev,
         throughput
     );
 
-    // Soft assertions (with wide margins — never use tight bounds)
-    // Under QEMU emulation, ARM64 throughput is ~20-30× slower than native.
+    // Soft assertions (wide margins — never tight bounds; CI runs on shared,
+    // unpredictable hardware and under QEMU emulation on the ARM64 job).
     assert!(
         p(0.99) < 5000.0,
         "p99 must be under 5ms in-memory; got {:.2}us",
         p(0.99)
     );
     assert!(
-        throughput > 1_000.0,
-        "throughput must exceed 1k ops/s; got {throughput:.0}"
+        throughput > 100.0,
+        "throughput must exceed 100 ops/s even under heavy contention or emulation; got {throughput:.0}"
     );
-
-    // Detect if we're under QEMU emulation; if so, write a separate CSV.
-    let is_qemu = std::env::var("BTV_UNDER_QEMU").is_ok() || p(0.50) > 100.0; // heuristic: native p50 is <30us, QEMU is >200us
-    let csv_name = if is_qemu {
-        "load_stats_arm64_qemu.csv"
-    } else {
-        "load_stats.csv"
-    };
-    let csv_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("reports")
-        .join(csv_name);
-    if let Some(parent) = csv_path.parent() {
-        std::fs::create_dir_all(parent).ok();
-    }
-    let csv = format!(
-        "metric,value\n\
-         threads,{n_threads}\n\
-         ops_per_thread,{ops_per_thread}\n\
-         total_ops,{total_ops}\n\
-         p50_us,{:.3}\n\
-         p95_us,{:.3}\n\
-         p99_us,{:.3}\n\
-         mean_us,{:.3}\n\
-         stdev_us,{:.3}\n\
-         throughput_ops_per_s,{:.0}\n\
-         emulated,{is_qemu}\n",
-        p(0.50),
-        p(0.95),
-        p(0.99),
-        mean,
-        stdev,
-        throughput
-    );
-    std::fs::write(&csv_path, csv).expect("write load_stats csv");
 }
-
-// Bring in num_cpus if not available as a crate
-mod num_cpus {
-    pub fn get() -> usize {
-        std::thread::available_parallelism().map_or(1, std::num::NonZero::get)
-    }
-}
-use num_cpus::get as num_cpus;

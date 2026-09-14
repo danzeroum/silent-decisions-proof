@@ -1,11 +1,17 @@
+# load_report — OS-08 gate (closes F9)
+# Command: cargo run --release --features test-support --example load_report
+# BTV_LOAD_THREADS=4 (explicit; default 4) BTV_UNDER_QEMU=false
+# arch=x86_64 rustc=rustc 1.94.1 (e408947bf 2026-03-25) uname=Linux vm 6.18.44-fc-v24 #1 SMP PREEMPT_DYNAMIC @0 x86_64 x86_64 x86_64 GNU/Linux
 metric,value
-threads,2
+threads,4
 ops_per_thread,1000
-total_ops,2000
-p50_us,41.912
-p95_us,54.539
-p99_us,67.698
-mean_us,50.632
-stdev_us,245.731
-throughput_ops_per_s,19750
+total_ops,4000
+wall_ms,69.268
+p50_us,12.038
+p95_us,106.891
+p99_us,242.281
+mean_us,47.939
+stdev_us,226.152
+throughput_ops_per_s,57747
 emulated,false
+arch,x86_64

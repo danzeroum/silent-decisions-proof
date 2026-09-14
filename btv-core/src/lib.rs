@@ -354,7 +354,7 @@ impl SqliteLogSink {
     /// Returns [`BtvError::Backend`] if the database cannot be opened or
     /// the schema cannot be initialised.
     ///
-    /// Note: SQLite silently ignores `journal_mode=WAL` for `:memory:`
+    /// Note: `SQLite` silently ignores `journal_mode=WAL` for `:memory:`
     /// databases and `synchronous=FULL` is meaningless without a file —
     /// this constructor is for TESTS only; use [`SqliteLogSink::open`] for
     /// durability measurements (OS-07).

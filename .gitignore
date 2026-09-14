@@ -1,6 +1,8 @@
 target/
 paper1/target/
 paper2/target/
+__pycache__/
+*.pyc
 
 # Raw sweep output from local runs of scripts/run_sweep.sh. Final CSVs cited
 # in the paper must be explicitly committed with descriptive names.
