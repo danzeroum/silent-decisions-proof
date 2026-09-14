@@ -1,0 +1,23 @@
+error[E0382]: use of moved value: `token`
+  --> tests/ui/token_reuse_after_fail_secure.rs:31:27
+   |
+23 |     let token = EvidenceToken::new(b"ctx");
+   |         ----- move occurs because `token` has type `EvidenceToken`, which does not implement the `Copy` trait
+...
+27 |     let _ = issue_verdict(token, compliance, Decision::Allow, "x".to_string(), &sink);
+   |                           ----- value moved here
+...
+31 |     let _ = issue_verdict(token, compliance, Decision::Allow, "x".to_string(), &sink);
+   |                           ^^^^^ value used here after move
+
+error[E0382]: use of moved value: `compliance`
+  --> tests/ui/token_reuse_after_fail_secure.rs:31:34
+   |
+24 |     let compliance = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
+   |         ---------- move occurs because `compliance` has type `ComplianceToken`, which does not implement the `Copy` trait
+...
+27 |     let _ = issue_verdict(token, compliance, Decision::Allow, "x".to_string(), &sink);
+   |                                  ---------- value moved here
+...
+31 |     let _ = issue_verdict(token, compliance, Decision::Allow, "x".to_string(), &sink);
+   |                                  ^^^^^^^^^^ value used here after move

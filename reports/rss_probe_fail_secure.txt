@@ -1,0 +1,9 @@
+# RSS probe — fail-secure path (OS-06 gate, closes F6)
+# Command: cargo run --release --features test-support --example rss_probe_fail_secure
+# Toolchain: rustc 1.98.1 (48a229cea 2026-09-01) on x86_64, 5.10.134-013.15.kangaroo.al8.x86_64
+# Date: 2026-09-15 (UTC-3)
+RSS before=1124 kB  after=1124 kB  delta=0 kB / 200000 rejected decisions
+PASS: delta < 1 MB over 200000 rejected decisions (pre-fix leak: ~12,504 kB)
+
+# Pre-fix measurement (audit F6, for comparison):
+# RSS before=2992 kB after=15496 kB delta=12504 kB / 200k calls (~64 B per rejected decision)
