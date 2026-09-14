@@ -22,6 +22,14 @@ on:
         description: 'Per-configuration wall target in seconds (reduced collection)'
         required: false
         default: '10'
+  # Branch-push escape hatch: while this repository's default branch does
+  # not carry this workflow file, GitHub does not register it for
+  # workflow_dispatch API calls (404 on /dispatches). Pushing a commit that
+  # touches the marker file .github/sweep-trigger runs the identical job.
+  # Remove this trigger after the workflow lands on the default branch.
+  push:
+    branches: [review/bench-workspace-ffi]
+    paths: ['.github/sweep-trigger']
 
 jobs:
   sweep:
