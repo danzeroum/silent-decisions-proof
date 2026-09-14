@@ -34,19 +34,20 @@ detected at compile time.
 
 We proved the \emph{Constitutional Enclosure Theorem}: in any Safe
 Rust program that includes the BTV crate, the set $\mathcal{S}$ of
-materialized silent decisions is empty by construction.
+materialized silent decisions is empty within the crate's type
+perimeter, under the assumptions of Section~4.3.
 The proof is exhaustive (three cases), machine-checkable
 (\texttt{cargo test}: seventeen clauses, seconds), and accompanied
 by a Fail-Secure Corollary: a system that cannot produce evidence
 cannot issue a verdict---it fails securely rather than silently.
 
-Empirical benchmarks on the reference implementation confirm that
-this static guarantee is a zero-cost abstraction in runtime.
-The full governance cycle for a 4\,KB payload completes in
-$1.67\,\mu$s; every nanosecond of that cost is attributable to
-cryptographic primitives (BLAKE3 + HMAC-SHA256) that any
-accountable system must execute regardless of architecture.
-The type-level enforcement itself contributes zero overhead.
+Empirical benchmarks on the reference implementation bound what the
+type-level enforcement itself costs: it adds no runtime branch.  The
+measured cost is that of the cryptographic primitives
+(BLAKE3 + HMAC-SHA256, $\approx$1.4--2.4\,\textmu s of construction
+across 64\,B--4\,KiB payloads) and of durable persistence, which
+ dominates at $\approx$0.2\,ms per verdict on the reference container
+and is bounded below by storage physics.
 
 The implications extend beyond compliance engineering.
 If accountability can be expressed as a type invariant, then
@@ -55,5 +56,6 @@ can check, proof assistants can verify, and regulators can audit
 through \texttt{cargo test} rather than through manual code
 review.
 Silent decisions are not an inevitable cost of deploying AI at
-scale---they are a bug that a sufficiently expressive type system
-eliminates entirely.
+scale---they are a defect class that a sufficiently expressive type
+system removes at the construction boundary, leaving only the
+irreducible cost of evidence itself.
