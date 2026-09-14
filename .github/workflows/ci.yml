@@ -80,7 +80,11 @@ jobs:
         run: maturin build --release --features test-support
 
       - name: Install PyO3 binding
-        working-directory: btv-python
+        # The unified Cargo workspace (PR #4) moved the shared target/ dir to
+        # the repository ROOT: maturin now writes the wheel to
+        # <root>/target/wheels/*.whl, not btv-python/target/wheels. Run this
+        # step from the workspace root or the glob stays unexpanded and pip
+        # receives the literal '*' ("Invalid wheel filename").
         run: pip install --force-reinstall target/wheels/*.whl
 
       - name: Run Python binding tests
