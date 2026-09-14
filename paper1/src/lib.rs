@@ -959,7 +959,10 @@ mod proof {
             result.is_err(),
             "ComplianceAuthority must reject jurisdictions not in its allowlist"
         );
-        let err = result.unwrap_err();
+        // `Result::unwrap_err()` would require `ComplianceToken: Debug`;
+        // `err()` + `expect()` keeps the linear token type free of a Debug
+        // derive while preserving the assertion below verbatim.
+        let err = result.err().expect("result.is_err() asserted above");
         assert!(
             err.contains("Narnia"),
             "Error message must identify the rejected jurisdiction"
