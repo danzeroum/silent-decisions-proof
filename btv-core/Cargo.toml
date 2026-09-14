@@ -19,13 +19,34 @@ subtle = "2"
 serde = { version = "1", features = ["derive"] }
 rusqlite = { version = "0.32", features = ["bundled"] }
 thiserror = "1"
+# rayon is consumed ONLY by the sweep_concurrent benchmark binary below.
+# Cargo does not expose [dev-dependencies] to [[bin]] targets (verified:
+# E0433), and the harness must be runnable via plain
+# `cargo run --release --bin sweep_concurrent` (scripts/run_sweep.sh and
+# the Task 6 verification command). The library code in src/lib.rs does
+# not reference rayon, and the unsafe-code inventory in reports/ is
+# generated from the whole Cargo.lock — where rayon was already counted
+# while it lived in [dev-dependencies] — so the audited TCB is unchanged.
+rayon = "1"
 
 [dev-dependencies]
 trybuild = "1"
 criterion = { version = "0.5", features = ["html_reports"] }
-rayon = "1"
 
 [[bench]]
 name = "verdict_construction"
 harness = false
 required-features = ["test-support"]
+
+# Concurrency sweep harness — declared as a [[bin]] target (NOT [[bench]])
+# so that:
+#   1. `cargo bench --workspace` does not execute this multi-hour sweep —
+#      bench targets run by default under `cargo bench`, and the Task 3
+#      verification requires Criterion-only execution.
+#   2. `cargo run --release --bin sweep_concurrent` works verbatim, as
+#      documented in the file header and in scripts/run_sweep.sh.
+# The explicit [[bench]] above disables bench auto-discovery, so this file
+# under benches/ is not picked up as a second bench target.
+[[bin]]
+name = "sweep_concurrent"
+path = "benches/sweep_concurrent.rs"
