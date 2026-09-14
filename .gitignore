@@ -11,3 +11,4 @@ paper2/target/
 # The generic pattern above still ignores LOCAL run output; these two files
 # are the committed evidence pair (CSV + environment fingerprint alongside).
 !data/sweep_raw_20260914T171258Z.csv
+!data/sweep_raw_20260914T164735Z_runnervmlun5p.csv
