@@ -11,9 +11,7 @@ fn bench_verdict_construction(c: &mut Criterion) {
     // payload-scaling story of Section 5). Contexts are filled with
     // distinct byte patterns; construction includes authority-signed token
     // issuance + signature verification (OS-02), which is the real cost.
-    let make_context = |len: usize| -> Vec<u8> {
-        (0..len).map(|i| (i % 251) as u8).collect()
-    };
+    let make_context = |len: usize| -> Vec<u8> { (0..len).map(|i| (i % 251) as u8).collect() };
     for (label, len) in [("64B", 64), ("512B", 512), ("4KiB", 4096)] {
         let context = make_context(len);
         c.bench_function(&format!("verdict_construction_{label}"), |b| {
