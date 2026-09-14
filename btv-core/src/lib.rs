@@ -1320,6 +1320,30 @@ mod tests {
         assert_ne!(hash.as_bytes(), &[0u8; 32]);
     }
 
+    // ========================================================================
+    // OS-09 (COMSI-2026-04-0112, closes H4) — clauses 3/4/6/7 migrated from
+    // paper1/src/lib.rs. The underlying compile-fail fixtures already
+    // existed in tests/ui/ and already ran (bundled into a single
+    // `compile_fail_suite` test in tests/trybuild.rs); this gives each its
+    // own numbered clause, matching the paper's enumeration, instead of
+    // three divergent clause counts across the manuscript and two crates.
+    // ========================================================================
+
+    /// Clause 3: `Verdict { .. }` struct literal syntax is blocked outside
+    /// this module (private fields -> E0451).
+    #[test]
+    fn clause_3_verdict_struct_literal_is_blocked() {
+        let t = trybuild::TestCases::new();
+        t.compile_fail("tests/ui/verdict_struct_literal.rs");
+    }
+
+    /// Clause 4: `Blake3Hash` has no public arbitrary constructor.
+    #[test]
+    fn clause_4_blake3hash_has_no_public_constructor() {
+        let t = trybuild::TestCases::new();
+        t.compile_fail("tests/ui/blake3hash_public_constructor.rs");
+    }
+
     #[test]
     fn clause_5_tampered_verdict_fails_integrity() {
         let token = EvidenceToken::new(b"context");
@@ -1330,6 +1354,22 @@ mod tests {
         assert!(verdict.verify_integrity());
         verdict.explanation = "Tampered".to_string(); // bypass HMAC (test only)
         assert!(!verdict.verify_integrity());
+    }
+
+    /// Clause 6: dropping an `EvidenceToken` without consuming it produces a
+    /// compiler warning (escalates to an error under `#[deny(unused_must_use)]`).
+    #[test]
+    fn clause_6_dropped_token_produces_compiler_warning() {
+        let t = trybuild::TestCases::new();
+        t.compile_fail("tests/ui/dropped_evidence_token.rs");
+    }
+
+    /// Clause 7: external code cannot call `EvidenceToken::consume()`
+    /// directly (`pub(crate)` visibility).
+    #[test]
+    fn clause_7_external_consume_is_blocked() {
+        let t = trybuild::TestCases::new();
+        t.compile_fail("tests/ui/external_consume_call.rs");
     }
 
     #[test]
@@ -1394,14 +1434,105 @@ mod tests {
         assert_eq!(verdict.jurisdiction(), "BR-LGPD");
     }
 
+    /// Clause 8 (Corollary 4.8): `EscalatedVerdict` can be constructed with
+    /// a valid `OperatorToken`. Migrated from paper1 (OS-09, closes H4);
+    /// previously named `escalated_verdict_works`.
     #[test]
-    fn escalated_verdict_works() {
+    fn clause_8_escalated_verdict_can_be_constructed() {
         let auth = OperatorAuthority::new_for_test();
         let tok = auth.issue_token([0x42; 32]);
         let ctx = ContextRef::from_context(b"failed-ctx");
         let v = EscalatedVerdict::new(tok, Decision::Allow, ctx, "human override".to_string());
         assert!(v.verify_integrity());
         assert_eq!(v.operator_id(), &[0x42; 32]);
+    }
+
+    /// Clause 9: `OperatorToken` is a linear resource — `.consume()` moves
+    /// and destroys it (a second call would be E0382, a compile error).
+    #[test]
+    fn clause_9_operator_token_is_linear() {
+        let authority = OperatorAuthority::new_for_test();
+        let token = authority.issue_token([0x01; 32]);
+        let (id, sig) = token.consume();
+        assert_eq!(id, [0x01; 32]);
+        assert_ne!(sig, [0u8; 32], "signature must be non-trivial");
+    }
+
+    /// Clause 10: `EscalatedVerdict { .. }` struct literal is blocked
+    /// outside this module.
+    #[test]
+    fn clause_10_escalated_struct_literal_is_blocked() {
+        let t = trybuild::TestCases::new();
+        t.compile_fail("tests/ui/escalated_struct_literal.rs");
+    }
+
+    /// Clause 11: `OperatorToken` cannot be reused after consumption.
+    #[test]
+    fn clause_11_operator_token_reuse_is_blocked() {
+        let t = trybuild::TestCases::new();
+        t.compile_fail("tests/ui/escalated_token_reuse.rs");
+    }
+
+    /// Clause 12: dropping an `OperatorToken` without use is a compile error.
+    #[test]
+    fn clause_12_dropped_operator_token_is_blocked() {
+        let t = trybuild::TestCases::new();
+        t.compile_fail("tests/ui/escalated_operator_token_drop.rs");
+    }
+
+    /// Clause 13: external code cannot call `OperatorToken::consume()`
+    /// directly (`pub(crate)` visibility).
+    #[test]
+    fn clause_13_external_consume_is_blocked() {
+        let t = trybuild::TestCases::new();
+        t.compile_fail("tests/ui/escalated_consume_external.rs");
+    }
+
+    /// Clause 14: a tampered `EscalatedVerdict` fails its integrity check.
+    /// `reason` is a private field of a type defined in this module;
+    /// `mod tests` is a child module and may mutate it directly to simulate
+    /// adversarial post-construction tampering, same as clause 5 above.
+    #[test]
+    fn clause_14_tampered_escalated_verdict_fails_integrity() {
+        let authority = OperatorAuthority::new_for_test();
+        let token = authority.issue_token([0x42; 32]);
+        let ctx = ContextRef::from_context(b"triage-context");
+        let mut verdict = EscalatedVerdict::new(
+            token,
+            Decision::Allow,
+            ctx,
+            "Legitimate escalation reason".to_string(),
+        );
+        assert!(verdict.verify_integrity(), "pre-tamper: must pass");
+        verdict.reason = "Maliciously altered reason".to_string();
+        assert!(!verdict.verify_integrity(), "post-tamper: must FAIL");
+    }
+
+    /// Clause 15: the `AccountableDecision` trait is polymorphic over both
+    /// `Verdict` (automated) and `EscalatedVerdict` (human-escalated).
+    #[test]
+    fn clause_15_accountable_decision_trait_is_polymorphic() {
+        fn check(d: &dyn AccountableDecision) -> bool {
+            d.verify_integrity()
+        }
+
+        let token = EvidenceToken::new(b"auto-context");
+        let authority = ComplianceAuthority::new_for_test();
+        let compliance = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
+        let auto_verdict =
+            Verdict::new(token, compliance, Decision::Deny, "Auto denial".to_string())
+                .expect("new_for_test authority holds the recognized key");
+
+        let op_authority = OperatorAuthority::new_for_test();
+        let op_token = op_authority.issue_token([0x42; 32]);
+        let ctx = ContextRef::from_context(b"failed-context");
+        let esc_verdict =
+            EscalatedVerdict::new(op_token, Decision::Allow, ctx, "Human override".to_string());
+
+        assert!(check(&auto_verdict));
+        assert!(check(&esc_verdict));
+        assert!(auto_verdict.is_automated());
+        assert!(!esc_verdict.is_automated());
     }
 
     // ========================================================================

@@ -93,6 +93,7 @@ fn triage_patient(p: &Patient) -> Verdict {
         .expect("BR-LGPD is in the default allowlist");
 
     Verdict::new(token, compliance, decision, explanation)
+        .expect("new_from_env resolves the recognized authority key (OS-02)")
 }
 
 fn main() {

@@ -1,7 +1,12 @@
-// Test 1 (compile-fail): runs all 8 UI tests via trybuild.
-//
-// This file itself must compile and pass — trybuild verifies that each
-// .rs file in tests/ui/ FAILS to compile with the expected .stderr.
+// Test 1 (compile-fail): the 8 UI fixtures that correspond to the paper's
+// numbered proof clauses moved into `src/lib.rs`'s `mod tests` (OS-09,
+// COMSI-2026-04-0112, closes H4) as individually-named `clause_N_*` tests
+// (clause_3, clause_4, clause_6, clause_7, clause_10, clause_11, clause_12,
+// clause_13) — `grep -c "fn clause_"` on that one file now gives a single
+// number matching the manuscript's clause count, instead of three
+// divergent counts (paper text vs. paper1 vs. btv-core). This file keeps
+// only the fixture that is NOT one of the 17 paper clauses: an OS-06
+// regression check added by this audit round.
 //
 // NOTE: Two additional runtime checks (F: forged-hash via PyO3, G: drop
 // external via PyO3) live in tests/pyo3/test_binding.py because they
@@ -11,14 +16,6 @@
 #[test]
 fn compile_fail_suite() {
     let t = trybuild::TestCases::new();
-    t.compile_fail("tests/ui/verdict_struct_literal.rs");
-    t.compile_fail("tests/ui/blake3hash_public_constructor.rs");
-    t.compile_fail("tests/ui/external_consume_call.rs");
-    t.compile_fail("tests/ui/dropped_evidence_token.rs");
-    t.compile_fail("tests/ui/escalated_struct_literal.rs");
-    t.compile_fail("tests/ui/escalated_token_reuse.rs");
-    t.compile_fail("tests/ui/escalated_consume_external.rs");
-    t.compile_fail("tests/ui/escalated_operator_token_drop.rs");
     // OS-06 gate: tokens moved into a failed `issue_verdict` cannot be
     // reused by the caller — retry is a compile error (E0382), which is
     // the linearity guarantee `mem::forget` never provided.

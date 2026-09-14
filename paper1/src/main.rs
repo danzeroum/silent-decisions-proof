@@ -57,7 +57,8 @@ fn main() {
         "Credit score 0.42 is below the required threshold of 0.50. \
          You may contest this decision within 720 hours."
             .to_string(),
-    );
+    )
+    .expect("new_from_env resolves the recognized authority key (OS-02)");
 
     println!("  [3] Verdict constructed — V ⊸ (E ⊗ C) satisfied");
     println!(
@@ -102,7 +103,12 @@ fn main() {
     println!("  EvidenceToken::new(ctx); // dropped without .consume()");
     println!("─────────────────────────────────────────────────────────────────");
     println!();
-    println!("Run `cargo test` to verify all 15 proof clauses.");
+    // OS-09 (closes H4): no hand-written clause count here — it drifted to
+    // "15" while btv-core's canonical suite (the one this binary re-exports)
+    // has 17. Run the suite and count it instead of reading a stale number.
+    println!(
+        "Run `cargo test -p btv-core --features test-support --lib` to verify every proof clause."
+    );
     // Reproducible implementation metrics — cite in Section 5.
     println!(
         "  size_of::<Verdict>()          = {} bytes",

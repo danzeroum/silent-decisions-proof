@@ -62,7 +62,7 @@ artifact-v2/
 
 ### Prerequisites
 
-- Rust stable (1.98+) with `rustfmt`, `clippy`, target `aarch64-unknown-linux-gnu` (optional)
+- Rust 1.94.1, pinned in `rust-toolchain.toml` (OS-09) — `rustup` picks it up automatically; includes `rustfmt`, `clippy`; target `aarch64-unknown-linux-gnu` (optional)
 - Python 3.10+
 - `maturin`, `pytest`, `opentelemetry-sdk`, `pyyaml`, `numpy`
 
@@ -133,7 +133,7 @@ BTV_UNDER_QEMU=1 cargo test --target aarch64-unknown-linux-gnu --features test-s
 
 See `reports/tcb_summary.md` for the full TCB declaration. Summary:
 
-- `rustc` 1.98.0 stable, `std`
+- `rustc` 1.94.1 (pinned in `rust-toolchain.toml`), `std`
 - `blake3`, `hmac`, `sha2`, `subtle` (cryptographic primitives)
 - `rusqlite` + `libsqlite3-sys` (persistence backend)
 - `BTV_HMAC_KEY` / `BTV_AUTHORITY_KEY` (HSM/KMS in production)

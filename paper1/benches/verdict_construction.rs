@@ -35,6 +35,7 @@ fn bench_verdict_new(c: &mut Criterion) {
                             .issue_token(&jur_owned, &pol_owned, 720)
                             .expect("BR-LGPD is in the default allowlist");
                         Verdict::new(token, compliance, Decision::Deny, expl_owned)
+                            .expect("new_from_env resolves the recognized authority key (OS-02)")
                     },
                     BatchSize::SmallInput,
                 );
@@ -56,7 +57,8 @@ fn bench_verify_integrity(c: &mut Criterion) {
         compliance,
         Decision::Deny,
         "Credit score below threshold.".to_string(),
-    );
+    )
+    .expect("new_from_env resolves the recognized authority key (OS-02)");
     c.bench_function("Verdict::verify_integrity", |b| {
         b.iter(|| black_box(verdict.verify_integrity()));
     });

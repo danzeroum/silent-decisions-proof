@@ -1,0 +1,11 @@
+# Single source of truth for the toolchain used across this repository
+# (OS-09, COMSI-2026-04-0112, closes H5). Before this file existed, four
+# different rustc versions were cited by hand across the artifact: 1.93.1
+# in section5_benchmarks.tex, "1.98+" in README.md, 1.98.0 in
+# reports/tcb_summary.md, and 1.98.1 in a committed run fingerprint — none
+# of which matched each other, and none of which matched the toolchain any
+# of those numbers were actually produced with. rustc --version and every
+# doc/report reference now derive from this one file.
+[toolchain]
+channel = "1.94.1"
+components = ["rustfmt", "clippy"]

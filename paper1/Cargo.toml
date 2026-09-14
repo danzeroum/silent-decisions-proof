@@ -11,14 +11,17 @@ name = "silent-decisions-proof"
 path = "src/main.rs"
 
 [features]
-test-support = []
+test-support = ["btv-core/test-support"]
 
 [dependencies]
-blake3 = "1"
-hmac = "0.12"
-sha2 = "0.10"
+# OS-09 (closes H4/H6): btv-core is the canonical implementation; src/lib.rs
+# is now a re-export. hex and blake3 stay direct — examples/*.rs call
+# hex::encode and blake3::hash themselves. hmac/sha2/subtle were only used
+# by the old independent copy of the types and are no longer referenced
+# anywhere in this crate.
+btv-core = { path = "../btv-core" }
 hex = "0.4"
-subtle = "2"
+blake3 = { version = "1", default-features = false, features = ["std", "no_neon"] }
 
 [dev-dependencies]
 trybuild = "1"

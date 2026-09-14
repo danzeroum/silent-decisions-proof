@@ -1497,11 +1497,9 @@ name = "silent-decisions-proof"
 version = "0.1.0"
 dependencies = [
  "blake3",
+ "btv-core",
  "criterion",
  "hex",
- "hmac",
- "sha2",
- "subtle",
  "trybuild",
 ]
 
