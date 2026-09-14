@@ -13,7 +13,7 @@
 //!    confirm the ORIGINAL record remains intact in the database.
 //! 2. Byte-identical replay is `Ok(())` and inserts exactly one row — true
 //!    idempotency, as the `LogSink` trait contract requires.
-//! 3. A tampered record (different HMAC, same evidence_id) is rejected and
+//! 3. A tampered record (different HMAC, same `evidence_id`) is rejected and
 //!    does not overwrite the honest record.
 //!
 //! Epistemic footer:
@@ -21,7 +21,7 @@
 //!   `InMemoryLogSink` no nível da API. Ele NÃO protege contra um backend
 //!   comprometido (UPDATE/DELETE direto no banco fora da API) — isso exige
 //!   selamento criptográfico adicional (Merkle chains, WORM), documentado
-//!   como trabalho futuro no tcb_summary.md.
+//!   como trabalho futuro no `tcb_summary.md`.
 
 use btv_core::{
     issue_verdict, BtvError, ComplianceAuthority, Decision, EvidenceToken, InMemoryLogSink,
@@ -42,7 +42,7 @@ fn make_record(context: &[u8], explanation: &str) -> VerdictRecord {
     verdict.to_record()
 }
 
-/// Count rows for a given evidence_id directly via the sink's SELECT path.
+/// Count rows for a given `evidence_id` directly via the sink's SELECT path.
 fn sqlite_row_count(sink: &SqliteLogSink, evidence_id_hex: &str) -> usize {
     // Reading through the public API: a replay attempt is Ok iff a row
     // exists; the row contents are re-fetched inside append(). To count

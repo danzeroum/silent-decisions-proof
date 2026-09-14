@@ -45,6 +45,12 @@ jobs:
         # unified lock, including the pyo3 and rayon trees).
         run: cargo audit --deny warnings
 
+      - name: Verify reports reconcile with raw evidence (OS-05)
+        # Re-derives every number in reports/tcb_summary.md from the
+        # committed raw artifacts (geiger CSV, audit JSON, clippy raw,
+        # Cargo.lock) and fails on ANY divergence.
+        run: python3 scripts/verify_reports.py
+
   test-x86-64:
     name: Test (x86-64)
     runs-on: ubuntu-latest
