@@ -36,13 +36,13 @@
 #![forbid(unsafe_code)]
 
 use btv_core::{
-    issue_verdict as rs_issue_verdict, BtvError as RsBtvError, ComplianceAuthority,
-    Decision, EvidenceToken, InMemoryLogSink, LogSink, SqliteLogSink,
+    issue_verdict as rs_issue_verdict, BtvError as RsBtvError, ComplianceAuthority, Decision,
+    EvidenceToken, InMemoryLogSink, LogSink, SqliteLogSink,
 };
+use pyo3::create_exception;
 use pyo3::exceptions::{PyRuntimeError, PyTypeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
-use pyo3::create_exception;
 use std::sync::Arc;
 
 // ============================================================================
@@ -63,9 +63,7 @@ fn to_py_err(e: RsBtvError) -> PyErr {
         RsBtvError::UnknownJurisdiction(j) => {
             BTVError::new_err(format!("BTVError: unknown jurisdiction: {j}"))
         }
-        RsBtvError::Backend(msg) => {
-            BTVError::new_err(format!("BTVError: backend: {msg}"))
-        }
+        RsBtvError::Backend(msg) => BTVError::new_err(format!("BTVError: backend: {msg}")),
         RsBtvError::IntegrityFailure => {
             BTVError::new_err("BTVError: integrity check failed — verdict tampered")
         }
@@ -169,7 +167,12 @@ impl SealedVerdict {
     /// This guarantees that the Verdict is freed at a known point, NOT
     /// relying on Python's GC. After __exit__, all accessors raise
     /// `RuntimeError("verdict already consumed")`.
-    pub fn __exit__(&mut self, _exc_type: &Bound<'_, PyAny>, _exc_value: &Bound<'_, PyAny>, _traceback: &Bound<'_, PyAny>) -> PyResult<bool> {
+    pub fn __exit__(
+        &mut self,
+        _exc_type: &Bound<'_, PyAny>,
+        _exc_value: &Bound<'_, PyAny>,
+        _traceback: &Bound<'_, PyAny>,
+    ) -> PyResult<bool> {
         self.inner = None; // Drop the Verdict now.
         Ok(false) // Don't suppress exceptions.
     }
@@ -231,14 +234,14 @@ impl TestingLogConfig {
     const __test__: bool = false;
 
     #[new]
-    fn new() -> (Self, LogConfig) {
+    fn new() -> PyClassInitializer<Self> {
         let sink = Arc::new(InMemoryLogSink::new());
         let sink_clone = Arc::clone(&sink);
         // We can't easily put the InMemoryLogSink behind Arc<dyn LogSink>
         // AND keep a typed handle for fail() — but we can, since
         // InMemoryLogSink: Send + Sync.
         let backend: Arc<dyn LogSink> = sink_clone;
-        (TestingLogConfig { sink }, LogConfig { backend })
+        PyClassInitializer::from(LogConfig { backend }).add_subclass(TestingLogConfig { sink })
     }
 
     fn fail(&self) {
@@ -305,7 +308,7 @@ pub fn issue_verdict<'py>(
     // Python code MUST pass `bytes` for raw_context. Any other type
     // (dict, str, list, None) is rejected with TypeError. There is NO
     // API to pass a pre-computed hash.
-    let raw_bytes: Vec<u8> = if let Ok(b) = raw_context.downcast::<PyBytes>() {
+    let raw_bytes: Vec<u8> = if let Ok(b) = raw_context.extract::<Bound<'py, PyBytes>>() {
         b.as_bytes().to_vec()
     } else {
         return Err(PyTypeError::new_err(
@@ -348,13 +351,18 @@ pub fn issue_verdict<'py>(
     let token = EvidenceToken::new(&raw_bytes);
 
     // Hold the GIL only during construction; the actual work is CPU-bound
-    // and does not touch Python objects.
-    let result = py.allow_threads(|| {
-        rs_issue_verdict(token, compliance, dec, explanation.to_string(), sink)
-    });
+    // and does not touch Python objects. (`allow_threads` was renamed to
+    // `detach` in pyo3 0.26.)
+    let result =
+        py.detach(|| rs_issue_verdict(token, compliance, dec, explanation.to_string(), sink));
 
     match result {
-        Ok(verdict) => Ok(Py::new(py, SealedVerdict { inner: Some(verdict) })?),
+        Ok(verdict) => Ok(Py::new(
+            py,
+            SealedVerdict {
+                inner: Some(verdict),
+            },
+        )?),
         Err(e) => Err(to_py_err(e)),
     }
 }
@@ -366,7 +374,7 @@ pub fn issue_verdict<'py>(
 #[pymodule]
 fn btv_python(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<SealedVerdict>()?;
-    m.add("BTVError", py.get_type_bound::<BTVError>())?;
+    m.add("BTVError", py.get_type::<BTVError>())?;
     m.add_class::<LogConfig>()?;
     m.add_class::<TestingLogConfig>()?;
     m.add_function(wrap_pyfunction!(issue_verdict, m)?)?;
