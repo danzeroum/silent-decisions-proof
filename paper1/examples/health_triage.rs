@@ -27,15 +27,23 @@ fn mock_triage_model(p: &Patient) -> (TriageLevel, f64) {
     let mut severity = 0.0_f64;
 
     // SpO2 < 90% is critical
-    if p.spo2 < 90 { severity += 0.40; }
-    else if p.spo2 < 95 { severity += 0.20; }
+    if p.spo2 < 90 {
+        severity += 0.40;
+    } else if p.spo2 < 95 {
+        severity += 0.20;
+    }
 
     // Heart rate extremes
-    if p.heart_rate > 120 || p.heart_rate < 50 { severity += 0.25; }
-    else if p.heart_rate > 100 { severity += 0.10; }
+    if p.heart_rate > 120 || p.heart_rate < 50 {
+        severity += 0.25;
+    } else if p.heart_rate > 100 {
+        severity += 0.10;
+    }
 
     // Blood pressure
-    if p.systolic_bp < 90 || p.systolic_bp > 180 { severity += 0.20; }
+    if p.systolic_bp < 90 || p.systolic_bp > 180 {
+        severity += 0.20;
+    }
 
     // Pain
     severity += (p.pain_scale as f64 / 10.0) * 0.15;
@@ -64,8 +72,7 @@ fn triage_patient(p: &Patient) -> Verdict {
         "patient_id:{} | complaint:{} | hr:{} | bp:{} | spo2:{} | \
          pain:{} | severity:{:.4} | triage:{:?} | \
          model:triage-assist-v1.2 | timestamp:2026-03-24T22:45:00Z",
-        p.id, p.chief_complaint, p.heart_rate, p.systolic_bp,
-        p.spo2, p.pain_scale, severity, level
+        p.id, p.chief_complaint, p.heart_rate, p.systolic_bp, p.spo2, p.pain_scale, severity, level
     );
 
     let explanation = format!(
@@ -73,8 +80,7 @@ fn triage_patient(p: &Patient) -> Verdict {
          pain {}/10. Chief complaint: {}. \
          This assessment may be reviewed by the attending physician. \
          Patient or legal guardian may request full explanation per LGPD Art. 18§2.",
-        level, severity, p.heart_rate, p.systolic_bp, p.spo2,
-        p.pain_scale, p.chief_complaint
+        level, severity, p.heart_rate, p.systolic_bp, p.spo2, p.pain_scale, p.chief_complaint
     );
 
     let token = EvidenceToken::new(context.as_bytes());
@@ -93,23 +99,47 @@ fn main() {
     println!("=== Worked Example 3: Emergency Triage ===\n");
 
     let patients = vec![
-        Patient { id: "P-4401", chief_complaint: "chest pain, diaphoresis",
-                  heart_rate: 135, systolic_bp: 85, spo2: 88, pain_scale: 9 },
-        Patient { id: "P-4402", chief_complaint: "ankle sprain",
-                  heart_rate: 78, systolic_bp: 125, spo2: 98, pain_scale: 5 },
-        Patient { id: "P-4403", chief_complaint: "shortness of breath",
-                  heart_rate: 110, systolic_bp: 145, spo2: 91, pain_scale: 6 },
+        Patient {
+            id: "P-4401",
+            chief_complaint: "chest pain, diaphoresis",
+            heart_rate: 135,
+            systolic_bp: 85,
+            spo2: 88,
+            pain_scale: 9,
+        },
+        Patient {
+            id: "P-4402",
+            chief_complaint: "ankle sprain",
+            heart_rate: 78,
+            systolic_bp: 125,
+            spo2: 98,
+            pain_scale: 5,
+        },
+        Patient {
+            id: "P-4403",
+            chief_complaint: "shortness of breath",
+            heart_rate: 110,
+            systolic_bp: 145,
+            spo2: 91,
+            pain_scale: 6,
+        },
     ];
 
     for p in &patients {
         let verdict = triage_patient(p);
         let action = match verdict.decision() {
             Decision::Allow => "PRIORITIZE",
-            Decision::Deny  => "STANDARD QUEUE",
+            Decision::Deny => "STANDARD QUEUE",
         };
-        println!("  {} — {} — integrity {}",
-            p.id, action,
-            if verdict.verify_integrity() { "OK" } else { "FAIL" }
+        println!(
+            "  {} — {} — integrity {}",
+            p.id,
+            action,
+            if verdict.verify_integrity() {
+                "OK"
+            } else {
+                "FAIL"
+            }
         );
         println!("    Evidence: {}", verdict.evidence_id().to_hex());
         println!("    {}\n", verdict.explanation());

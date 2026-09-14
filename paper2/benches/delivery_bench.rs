@@ -62,7 +62,7 @@ fn bench_seal_in_process(c: &mut Criterion) {
                 std::hint::black_box(
                     DeliveryToken::seal(&verdict, receipt)
                         .expect("seal must succeed with valid receipt")
-                        .deliver()
+                        .deliver(),
                 )
             },
             BatchSize::SmallInput,
@@ -100,8 +100,7 @@ fn bench_full_pipeline(c: &mut Criterion) {
                 let receipt = client
                     .submit_and_await(&hash)
                     .expect("btv-log must be running");
-                let token = DeliveryToken::seal(&verdict, receipt)
-                    .expect("seal must succeed");
+                let token = DeliveryToken::seal(&verdict, receipt).expect("seal must succeed");
                 std::hint::black_box(token.deliver())
             },
             BatchSize::SmallInput,

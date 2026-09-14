@@ -4,7 +4,9 @@
 //! every materialized Verdict consumed exactly one EvidenceToken
 //! and one ComplianceToken. No silent decisions are possible.
 
-use silent_decisions_proof::{ComplianceAuthority, Decision, EscalatedVerdict, EvidenceToken, Verdict};
+use silent_decisions_proof::{
+    ComplianceAuthority, Decision, EscalatedVerdict, EvidenceToken, Verdict,
+};
 
 fn main() {
     println!("═══════════════════════════════════════════════════════════════");
@@ -49,8 +51,8 @@ fn main() {
     // After this line, `token` and `compliance` no longer exist.
     // The Rust compiler enforces this — there is no way to "forget" the evidence.
     let verdict = Verdict::new(
-        token,       // ← EvidenceToken consumed here (moved, destroyed)
-        compliance,  // ← ComplianceToken consumed here (moved, destroyed)
+        token,      // ← EvidenceToken consumed here (moved, destroyed)
+        compliance, // ← ComplianceToken consumed here (moved, destroyed)
         Decision::Deny,
         "Credit score 0.42 is below the required threshold of 0.50. \
          You may contest this decision within 720 hours."
@@ -58,13 +60,19 @@ fn main() {
     );
 
     println!("  [3] Verdict constructed — V ⊸ (E ⊗ C) satisfied");
-    println!("      Decision:    {:?}", match verdict.decision() {
-        Decision::Allow => "Allow",
-        Decision::Deny  => "Deny",
-    });
+    println!(
+        "      Decision:    {:?}",
+        match verdict.decision() {
+            Decision::Allow => "Allow",
+            Decision::Deny => "Deny",
+        }
+    );
     println!("      Evidence ID: {}", verdict.evidence_id().to_hex());
     println!("      Explanation: {}", verdict.explanation());
-    println!("      Appeal:      {} hours", verdict.appeal_deadline_hours());
+    println!(
+        "      Appeal:      {} hours",
+        verdict.appeal_deadline_hours()
+    );
     println!("      Jurisdiction: {}\n", verdict.jurisdiction());
 
     // Step 4: Verify integrity
@@ -96,6 +104,12 @@ fn main() {
     println!();
     println!("Run `cargo test` to verify all 15 proof clauses.");
     // Reproducible implementation metrics — cite in Section 5.
-    println!("  size_of::<Verdict>()          = {} bytes", std::mem::size_of::<Verdict>());
-    println!("  size_of::<EscalatedVerdict>() = {} bytes", std::mem::size_of::<EscalatedVerdict>());
+    println!(
+        "  size_of::<Verdict>()          = {} bytes",
+        std::mem::size_of::<Verdict>()
+    );
+    println!(
+        "  size_of::<EscalatedVerdict>() = {} bytes",
+        std::mem::size_of::<EscalatedVerdict>()
+    );
 }

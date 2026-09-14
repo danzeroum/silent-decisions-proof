@@ -167,10 +167,7 @@ fn status_quo_record_is_wellformed_json() {
 /// proofs: dropped tokens, token reuse, external construction).
 #[test]
 fn fail_secure_bt_verdict_requires_consumed_tokens() {
-    let authority = ComplianceAuthority::new(
-        b"contrast-authority-key".to_vec(),
-        vec!["EU-GDPR".to_string()],
-    );
+    let authority = ComplianceAuthority::new_for_test();
 
     let context = b"subject:alice|score:0.42|threshold:0.50";
 
@@ -184,7 +181,8 @@ fn fail_secure_bt_verdict_requires_consumed_tokens() {
         compliance,
         Decision::Deny,
         "status-quo-contrast".to_string(),
-    );
+    )
+    .expect("new_for_test authority holds the recognized key");
 
     // The decision artifact is self-evidencing: the digest it carries is
     // the BLAKE3 hash of the exact context above, and it re-verifies.

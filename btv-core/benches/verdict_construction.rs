@@ -17,7 +17,8 @@ fn bench_verdict_construction(c: &mut Criterion) {
                 compliance,
                 Decision::Deny,
                 "Below threshold".to_string(),
-            );
+            )
+            .expect("new_for_test authority holds the recognized key");
             black_box(v);
         })
     });

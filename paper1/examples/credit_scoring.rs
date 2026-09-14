@@ -19,8 +19,8 @@ fn main() {
 
     // --- Incoming request (simulates API payload) ---
     let applicant = "maria.silva@example.com";
-    let income = 4500.00_f64;     // BRL/month
-    let debt = 3200.00_f64;       // BRL total outstanding
+    let income = 4500.00_f64; // BRL/month
+    let debt = 3200.00_f64; // BRL total outstanding
     let history_months = 18_u32;
     let threshold = 0.50_f64;
 
@@ -56,7 +56,10 @@ fn main() {
         "Credit score {:.4} is below the required threshold of {:.2}. \
          Basis: debt-to-income ratio {:.2}, credit history {} months. \
          You may contest this decision within 30 days per LGPD Art. 18§2.",
-        score, threshold, debt / income, history_months
+        score,
+        threshold,
+        debt / income,
+        history_months
     );
 
     let verdict = Verdict::new(token, compliance, decision_outcome, explanation);
@@ -65,15 +68,25 @@ fn main() {
     println!("  Applicant:    {}", applicant);
     println!("  Score:        {:.4}", score);
     println!("  Threshold:    {:.2}", threshold);
-    println!("  Decision:     {:?}", match verdict.decision() {
-        Decision::Allow => "APPROVED",
-        Decision::Deny  => "DENIED",
-    });
+    println!(
+        "  Decision:     {:?}",
+        match verdict.decision() {
+            Decision::Allow => "APPROVED",
+            Decision::Deny => "DENIED",
+        }
+    );
     println!("  Evidence ID:  {}", verdict.evidence_id().to_hex());
     println!("  Explanation:  {}", verdict.explanation());
     println!("  Jurisdiction: {}", verdict.jurisdiction());
     println!("  Appeal window: {} hours", verdict.appeal_deadline_hours());
-    println!("  Integrity:    {}\n", if verdict.verify_integrity() { "PASS" } else { "FAIL" });
+    println!(
+        "  Integrity:    {}\n",
+        if verdict.verify_integrity() {
+            "PASS"
+        } else {
+            "FAIL"
+        }
+    );
 
     // --- The context hash is deterministic: same input → same evidence ---
     // An auditor can re-hash the stored context and verify it matches evidence_id.
@@ -89,7 +102,10 @@ fn main() {
     );
     println!("  Reproducibility check:");
     println!("    Original evidence:  {}", verdict.evidence_id().to_hex());
-    println!("    Re-hashed evidence: {}", rehash_verdict.evidence_id().to_hex());
+    println!(
+        "    Re-hashed evidence: {}",
+        rehash_verdict.evidence_id().to_hex()
+    );
     assert_eq!(
         verdict.evidence_id().to_hex(),
         rehash_verdict.evidence_id().to_hex(),

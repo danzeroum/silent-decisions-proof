@@ -129,16 +129,22 @@
 //! API wiring (btv-core 0.2.0, signatures inspected in src/lib.rs):
 //!   - `EvidenceToken::new(&[u8]) -> EvidenceToken` — infallible (BLAKE3).
 //!   - `ComplianceToken` has NO public constructor; tokens are issued by
-//!     `ComplianceAuthority::issue_token(&str, &str, u32) -> Result<_, BtvError>`.
-//!     The sweep uses the always-available public constructor
-//!     `ComplianceAuthority::new(key, allowlist)` (NOT `new_for_test`, which
-//!     is gated on the `test-support` feature) so that plain
+//!     `ComplianceAuthority::issue_token(&str, &str, u32) -> Result<_, BtvError>`,
+//!     HMAC-signed with the authority key. The sweep uses
+//!     `ComplianceAuthority::new_from_env()` (NOT `new_for_test`, which is
+//!     gated on the `test-support` feature) so that plain
 //!     `cargo run --release --features sweep-bench --bin sweep_concurrent`
 //!     works with no extra feature flags. The authority is built ONCE
 //!     outside the timed region; only `issue_token` participates in the
-//!     measured full pipeline.
-//!   - `Verdict::new(EvidenceToken, ComplianceToken, Decision, String)`
-//!     is infallible — Theorem 4.1's guarantee is compile-time.
+//!     measured full pipeline. Signature VALUES depend on the resolved key
+//!     but issuance/verification timing does not (fixed-size HMAC over
+//!     fixed-size fields).
+//!   - `Verdict::new(EvidenceToken, ComplianceToken, Decision, String)
+//!     -> Result<Verdict, BtvError>` — verifies the compliance token's
+//!     authority signature (OS-02) before constructing; the sweep's tokens
+//!     come from the recognized (env-resolved) authority, so construction
+//!     succeeds. The compile-time linear-type guarantee of Theorem 4.1 is
+//!     unchanged; the signature check is the runtime part of L2.
 
 #![allow(clippy::pedantic)] // matches the existing bench convention (benches/verdict_construction.rs)
 
@@ -643,16 +649,14 @@ fn main() {
 
     use btv_core::{ComplianceAuthority, Decision, EvidenceToken, Verdict};
 
-    // Bench-local authority via the always-public constructor. `new_for_test`
-    // is feature-gated (`test-support`) and the sweep must run without
-    // extra feature flags; `new_from_env` reads BTV_AUTHORITY_KEY
-    // (nondeterministic across machines). Fixed key + single-jurisdiction
-    // allowlist keeps the measured `issue_token` path deterministic and
-    // identical across runs.
-    let authority = ComplianceAuthority::new(
-        b"btv-sweep-authority-key".to_vec(),
-        vec!["EU-GDPR".to_string()],
-    );
+    // Recognized authority via the env-resolved key (BTV_AUTHORITY_KEY or
+    // the deterministic PoC fallback). `new_for_test` is feature-gated
+    // (`test-support`) and the sweep must run without extra feature flags;
+    // `Verdict::new` verifies token signatures against the SAME env-resolved
+    // key (OS-02), so issuer and verifier agree by construction here. A
+    // custom-key authority (the old `new(key, allowlist)` call) would issue
+    // tokens the verifier rejects.
+    let authority = ComplianceAuthority::new_from_env();
 
     sweep(
         &thread_counts,
@@ -662,6 +666,9 @@ fn main() {
                 .issue_token("EU-GDPR", "sweep-policy-1", 720)
                 .expect("EU-GDPR is allowlisted above")
         },
-        |e, c| Verdict::new(e, c, Decision::Deny, "sweep-bench".to_string()),
+        |e, c| {
+            Verdict::new(e, c, Decision::Deny, "sweep-bench".to_string())
+                .expect("recognized-authority tokens verify by construction")
+        },
     );
 }

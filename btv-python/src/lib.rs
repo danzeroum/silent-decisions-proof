@@ -67,6 +67,12 @@ fn to_py_err(e: RsBtvError) -> PyErr {
         RsBtvError::IntegrityFailure => {
             BTVError::new_err("BTVError: integrity check failed — verdict tampered")
         }
+        RsBtvError::InvalidTokenSignature => BTVError::new_err(
+            "BTVError: compliance token signature invalid — token not issued by the recognized authority",
+        ),
+        RsBtvError::LogConflict(id) => BTVError::new_err(format!(
+            "BTVError: append-only log conflict: evidence_id {id} already exists with different content"
+        )),
     }
 }
 

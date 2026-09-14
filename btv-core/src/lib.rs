@@ -6,8 +6,11 @@
 //!
 //! ## Type Invariants
 //!
-//! - `V ⊸ (E ⊗ C)` — a [`Verdict`] requires consuming one [`EvidenceToken`]
-//!   and one [`ComplianceToken`].
+//! - `V ⊸ (E ⊗ C_signed)` — a [`Verdict`] requires consuming one
+//!   [`EvidenceToken`] and one [`ComplianceToken`] whose authority
+//!   signature verifies (OS-02). Tokens are issued only by a
+//!   [`ComplianceAuthority`] holding the recognized signing key
+//!   (`BTV_AUTHORITY_KEY`, HSM/KMS-injected in production).
 //! - `V_esc ⊸ (O ⊗ 1)` — an [`EscalatedVerdict`] requires consuming one
 //!   [`OperatorToken`].
 //!
@@ -60,6 +63,15 @@ type HmacSha256 = Hmac<Sha256>;
 ///   It is used by the fail-secure path: if `false`, `issue_verdict()` returns
 ///   `Err(BtvError::LogUnavailable)` WITHOUT constructing a `Verdict`.
 ///
+/// ## Errors
+///
+/// Returns [`BtvError::LogUnavailable`] when `is_available()` is `false`
+/// (fail-secure). Returns [`BtvError::Backend`] on persistence failure.
+/// Returns [`BtvError::LogConflict`] when a record with the same
+/// `evidence_id` already exists with different content — rewriting a
+/// persisted verdict is prohibited (OS-03); replaying a byte-identical
+/// record succeeds (true idempotency).
+///
 /// ## Implementations
 ///
 /// - [`InMemoryLogSink`] — testing only; not durable.
@@ -74,6 +86,13 @@ type HmacSha256 = Hmac<Sha256>;
 /// chains, threshold signatures) that are future work.
 pub trait LogSink: Send + Sync {
     /// Durably append a sealed verdict record.
+    ///
+    /// # Errors
+    ///
+    /// See the trait-level documentation: [`BtvError::LogUnavailable`] on
+    /// fail-secure, [`BtvError::Backend`] on persistence failure,
+    /// [`BtvError::LogConflict`] when an existing record with the same
+    /// `evidence_id` differs byte-to-byte (append-only guarantee, OS-03).
     fn append(&self, record: &VerdictRecord) -> Result<(), BtvError>;
 
     /// Report whether the sink is currently available for writes.
@@ -213,6 +232,11 @@ impl InMemoryLogSink {
     }
 
     /// Number of records successfully appended.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the records mutex is poisoned (a writer panicked while
+    /// holding the lock).
     pub fn len(&self) -> usize {
         self.records.lock().expect("records mutex poisoned").len()
     }
@@ -263,6 +287,11 @@ impl SqliteLogSink {
     /// Open or create a `SQLite` log database at `path`.
     ///
     /// Configures WAL mode and `synchronous=FULL` for ACID durability.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`BtvError::Backend`] if the database cannot be opened or
+    /// the schema cannot be initialised.
     pub fn open(path: &str) -> Result<Self, BtvError> {
         let conn = rusqlite::Connection::open(path)
             .map_err(|e| BtvError::Backend(format!("sqlite open: {e}")))?;
@@ -289,6 +318,16 @@ impl SqliteLogSink {
     }
 
     /// Open an in-memory `SQLite` database (for tests).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`BtvError::Backend`] if the database cannot be opened or
+    /// the schema cannot be initialised.
+    ///
+    /// Note: SQLite silently ignores `journal_mode=WAL` for `:memory:`
+    /// databases and `synchronous=FULL` is meaningless without a file —
+    /// this constructor is for TESTS only; use [`SqliteLogSink::open`] for
+    /// durability measurements (OS-07).
     pub fn open_in_memory() -> Result<Self, BtvError> {
         let conn = rusqlite::Connection::open_in_memory()
             .map_err(|e| BtvError::Backend(format!("sqlite open: {e}")))?;
@@ -370,6 +409,16 @@ pub enum BtvError {
     Backend(String),
     #[error("integrity check failed — verdict tampered")]
     IntegrityFailure,
+    #[error(
+        "compliance token signature invalid — token not issued by the \
+         recognized authority (BTV_AUTHORITY_KEY)"
+    )]
+    InvalidTokenSignature,
+    #[error(
+        "append-only log conflict: evidence_id {0} already exists with \
+         different content; rewriting a persisted verdict is prohibited"
+    )]
+    LogConflict(String),
 }
 
 // ============================================================================
@@ -449,17 +498,25 @@ impl EvidenceToken {
 }
 
 // ============================================================================
-// ComplianceToken — contestability metadata
+// ComplianceToken — signed contestability metadata (OS-02, closes F2)
 // ============================================================================
+
+/// Domain-separation tag for the compliance-token signature.
+const COMPLIANCE_TOKEN_DOMAIN: &[u8] = b"BTV-compliance-token-v1\x00";
 
 /// Compliance metadata consumed when constructing a [`Verdict`].
 ///
 /// All fields are private. The constructor is `pub(crate)` — only
-/// [`ComplianceAuthority::issue_token`] may issue compliance tokens.
+/// [`ComplianceAuthority::issue_token`] may issue compliance tokens, and
+/// every token carries an HMAC signature over its contents produced with
+/// the authority's signing key. [`Verdict::new`] verifies that signature
+/// before producing a verdict: a forged or foreign-authority token is
+/// rejected with [`BtvError::InvalidTokenSignature`].
 pub struct ComplianceToken {
     jurisdiction: String,
     policy_version: String,
     contestability_deadline_hours: u32,
+    signature: [u8; 32],
 }
 
 impl ComplianceToken {
@@ -467,12 +524,51 @@ impl ComplianceToken {
         jurisdiction: impl Into<String>,
         policy_version: impl Into<String>,
         contestability_deadline_hours: u32,
+        signature: [u8; 32],
     ) -> Self {
         ComplianceToken {
             jurisdiction: jurisdiction.into(),
             policy_version: policy_version.into(),
             contestability_deadline_hours,
+            signature,
         }
+    }
+
+    /// Compute the authority signature over the token contents.
+    ///
+    /// Domain separation: `COMPLIANCE_TOKEN_DOMAIN` followed by each string
+    /// field prefixed with its byte length as a `u32` big-endian, then the
+    /// deadline as `u32` big-endian. Length-prefixing removes the
+    /// field-boundary ambiguity of plain concatenation (same construction
+    /// as [`seal`]).
+    fn compute_signature(
+        key: &[u8],
+        jurisdiction: &str,
+        policy_version: &str,
+        deadline_hours: u32,
+    ) -> [u8; 32] {
+        let mut mac = HmacSha256::new_from_slice(key).expect("HMAC accepts any key size");
+        mac.update(COMPLIANCE_TOKEN_DOMAIN);
+        for field in [jurisdiction.as_bytes(), policy_version.as_bytes()] {
+            mac.update(&(u32::try_from(field.len()).expect("field length fits u32")).to_be_bytes());
+            mac.update(field);
+        }
+        mac.update(&deadline_hours.to_be_bytes());
+        let result = mac.finalize();
+        let mut out = [0u8; 32];
+        out.copy_from_slice(&result.into_bytes());
+        out
+    }
+
+    /// Verify the token's authority signature against a candidate key.
+    fn verify_signature_with_key(&self, key: &[u8]) -> bool {
+        let expected = Self::compute_signature(
+            key,
+            &self.jurisdiction,
+            &self.policy_version,
+            self.contestability_deadline_hours,
+        );
+        expected.ct_eq(&self.signature).into()
     }
 
     #[must_use]
@@ -495,10 +591,15 @@ impl ComplianceToken {
 // ComplianceAuthority — validated token issuance
 // ============================================================================
 
-/// A factory for issuing [`ComplianceToken`]s with validated jurisdiction.
+/// A factory for issuing signed [`ComplianceToken`]s with validated
+/// jurisdiction (OS-02, closes F2).
 ///
-/// Closes L2: external crates cannot self-declare arbitrary jurisdictions.
-/// In production, the signing key is injected from an HSM/KMS at startup.
+/// Closes L2: external crates cannot self-declare arbitrary jurisdictions
+/// NOR self-issue authority — every token is HMAC-signed with the
+/// authority's signing key, and [`Verdict::new`] verifies that signature
+/// against the *recognized* key (the same `BTV_AUTHORITY_KEY` source the
+/// authority itself uses). In production the signing key is injected from
+/// an HSM/KMS at startup.
 pub struct ComplianceAuthority {
     signing_key: Vec<u8>,
     allowed_jurisdictions: Vec<String>,
@@ -506,6 +607,12 @@ pub struct ComplianceAuthority {
 
 impl ComplianceAuthority {
     /// Create a new authority with an explicit signing key and jurisdiction allowlist.
+    ///
+    /// Note: [`Verdict::new`] verifies token signatures against the
+    /// *recognized* authority key (see [`authority_key`]). Tokens issued by
+    /// an authority holding any other key are rejected there — to run a
+    /// recognized authority, provision the same key via `BTV_AUTHORITY_KEY`
+    /// or use [`ComplianceAuthority::new_from_env`].
     #[must_use]
     pub fn new(signing_key: Vec<u8>, allowed_jurisdictions: Vec<String>) -> Self {
         Self {
@@ -518,10 +625,7 @@ impl ComplianceAuthority {
     /// proof-of-concept constant if absent.
     #[must_use]
     pub fn new_from_env() -> Self {
-        let signing_key = std::env::var("BTV_AUTHORITY_KEY").map_or_else(
-            |_| b"btv-authority-key-proof-of-concept-2026".to_vec(),
-            std::string::String::into_bytes,
-        );
+        let signing_key = authority_key();
         Self {
             signing_key,
             allowed_jurisdictions: vec![
@@ -533,11 +637,16 @@ impl ComplianceAuthority {
     }
 
     /// Test-only constructor with a deterministic key and permissive allowlist.
+    ///
+    /// Uses the proof-of-concept fallback constant — the same key
+    /// [`Verdict::new`] verifies against when `BTV_AUTHORITY_KEY` is unset —
+    /// so tokens issued here verify in test/CI environments, and no
+    /// environment variable is read on the (bench-measured) issuance path.
     #[cfg(any(test, feature = "test-support"))]
     #[must_use]
     pub fn new_for_test() -> Self {
         Self {
-            signing_key: b"btv-test-authority-key".to_vec(),
+            signing_key: b"btv-authority-key-proof-of-concept-2026".to_vec(),
             allowed_jurisdictions: vec![
                 "BR-LGPD".to_string(),
                 "EU-GDPR".to_string(),
@@ -548,7 +657,16 @@ impl ComplianceAuthority {
         }
     }
 
-    /// Issue a validated [`ComplianceToken`].
+    /// Issue a validated, signed [`ComplianceToken`].
+    ///
+    /// The token embeds an HMAC signature over
+    /// `(jurisdiction, policy_version, deadline_hours)` computed with the
+    /// authority's signing key; [`Verdict::new`] verifies it.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`BtvError::UnknownJurisdiction`] if `jurisdiction` is not
+    /// on the authority's allowlist.
     pub fn issue_token(
         &self,
         jurisdiction: &str,
@@ -558,10 +676,17 @@ impl ComplianceAuthority {
         if !self.allowed_jurisdictions.iter().any(|j| j == jurisdiction) {
             return Err(BtvError::UnknownJurisdiction(jurisdiction.to_string()));
         }
+        let signature = ComplianceToken::compute_signature(
+            &self.signing_key,
+            jurisdiction,
+            policy_version,
+            contestability_hours,
+        );
         Ok(ComplianceToken::new(
             jurisdiction,
             policy_version,
             contestability_hours,
+            signature,
         ))
     }
 }
@@ -615,18 +740,30 @@ pub struct Verdict {
 }
 
 impl Verdict {
-    /// The sole in-memory constructor. Enforces `V ⊸ (E ⊗ C)`.
+    /// The sole in-memory constructor. Enforces `V ⊸ (E ⊗ C_signed)`.
     ///
     /// Moves `token` and `compliance` by value, consuming both linearly.
-    /// Does NOT persist the verdict to a [`LogSink`]; use
-    /// [`issue_verdict`] for the fail-secure path that also persists.
-    #[must_use]
+    /// Verifies the compliance token's authority signature (OS-02): a
+    /// forged or foreign-authority token is rejected with
+    /// [`BtvError::InvalidTokenSignature`] and no `Verdict` is produced —
+    /// both tokens are consumed either way. Does NOT persist the verdict
+    /// to a [`LogSink`]; use [`issue_verdict`] for the fail-secure path
+    /// that also persists.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`BtvError::InvalidTokenSignature`] if the compliance
+    /// token's authority signature does not verify against the recognized
+    /// key (see [`authority_key`]).
     pub fn new(
         token: EvidenceToken,
         compliance: ComplianceToken,
         decision: Decision,
         explanation: String,
-    ) -> Self {
+    ) -> Result<Self, BtvError> {
+        if !compliance.verify_signature_with_key(&authority_key()) {
+            return Err(BtvError::InvalidTokenSignature);
+        }
         let appeal_deadline_hours = compliance.deadline_hours();
         let evidence_id = token.consume();
         let evidence_id_hex = evidence_id.to_hex();
@@ -641,14 +778,14 @@ impl Verdict {
             appeal_deadline_hours,
         };
         let hmac = seal(&fields);
-        Verdict {
+        Ok(Verdict {
             evidence_id,
             compliance,
             decision,
             explanation,
             appeal_deadline_hours,
             hmac,
-        }
+        })
     }
 
     /// Verify that the Verdict has not been tampered with since construction.
@@ -726,11 +863,26 @@ impl Verdict {
 /// 1. If `sink.is_available()` returns `false`, return `Err(BtvError::LogUnavailable)`
 ///    WITHOUT constructing a `Verdict`. This is the fail-secure behavior
 ///    required by the CAL Trilemma: sacrifice Availability to preserve Legality.
-/// 2. If `sink.append()` fails, return `Err(...)` WITHOUT returning a `Verdict`.
+/// 2. If the compliance token's authority signature does not verify,
+///    return `Err(BtvError::InvalidTokenSignature)` without constructing
+///    a `Verdict` (OS-02).
+/// 3. If `sink.append()` fails, return `Err(...)` WITHOUT returning a `Verdict`.
 ///    The verdict either persisted or it never existed — there is no
 ///    "verdict that was issued but not logged" state.
-/// 3. If both succeed, return `Ok(Verdict)`. The `EvidenceToken` and
-///    `ComplianceToken` are consumed regardless of outcome (linear).
+/// 4. If all succeed, return `Ok(Verdict)`. The `EvidenceToken` and
+///    `ComplianceToken` are consumed regardless of outcome (linear): they
+///    were moved into this function, so on any error path the caller no
+///    longer owns them and cannot retry with the same tokens.
+///
+/// # Errors
+///
+/// - [`BtvError::LogUnavailable`] — fail-secure: the sink cannot accept
+///   writes; no `Verdict` is constructed.
+/// - [`BtvError::InvalidTokenSignature`] — the compliance token was not
+///   issued by the recognized authority; no `Verdict` is constructed.
+/// - [`BtvError::Backend`] / [`BtvError::LogConflict`] — persistence
+///   failed after construction; the `Verdict` is dropped and never
+///   returned.
 ///
 /// ## Out of scope
 ///
@@ -746,24 +898,30 @@ pub fn issue_verdict(
     sink: &dyn LogSink,
 ) -> Result<Verdict, BtvError> {
     if !sink.is_available() {
-        // Fail-secure: do not construct the Verdict. Token is consumed
-        // (moved into this function) but not used — the caller loses it.
-        // This is intentional: if we returned the token to the caller,
-        // they could retry with the same token, violating linearity.
-        std::mem::forget(token);
-        std::mem::forget(compliance);
+        // Fail-secure: no Verdict is constructed. Linearity needs no special
+        // measure here: `token` and `compliance` were moved into this
+        // function, so the caller cannot reuse them for a retry — explicit
+        // `drop` releases their heap allocations. (`std::mem::forget` would
+        // be WRONG, not safer: these types do not implement `Drop`, so
+        // forgetting them leaks memory without any linearity benefit —
+        // see clippy::forget_non_drop and audit finding F6.)
+        drop(token);
+        drop(compliance);
         return Err(BtvError::LogUnavailable);
     }
 
-    let verdict = Verdict::new(token, compliance, decision, explanation);
+    // OS-02: signature verification happens inside Verdict::new; a forged
+    // token aborts construction before any persistence is attempted.
+    let verdict = Verdict::new(token, compliance, decision, explanation)?;
     let record = verdict.to_record();
 
     match sink.append(&record) {
         Ok(()) => Ok(verdict),
         Err(e) => {
-            // Verdict existed in memory but is not durable. Forget it
-            // so the caller cannot accidentally use an un-logged verdict.
-            std::mem::forget(verdict);
+            // Verdict existed in memory but is not durable. Drop it so no
+            // un-logged verdict escapes to the caller (same linear
+            // reasoning as the fail-secure branch above).
+            drop(verdict);
             Err(e)
         }
     }
@@ -893,7 +1051,7 @@ impl EscalatedVerdict {
         let hmac = Self::compute_hmac(
             &operator_id,
             &operator_signature,
-            &decision,
+            decision,
             &failed_context,
             &reason,
         );
@@ -912,7 +1070,7 @@ impl EscalatedVerdict {
         let expected = Self::compute_hmac(
             &self.operator_id,
             &self.operator_signature,
-            &self.decision,
+            self.decision,
             &self.failed_context,
             &self.reason,
         );
@@ -947,7 +1105,7 @@ impl EscalatedVerdict {
     fn compute_hmac(
         operator_id: &[u8; 32],
         operator_signature: &[u8; 32],
-        decision: &Decision,
+        decision: Decision,
         failed_context: &ContextRef,
         reason: &str,
     ) -> [u8; 32] {
@@ -1002,13 +1160,50 @@ impl AccountableDecision for EscalatedVerdict {
 }
 
 // ============================================================================
-// HMAC key helper
+// Key-resolution helpers
 // ============================================================================
 
+/// Resolve a key from the environment ONCE per process.
+///
+/// Reading `BTV_HMAC_KEY`/`BTV_AUTHORITY_KEY` on every seal/signature
+/// computation would put an environment-variable lookup (~100 ns) inside
+/// the measured hot path of `Verdict::new`; `OnceLock` resolves the key at
+/// first use and keeps every later read to a single atomic load.
+/// Documented semantics: the key in effect is the one present at first
+/// use; changing the variable afterwards has no effect.
+fn cached_key(var: &'static str, fallback: &'static str) -> Vec<u8> {
+    static HMAC_KEY: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
+    static AUTHORITY_KEY: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
+    let cell = match var {
+        "BTV_HMAC_KEY" => &HMAC_KEY,
+        "BTV_AUTHORITY_KEY" => &AUTHORITY_KEY,
+        _ => unreachable!("internal key name"),
+    };
+    cell.get_or_init(|| {
+        std::env::var(var)
+            .unwrap_or_else(|_| fallback.to_string())
+            .into_bytes()
+    })
+    .clone()
+}
+
+/// HMAC key for verdict/record integrity seals (`BTV_HMAC_KEY` in
+/// production, injected from an HSM/KMS; deterministic `PoC` fallback).
 fn hmac_key() -> Vec<u8> {
-    std::env::var("BTV_HMAC_KEY").map_or_else(
-        |_| b"btv-proof-key-constitutional-enclosure-2026".to_vec(),
-        std::string::String::into_bytes,
+    cached_key(
+        "BTV_HMAC_KEY",
+        "btv-proof-key-constitutional-enclosure-2026",
+    )
+}
+
+/// The recognized compliance-authority signing key (`BTV_AUTHORITY_KEY` in
+/// production, HSM/KMS-injected; deterministic `PoC` fallback). Both the
+/// issuing [`ComplianceAuthority`] and the verifying [`Verdict::new`] use
+/// this source, so issuer and verifier agree by construction.
+fn authority_key() -> Vec<u8> {
+    cached_key(
+        "BTV_AUTHORITY_KEY",
+        "btv-authority-key-proof-of-concept-2026",
     )
 }
 
@@ -1030,7 +1225,8 @@ mod tests {
             compliance,
             Decision::Deny,
             "Below threshold".to_string(),
-        );
+        )
+        .expect("new_for_test authority holds the recognized key");
         assert!(verdict.verify_integrity());
         assert_eq!(verdict.jurisdiction(), "BR-LGPD");
         assert_eq!(verdict.appeal_deadline_hours(), 720);
@@ -1048,7 +1244,8 @@ mod tests {
         let token = EvidenceToken::new(b"context");
         let authority = ComplianceAuthority::new_for_test();
         let compliance = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
-        let mut verdict = Verdict::new(token, compliance, Decision::Deny, "Original".to_string());
+        let mut verdict = Verdict::new(token, compliance, Decision::Deny, "Original".to_string())
+            .expect("new_for_test authority holds the recognized key");
         assert!(verdict.verify_integrity());
         verdict.explanation = "Tampered".to_string(); // bypass HMAC (test only)
         assert!(!verdict.verify_integrity());
@@ -1139,11 +1336,12 @@ mod tests {
             compliance,
             Decision::Deny,
             "below threshold".to_string(),
-        );
+        )
+        .expect("new_for_test authority holds the recognized key");
         verdict.to_record()
     }
 
-    /// Gate 1/3: construct -> to_record() -> verify_integrity() == true.
+    /// Gate 1/3: construct -> `to_record()` -> `verify_integrity()` == true.
     /// Before OS-01 this returned `false` for EVERY persisted record
     /// (different HMAC preimages on the two sides of `to_record`).
     #[test]
@@ -1170,7 +1368,12 @@ mod tests {
     #[test]
     fn record_tamper_decision_detected() {
         let mut r = sample_record();
-        r.decision = if r.decision == "deny" { "allow" } else { "deny" }.to_string();
+        r.decision = if r.decision == "deny" {
+            "allow"
+        } else {
+            "deny"
+        }
+        .to_string();
         assert!(!r.verify_integrity());
     }
 
@@ -1214,7 +1417,8 @@ mod tests {
         let token = EvidenceToken::new(b"ctx");
         let authority = ComplianceAuthority::new_for_test();
         let compliance = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
-        let verdict = Verdict::new(token, compliance, Decision::Deny, "abcd".to_string());
+        let verdict = Verdict::new(token, compliance, Decision::Deny, "abcd".to_string())
+            .expect("new_for_test authority holds the recognized key");
         let mut shifted = verdict.to_record();
         // Original: explanation="abcd", jurisdiction="F-BR"? No — build the
         // shifted variant explicitly: move the last char of explanation into
@@ -1238,5 +1442,79 @@ mod tests {
             !shifted.verify_integrity(),
             "field-boundary shift must invalidate the seal (length-prefix domain separation)"
         );
+    }
+
+    // ========================================================================
+    // OS-02 gate — signed ComplianceToken (closes F2)
+    // ========================================================================
+
+    /// A token whose signature does not match its contents (forged in-place
+    /// via the pub(crate) constructor) must be rejected by `Verdict::new`.
+    #[test]
+    fn forged_token_signature_rejected() {
+        let token = EvidenceToken::new(b"ctx");
+        // Forged: valid fields, zero signature (no authority produced it).
+        let compliance = ComplianceToken::new("BR-LGPD", "1.0.0", 720, [0u8; 32]);
+        let result = Verdict::new(token, compliance, Decision::Deny, "x".to_string());
+        assert!(
+            matches!(result, Err(BtvError::InvalidTokenSignature)),
+            "forged compliance token must be rejected"
+        );
+    }
+
+    /// A token issued by an authority whose key is NOT the recognized key
+    /// (the `BTV_AUTHORITY_KEY` source `Verdict::new` verifies against)
+    /// must also be rejected — an external crate cannot self-issue authority.
+    #[test]
+    fn rogue_authority_token_rejected() {
+        let token = EvidenceToken::new(b"ctx");
+        let rogue =
+            ComplianceAuthority::new(b"rogue-authority-key".to_vec(), vec!["BR-LGPD".to_string()]);
+        let compliance = rogue
+            .issue_token("BR-LGPD", "1.0.0", 720)
+            .expect("rogue allowlist accepts the jurisdiction");
+        let result = Verdict::new(token, compliance, Decision::Allow, "x".to_string());
+        assert!(matches!(result, Err(BtvError::InvalidTokenSignature)));
+    }
+
+    /// `issue_verdict` propagates the signature failure with no record
+    /// appended and no verdict emitted (tokens consumed — linear).
+    #[test]
+    fn issue_verdict_propagates_invalid_signature_fail_secure() {
+        let sink = InMemoryLogSink::new();
+        let token = EvidenceToken::new(b"ctx");
+        let compliance = ComplianceToken::new("BR-LGPD", "1.0.0", 720, [0xFF; 32]);
+        let result = issue_verdict(token, compliance, Decision::Allow, "x".to_string(), &sink);
+        assert!(matches!(result, Err(BtvError::InvalidTokenSignature)));
+        assert_eq!(
+            sink.len(),
+            0,
+            "no record may be appended for a forged token"
+        );
+    }
+
+    /// Tokens issued by the recognized (env-fallback) authority verify and
+    /// produce verdicts whose seals round-trip through [`VerdictRecord`].
+    #[test]
+    fn signed_token_happy_path() {
+        let token = EvidenceToken::new(b"ctx");
+        let authority = ComplianceAuthority::new_from_env();
+        let compliance = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
+        let verdict = Verdict::new(token, compliance, Decision::Allow, "ok".to_string())
+            .expect("new_from_env resolves the same recognized key as Verdict::new");
+        assert!(verdict.verify_integrity());
+        assert!(verdict.to_record().verify_integrity());
+    }
+
+    /// The compliance-token signature is unambiguous under field-boundary
+    /// shifts (same length-prefix construction as the verdict seal).
+    #[test]
+    fn compliance_signature_is_unambiguous() {
+        let key = b"some-authority-key".to_vec();
+        let sig = ComplianceToken::compute_signature(&key, "BR-LGPD", "1.0.0-abc", 720);
+        // Shift one char from policy_version into jurisdiction: naive
+        // concatenation is identical, length-prefixed preimage is not.
+        let shifted = ComplianceToken::compute_signature(&key, "BR-LGPD1", ".0.0-abc", 720);
+        assert_ne!(sig, shifted);
     }
 }

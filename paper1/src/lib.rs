@@ -191,7 +191,10 @@ impl ComplianceAuthority {
     ///
     /// In production, `signing_key` must come from HSM/KMS.
     pub fn new(signing_key: Vec<u8>, allowed_jurisdictions: Vec<String>) -> Self {
-        Self { signing_key, allowed_jurisdictions }
+        Self {
+            signing_key,
+            allowed_jurisdictions,
+        }
     }
 
     /// Create an authority that reads its key from the `BTV_AUTHORITY_KEY` env var,
@@ -243,7 +246,11 @@ impl ComplianceAuthority {
                 jurisdiction, self.allowed_jurisdictions
             ));
         }
-        Ok(ComplianceToken::new(jurisdiction, policy_version, contestability_hours))
+        Ok(ComplianceToken::new(
+            jurisdiction,
+            policy_version,
+            contestability_hours,
+        ))
     }
 }
 
@@ -282,12 +289,12 @@ impl Decision {
 /// compile-time error outside this module. The sole constructor is
 /// [`Verdict::new()`].
 pub struct Verdict {
-    evidence_id: Blake3Hash,          // private — only settable via Verdict::new()
-    compliance: ComplianceToken,      // private — only settable via Verdict::new()
+    evidence_id: Blake3Hash,     // private — only settable via Verdict::new()
+    compliance: ComplianceToken, // private — only settable via Verdict::new()
     decision: Decision,
     explanation: String,
     appeal_deadline_hours: u32,
-    hmac: [u8; 32],                   // integrity seal over evidence + decision + explanation
+    hmac: [u8; 32], // integrity seal over evidence + decision + explanation
 }
 
 impl Verdict {
@@ -343,11 +350,7 @@ impl Verdict {
         self.compliance.jurisdiction()
     }
 
-    fn compute_hmac(
-        evidence_id: &Blake3Hash,
-        decision: &Decision,
-        explanation: &str,
-    ) -> [u8; 32] {
+    fn compute_hmac(evidence_id: &Blake3Hash, decision: &Decision, explanation: &str) -> [u8; 32] {
         // PATCH 1.4 (L1 mitigation): The HMAC key is now injectable via the
         // BTV_HMAC_KEY environment variable. Production deployments MUST set
         // this variable to a key derived from an HSM/KMS to satisfy the
@@ -362,9 +365,7 @@ impl Verdict {
         let key = std::env::var("BTV_HMAC_KEY")
             .map(|k| k.into_bytes())
             .unwrap_or_else(|_| b"btv-proof-key-constitutional-enclosure-2026".to_vec());
-        let mut mac =
-            HmacSha256::new_from_slice(&key)
-                .expect("HMAC key length is valid");
+        let mut mac = HmacSha256::new_from_slice(&key).expect("HMAC key length is valid");
         mac.update(evidence_id.as_bytes());
         mac.update(decision.as_bytes());
         mac.update(explanation.as_bytes());
@@ -469,14 +470,17 @@ pub struct OperatorToken {
 impl OperatorToken {
     /// Private constructor — only callable by `OperatorAuthority::issue_token()`.
     fn new_signed(operator_id: [u8; 32], signing_key: &[u8; 32]) -> Self {
-        let mut mac = <HmacSha256 as Mac>::new_from_slice(signing_key)
-            .expect("HMAC accepts any key size");
+        let mut mac =
+            <HmacSha256 as Mac>::new_from_slice(signing_key).expect("HMAC accepts any key size");
         mac.update(&operator_id);
         mac.update(b"operator-token-v1");
         let result = mac.finalize().into_bytes();
         let mut signature = [0u8; 32];
         signature.copy_from_slice(&result[..32]);
-        OperatorToken { operator_id, signature }
+        OperatorToken {
+            operator_id,
+            signature,
+        }
     }
 
     /// Read-only access to the operator's identity.
@@ -512,7 +516,9 @@ impl OperatorAuthority {
     /// Test-only constructor with a deterministic key.
     #[cfg(any(test, feature = "test-support"))]
     pub fn new_for_test() -> Self {
-        OperatorAuthority { signing_key: [0xAA; 32] }
+        OperatorAuthority {
+            signing_key: [0xAA; 32],
+        }
     }
 
     /// Issue an `OperatorToken` for a given operator identity.
@@ -561,7 +567,14 @@ impl EscalatedVerdict {
             &failed_context,
             &reason,
         );
-        EscalatedVerdict { operator_id, operator_signature, decision, failed_context, reason, hmac }
+        EscalatedVerdict {
+            operator_id,
+            operator_signature,
+            decision,
+            failed_context,
+            reason,
+            hmac,
+        }
     }
 
     /// Verify that the EscalatedVerdict has not been tampered with.
@@ -608,9 +621,7 @@ impl EscalatedVerdict {
         let key = std::env::var("BTV_HMAC_KEY")
             .map(|k| k.into_bytes())
             .unwrap_or_else(|_| b"btv-escalated-proof-key-2026-xx".to_vec());
-        let mut mac =
-            HmacSha256::new_from_slice(&key)
-                .expect("HMAC accepts any key size");
+        let mut mac = HmacSha256::new_from_slice(&key).expect("HMAC accepts any key size");
         mac.update(b"btv-escalated-v1"); // canonical schema version prefix
         mac.update(operator_id);
         mac.update(operator_signature);
@@ -855,7 +866,10 @@ mod proof {
             "Freshly constructed EscalatedVerdict must pass integrity check"
         );
         assert_eq!(verdict.operator_id(), &[0x42; 32]);
-        assert_eq!(verdict.reason(), "System timeout during triage — nurse approved immediate treatment");
+        assert_eq!(
+            verdict.reason(),
+            "System timeout during triage — nurse approved immediate treatment"
+        );
     }
 
     /// Clause 9: OperatorToken is a linear resource (consumed on use).
@@ -864,7 +878,7 @@ mod proof {
         let authority = OperatorAuthority::new_for_test();
         let token = authority.issue_token([0x01; 32]);
         let (id, sig) = token.consume(); // token is moved and destroyed
-        // let _second = token.consume(); // would produce E0382
+                                         // let _second = token.consume(); // would produce E0382
         assert_eq!(id, [0x01; 32]);
         assert_ne!(sig, [0u8; 32], "Signature must be non-trivial");
     }
@@ -920,18 +934,14 @@ mod proof {
         let token = EvidenceToken::new(b"auto-context");
         let authority = ComplianceAuthority::new_for_test();
         let compliance = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
-        let auto_verdict = Verdict::new(
-            token, compliance, Decision::Deny,
-            "Auto denial".to_string(),
-        );
+        let auto_verdict =
+            Verdict::new(token, compliance, Decision::Deny, "Auto denial".to_string());
 
         let op_authority = OperatorAuthority::new_for_test();
         let op_token = op_authority.issue_token([0x42; 32]);
         let ctx = ContextRef::from_context(b"failed-context");
-        let esc_verdict = EscalatedVerdict::new(
-            op_token, Decision::Allow, ctx,
-            "Human override".to_string(),
-        );
+        let esc_verdict =
+            EscalatedVerdict::new(op_token, Decision::Allow, ctx, "Human override".to_string());
 
         fn check(d: &dyn AccountableDecision) -> bool {
             d.verify_integrity()

@@ -1,41 +1,45 @@
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, BatchSize};
+use criterion::{black_box, criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use silent_decisions_proof::{ComplianceAuthority, Decision, EvidenceToken, Verdict};
 
 fn bench_verdict_new(c: &mut Criterion) {
     let mut group = c.benchmark_group("Verdict::new");
     let payloads: &[(&str, &[u8])] = &[
-        ("64B",  &[b'x'; 64]),
+        ("64B", &[b'x'; 64]),
         ("512B", &[b'x'; 512]),
-        ("4KB",  &[b'x'; 4096]),
+        ("4KB", &[b'x'; 4096]),
     ];
 
     for (label, payload) in payloads {
         // `ComplianceToken::new` is `pub(crate)`: tokens are issued through
         // a `ComplianceAuthority` (validated jurisdiction allowlist).
         let authority = ComplianceAuthority::new_from_env();
-        group.bench_with_input(BenchmarkId::new("context_size", label), payload, |b, ctx| {
-            let jur  = "BR-LGPD".to_string();
-            let pol  = "1.0.0".to_string();
-            let expl = "Credit score below threshold.".to_string();
-            let mut seed = 0u8;
+        group.bench_with_input(
+            BenchmarkId::new("context_size", label),
+            payload,
+            |b, ctx| {
+                let jur = "BR-LGPD".to_string();
+                let pol = "1.0.0".to_string();
+                let expl = "Credit score below threshold.".to_string();
+                let mut seed = 0u8;
 
-            b.iter_batched(
-                || {
-                    seed = seed.wrapping_add(1); // impede LLVM de cachear o hash
-                    let mut ctx_owned = ctx.to_vec();
-                    ctx_owned[0] = seed;
-                    (ctx_owned, jur.clone(), pol.clone(), expl.clone())
-                },
-                |(ctx_owned, jur_owned, pol_owned, expl_owned)| {
-                    let token = EvidenceToken::new(black_box(&ctx_owned));
-                    let compliance = authority
-                        .issue_token(&jur_owned, &pol_owned, 720)
-                        .expect("BR-LGPD is in the default allowlist");
-                    Verdict::new(token, compliance, Decision::Deny, expl_owned)
-                },
-                BatchSize::SmallInput,
-            );
-        });
+                b.iter_batched(
+                    || {
+                        seed = seed.wrapping_add(1); // impede LLVM de cachear o hash
+                        let mut ctx_owned = ctx.to_vec();
+                        ctx_owned[0] = seed;
+                        (ctx_owned, jur.clone(), pol.clone(), expl.clone())
+                    },
+                    |(ctx_owned, jur_owned, pol_owned, expl_owned)| {
+                        let token = EvidenceToken::new(black_box(&ctx_owned));
+                        let compliance = authority
+                            .issue_token(&jur_owned, &pol_owned, 720)
+                            .expect("BR-LGPD is in the default allowlist");
+                        Verdict::new(token, compliance, Decision::Deny, expl_owned)
+                    },
+                    BatchSize::SmallInput,
+                );
+            },
+        );
     }
     group.finish();
 }
@@ -48,7 +52,9 @@ fn bench_verify_integrity(c: &mut Criterion) {
         .issue_token("BR-LGPD", "1.0.0", 720)
         .expect("BR-LGPD is in the default allowlist");
     let verdict = Verdict::new(
-        token, compliance, Decision::Deny,
+        token,
+        compliance,
+        Decision::Deny,
         "Credit score below threshold.".to_string(),
     );
     c.bench_function("Verdict::verify_integrity", |b| {
