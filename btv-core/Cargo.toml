@@ -5,6 +5,11 @@ edition = "2021"
 description = "BTV Framework — Bill of Materials for Trustworthy Verdicts (artifact-v2)"
 license = "MIT"
 repository = "https://github.com/danzeroum/silent-decisions-proof"
+# benches/sweep_concurrent.rs is a [[bin]] target (see below); without this,
+# cargo auto-discovers it as a SECOND bench target and warns about the file
+# being present in multiple build targets. The only real bench
+# (verdict_construction) is declared explicitly below.
+autobenches = false
 
 [features]
 default = []
