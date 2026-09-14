@@ -155,3 +155,10 @@ MIT (see `btv-core/Cargo.toml`).
 ## Contact
 
 For questions about this artifact, contact the corresponding author of the IEEE Computer submission.
+
+---
+
+**Artifact tag for the Computer resubmission:** `comsi-2026-04-0112-r1`
+(pinned at merge; every number cited in the manuscript traces to a committed
+CSV/raw report by file, line, and commit hash — see
+`docs/RESPONSE-LETTER-COMSI-2026-04-0112.md`).

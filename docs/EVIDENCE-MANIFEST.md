@@ -258,3 +258,23 @@ Commit: `fb6e9d5` (branch `review/bench-workspace-ffi`, PR #4).
 | R4b/A | Overhead empírico do EscalatedVerdict (160B vs 152B, x86-64) restaurado no proof do Corolário 4.8 — o datum constava apenas no parágrafo CAL removido e estava ausente do restante do manuscrito (Art.~14 e a type law já estavam no Corolário) | paper1/section4_theorem.tex:253–256 |
 | — | Contagem de palavras final | 5.938 / 6.000 (pandoc, `main.tex` com `\input` resolvido) |
 | — | Verificação soares2026b (R4b, 14 set 2026) | `github.com/danzeroum/BuildToValueGovernance` verificado **público e acessível sem autenticação** (HTTP 200; API GitHub `private:false`; branch default `main`). Conteúdo confere com a entrada bib: framework BTV — interceptação de chamadas LLM, validação LGPD/GDPR/EU AI Act, evidência criptográfica HMAC. A entrada não fixa branch/tag/commit específico. |
+
+---
+
+## OS-01..OS-13 traceability (COMSI-2026-04-0112, Rev 5)
+
+| Ordern | Achado | Artefato gerado | Evidência executável |
+|---|---|---|---|
+| OS-01 | F1 | `seal()` unificada em `btv-core/src/lib.rs` | `record_seal_roundtrip` + 6 tamper + `seal_is_unambiguous` |
+| OS-02 | F2 | `ComplianceToken` assinado; `Verdict::new -> Result` | `forged_token_signature_rejected`, `rogue_authority_token_rejected`; clippy `-D warnings` limpo |
+| OS-03 | F3 | append-only `LogSink` + `LogConflict` | `btv-core/tests/test_append_only.rs` |
+| OS-04 | F4 | ρ derivado; E[fine] do corpus; crédito corrigido; C_fixed com fontes | `python3 scripts/compute_crossover.py`; CI: consistência interna |
+| OS-05 | F5 | `reports/tcb_summary.md` gerado por `scripts/gen_tcb_summary.py` | `python3 scripts/verify_reports.py` na CI |
+| OS-06 | F6 | `drop` no fail-secure | `reports/rss_probe_fail_secure.txt` (delta 0 kB/200k); `tests/ui/token_reuse_after_fail_secure.rs` (E0382) |
+| OS-07 | F7,F10 | `full_pipeline_durable` (disco real) + `status_quo_digest_log` | `data/sweep_raw_20260914T231611Z_chunked5s.csv` + fingerprint (5 modos, 5 trials) |
+| OS-08 | F8,F9 | testes não escrevem em `reports/`; n_threads por env; arquitetura por target triple; vazão = ops/wall_clock | `scripts/collect_load_stats.sh` → `reports/load_stats.csv` + fingerprint |
+| OS-09 | H4,H5,H6 | btv-core canônico; paper1 re-export; 17 cláusulas; `rust-toolchain.toml` | `grep -c "fn clause_"` == 17 == §1 == §7; `test_proof_clauses.rs` |
+| OS-10 | A2 | §5 reescrita dos CSVs; tabelas geradas | `scripts/gen_section5_tables.py` → `paper1/section5_tables_generated.tex` |
+| OS-11 | A4 | claims moderados; abstract 149 palavras | `scripts/count_words.py` (PASS); grep de frases banidas vazio |
+| OS-12 | F11 | 4 refs de R2 com DOIs verificados; §2.3 reescopada; §3 afim×linear | `grep -c "^@" paper1/refs.bib` == 14; todas citadas |
+| OS-13 | D1–D4 | `docs/RESPONSE-LETTER-COMSI-2026-04-0112.md` | carta ponto a ponto com arquivo:linha e hash |
