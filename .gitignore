@@ -14,3 +14,9 @@ __pycache__/
 # are the committed evidence pair (CSV + environment fingerprint alongside).
 !data/sweep_raw_20260914T171258Z.csv
 !data/sweep_raw_20260914T164735Z_runnervmlun5p.csv
+
+# OS-07 (COMSI-2026-04-0112, closes F7/F10): third environment, first run
+# with the 5-mode grid (full_pipeline_durable + status_quo_digest_log).
+# Reduced-footprint (BTV_SWEEP_TARGET_WALL_SECS=2, not the 90s headline
+# target) — see data/sweep_env_20260914T224433Z.txt for the label.
+!data/sweep_raw_20260914T224433Z.csv
