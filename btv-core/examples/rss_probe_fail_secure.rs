@@ -54,16 +54,14 @@ fn main() {
     for i in 0..CALLS {
         let token = EvidenceToken::new(format!("ctx-{i}").as_bytes());
         let compliance = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
-        debug_assert!(
-            issue_verdict(
-                token,
-                compliance,
-                Decision::Deny,
-                "partition-probe".to_string(),
-                &sink,
-            )
-            .is_err()
-        );
+        debug_assert!(issue_verdict(
+            token,
+            compliance,
+            Decision::Deny,
+            "partition-probe".to_string(),
+            &sink,
+        )
+        .is_err());
     }
     let after = rss_kb();
     let delta = after - before;
@@ -75,7 +73,5 @@ fn main() {
         eprintln!("FAIL: RSS delta {delta} kB >= 1024 kB — leak regression");
         std::process::exit(1);
     }
-    println!(
-        "PASS: delta < 1 MB over {CALLS} rejected decisions (pre-fix leak: ~12,504 kB)"
-    );
+    println!("PASS: delta < 1 MB over {CALLS} rejected decisions (pre-fix leak: ~12,504 kB)");
 }

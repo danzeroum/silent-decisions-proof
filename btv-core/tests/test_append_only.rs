@@ -32,13 +32,8 @@ fn make_record(context: &[u8], explanation: &str) -> VerdictRecord {
     let authority = ComplianceAuthority::new_for_test();
     let token = EvidenceToken::new(context);
     let compliance = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
-    let verdict = Verdict::new(
-        token,
-        compliance,
-        Decision::Deny,
-        explanation.to_string(),
-    )
-    .expect("new_for_test authority holds the recognized key");
+    let verdict = Verdict::new(token, compliance, Decision::Deny, explanation.to_string())
+        .expect("new_for_test authority holds the recognized key");
     verdict.to_record()
 }
 
@@ -107,14 +102,8 @@ fn appended_record_integrity_survives_persistence() {
     let authority = ComplianceAuthority::new_for_test();
     let token = EvidenceToken::new(b"roundtrip-context");
     let compliance = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
-    let verdict = issue_verdict(
-        token,
-        compliance,
-        Decision::Allow,
-        "ok".to_string(),
-        &sink,
-    )
-    .expect("issue_verdict must succeed");
+    let verdict = issue_verdict(token, compliance, Decision::Allow, "ok".to_string(), &sink)
+        .expect("issue_verdict must succeed");
     // OS-01 + OS-03 combined: the record that crossed to the sink still
     // verifies its seal, and its evidence_id is the BLAKE3 of the context.
     assert!(verdict.verify_integrity());

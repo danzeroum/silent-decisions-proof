@@ -20,7 +20,7 @@ mkdir -p "${OUT_DIR}"
 {
     echo "timestamp_utc: ${TIMESTAMP}"
     echo "sweep_target_wall_secs: ${BTV_SWEEP_TARGET_WALL_SECS:-90} (default 90; override via BTV_SWEEP_TARGET_WALL_SECS — Round 3, Task B2)"
-    echo "sweep_modes: full_pipeline, verdict_only, status_quo_async_log (Round 3, Task B1)"
+    echo "sweep_modes: full_pipeline, full_pipeline_durable, verdict_only, status_quo_async_log, status_quo_digest_log (OS-07: durable on-disk WAL+FULL arm; symmetric digest baseline)"
     echo "--- rustc ---"
     rustc --version
     echo "--- cargo ---"
