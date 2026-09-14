@@ -42,6 +42,7 @@
 #![allow(clippy::module_name_repetitions, clippy::needless_doctest_main)]
 
 use hmac::{Hmac, Mac};
+use rusqlite::OptionalExtension;
 use sha2::Sha256;
 use subtle::ConstantTimeEq;
 
@@ -254,20 +255,49 @@ impl Default for InMemoryLogSink {
 }
 
 impl LogSink for InMemoryLogSink {
+    /// # Errors
+    ///
+    /// See the trait-level documentation. Idempotent on `evidence_id`:
+    /// replaying a byte-identical record is `Ok(())`; a differing record
+    /// with the same `evidence_id` is [`BtvError::LogConflict`] (OS-03).
     fn append(&self, record: &VerdictRecord) -> Result<(), BtvError> {
         if !self.is_available() {
             return Err(BtvError::LogUnavailable);
         }
-        self.records
-            .lock()
-            .expect("records mutex poisoned")
-            .push(record.clone());
+        let mut records = self.records.lock().expect("records mutex poisoned");
+        // Append-only, OS-03: same evidence_id + identical content -> true
+        // idempotency; same evidence_id + any differing field -> conflict.
+        // Silent overwrite (the SQLite `INSERT OR REPLACE` behavior this
+        // replaces) is prohibited by the trait contract.
+        if let Some(existing) = records
+            .iter()
+            .find(|r| r.evidence_id_hex == record.evidence_id_hex)
+        {
+            return if records_equivalent(existing, record) {
+                Ok(())
+            } else {
+                Err(BtvError::LogConflict(record.evidence_id_hex.clone()))
+            };
+        }
+        records.push(record.clone());
         Ok(())
     }
 
     fn is_available(&self) -> bool {
         self.available.load(std::sync::atomic::Ordering::SeqCst)
     }
+}
+
+/// Byte-level equivalence of two records across every authenticated and
+/// metadata field. Used by the append-only conflict checks (OS-03).
+fn records_equivalent(a: &VerdictRecord, b: &VerdictRecord) -> bool {
+    a.evidence_id_hex == b.evidence_id_hex
+        && a.decision == b.decision
+        && a.explanation == b.explanation
+        && a.jurisdiction == b.jurisdiction
+        && a.policy_version == b.policy_version
+        && a.appeal_deadline_hours == b.appeal_deadline_hours
+        && a.hmac_hex == b.hmac_hex
 }
 
 // ============================================================================
@@ -366,13 +396,64 @@ impl SqliteLogSink {
 }
 
 impl LogSink for SqliteLogSink {
+    /// Append-only persistence (OS-03, closes F3).
+    ///
+    /// The previous implementation used `INSERT OR REPLACE INTO verdicts`,
+    /// which let ANY caller silently rewrite `decision`, `explanation`, and
+    /// `hmac_hex` of an already-persisted verdict by re-presenting the same
+    /// `evidence_id` — mutation, not idempotency, fatal to the
+    /// non-repudiation claim. This implementation never rewrites:
+    ///
+    /// 1. `INSERT` plain — a duplicate `evidence_id` fails at the key.
+    /// 2. On conflict, the existing row is read back and compared
+    ///    byte-to-byte: identical -> `Ok(())` (true idempotency, as the
+    ///    trait contract requires); any differing field ->
+    ///    [`BtvError::LogConflict`] and the original row remains untouched.
+    ///
+    /// # Errors
+    ///
+    /// See the trait-level documentation.
     fn append(&self, record: &VerdictRecord) -> Result<(), BtvError> {
         if !self.is_available() {
             return Err(BtvError::LogUnavailable);
         }
         let conn = self.conn.lock().expect("conn mutex poisoned");
+        let existing: Option<(String, String, String, String, i64, String)> = conn
+            .query_row(
+                "SELECT decision, explanation, jurisdiction, policy_version, \
+                 appeal_deadline_hours, hmac_hex \
+                 FROM verdicts WHERE evidence_id_hex = ?1",
+                rusqlite::params![record.evidence_id_hex],
+                |row| {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                        row.get(5)?,
+                    ))
+                },
+            )
+            .optional()
+            .map_err(|e| BtvError::Backend(format!("sqlite select: {e}")))?;
+
+        if let Some(existing) = existing {
+            let equivalent = existing.0 == record.decision
+                && existing.1 == record.explanation
+                && existing.2 == record.jurisdiction
+                && existing.3 == record.policy_version
+                && existing.4 == i64::from(record.appeal_deadline_hours)
+                && existing.5 == record.hmac_hex;
+            return if equivalent {
+                Ok(())
+            } else {
+                Err(BtvError::LogConflict(record.evidence_id_hex.clone()))
+            };
+        }
+
         conn.execute(
-            "INSERT OR REPLACE INTO verdicts \
+            "INSERT INTO verdicts \
              (evidence_id_hex, decision, explanation, jurisdiction, policy_version, appeal_deadline_hours, hmac_hex) \
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             rusqlite::params![
