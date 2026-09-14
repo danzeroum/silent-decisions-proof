@@ -4,7 +4,7 @@
 //! Demonstrates: healthcare domain, LGPD compliance, high-stakes Allow
 //! decisions also require evidence (not just denials).
 
-use silent_decisions_proof::{ComplianceToken, Decision, EvidenceToken, Verdict};
+use silent_decisions_proof::{ComplianceAuthority, Decision, EvidenceToken, Verdict};
 
 struct Patient {
     id: &'static str,
@@ -79,7 +79,12 @@ fn triage_patient(p: &Patient) -> Verdict {
 
     let token = EvidenceToken::new(context.as_bytes());
     // Healthcare: 168 hours (7 days) initial review window
-    let compliance = ComplianceToken::new("BR-LGPD", "1.0.0", 168);
+    // ComplianceToken is issued through a ComplianceAuthority (validated
+    // jurisdiction allowlist) — the pub(crate) constructor is not callable.
+    let authority = ComplianceAuthority::new_from_env();
+    let compliance = authority
+        .issue_token("BR-LGPD", "1.0.0", 168)
+        .expect("BR-LGPD is in the default allowlist");
 
     Verdict::new(token, compliance, decision, explanation)
 }

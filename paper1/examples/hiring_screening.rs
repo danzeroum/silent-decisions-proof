@@ -4,7 +4,7 @@
 //! Under EU AI Act, hiring is classified as high-risk AI (Annex III).
 //! Demonstrates: multi-field context, EU jurisdiction, appeal rights.
 
-use silent_decisions_proof::{ComplianceToken, Decision, EvidenceToken, Verdict};
+use silent_decisions_proof::{ComplianceAuthority, Decision, EvidenceToken, Verdict};
 
 struct Candidate {
     id: &'static str,
@@ -49,7 +49,15 @@ fn screen_candidate(c: &Candidate, cutoff: f64) -> Verdict {
 
     let token = EvidenceToken::new(context.as_bytes());
     // EU AI Act: 720 hours (30 days) appeal window for high-risk decisions
-    let compliance = ComplianceToken::new("EU-AIACT-2024/1689", "1.0.0", 720);
+    // ComplianceToken is issued through a ComplianceAuthority; this demo
+    // authority allows the regulation identifier used in the scenario.
+    let authority = ComplianceAuthority::new(
+        b"btv-demo-authority-key".to_vec(),
+        vec!["EU-AIACT-2024/1689".to_string()],
+    );
+    let compliance = authority
+        .issue_token("EU-AIACT-2024/1689", "1.0.0", 720)
+        .expect("jurisdiction is allowlisted above");
 
     Verdict::new(token, compliance, decision, explanation)
 }

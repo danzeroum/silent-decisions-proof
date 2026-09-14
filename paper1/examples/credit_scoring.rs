@@ -4,7 +4,7 @@
 //! evaluates it via a mock ML model, and produces a BTV Verdict.
 //! Demonstrates: real-world payload → EvidenceToken → Verdict → audit.
 
-use silent_decisions_proof::{ComplianceToken, Decision, EvidenceToken, Verdict};
+use silent_decisions_proof::{ComplianceAuthority, Decision, EvidenceToken, Verdict};
 
 /// Mock ML model — returns a credit score between 0.0 and 1.0.
 fn mock_credit_model(income: f64, debt: f64, history_months: u32) -> f64 {
@@ -44,7 +44,12 @@ fn main() {
     let token = EvidenceToken::new(context.as_bytes());
 
     // --- BTV: compliance metadata per LGPD Art. 18§2 ---
-    let compliance = ComplianceToken::new("BR-LGPD", "1.0.0", 720); // 30 days
+    // `ComplianceToken::new` is `pub(crate)`: tokens are issued through a
+    // `ComplianceAuthority`, which validates the jurisdiction allowlist.
+    let authority = ComplianceAuthority::new_from_env();
+    let compliance = authority
+        .issue_token("BR-LGPD", "1.0.0", 720) // 30 days
+        .expect("BR-LGPD is in the default allowlist");
 
     // --- BTV: construct the Verdict (consumes both tokens atomically) ---
     let explanation = format!(
@@ -73,9 +78,12 @@ fn main() {
     // --- The context hash is deterministic: same input → same evidence ---
     // An auditor can re-hash the stored context and verify it matches evidence_id.
     let rehash = EvidenceToken::new(context.as_bytes());
+    let authority = ComplianceAuthority::new_from_env();
     let rehash_verdict = Verdict::new(
         rehash,
-        ComplianceToken::new("BR-LGPD", "1.0.0", 720),
+        authority
+            .issue_token("BR-LGPD", "1.0.0", 720)
+            .expect("BR-LGPD is in the default allowlist"),
         Decision::Deny,
         verdict.explanation().to_string(),
     );

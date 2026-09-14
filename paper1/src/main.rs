@@ -4,7 +4,7 @@
 //! every materialized Verdict consumed exactly one EvidenceToken
 //! and one ComplianceToken. No silent decisions are possible.
 
-use silent_decisions_proof::{ComplianceToken, Decision, EscalatedVerdict, EvidenceToken, Verdict};
+use silent_decisions_proof::{ComplianceAuthority, Decision, EscalatedVerdict, EvidenceToken, Verdict};
 
 fn main() {
     println!("═══════════════════════════════════════════════════════════════");
@@ -28,7 +28,15 @@ fn main() {
     println!("      Context hash: (token not yet consumed)");
 
     // Step 2: Prepare compliance metadata
-    let compliance = ComplianceToken::new("BR-LGPD", "1.0.0", 720); // 30 days per LGPD Art. 18§2
+    //
+    // `ComplianceToken::new` is `pub(crate)` (artifact-v2 hardening):
+    // compliance metadata can only be issued through a
+    // `ComplianceAuthority`, which validates the jurisdiction against
+    // its allowlist before minting the token.
+    let authority = ComplianceAuthority::new_from_env();
+    let compliance = authority
+        .issue_token("BR-LGPD", "1.0.0", 720) // 30 days per LGPD Art. 18§2
+        .expect("BR-LGPD is in the default allowlist");
     println!("  [2] ComplianceToken prepared");
     println!("      Jurisdiction: BR-LGPD");
     println!("      Policy:       v1.0.0");
