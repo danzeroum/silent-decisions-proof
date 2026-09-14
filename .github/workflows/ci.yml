@@ -35,13 +35,15 @@ jobs:
         working-directory: btv-core
         run: cargo clippy --all-targets --features test-support -- -D clippy::pedantic
 
-      - name: cargo audit
-        working-directory: btv-core
+      - name: cargo audit (workspace root Cargo.lock)
+        # The unified workspace keeps a single Cargo.lock at the repository
+        # root; the per-crate lockfiles were removed, and cargo audit does
+        # NOT walk up from a member directory to find the workspace lock —
+        # running it from btv-core/ now fails with "Couldn't load
+        # Cargo.lock". One audit from the root covers every member
+        # (btv-core, btv-python, paper1, paper2 — 232 dependencies in the
+        # unified lock, including the pyo3 and rayon trees).
         run: cargo audit --deny warnings
-
-      - name: cargo audit (btv-python)
-        working-directory: btv-python
-        run: cargo audit --deny warnings || true  # btv-python shares Cargo.lock with btv-core
 
   test-x86-64:
     name: Test (x86-64)
