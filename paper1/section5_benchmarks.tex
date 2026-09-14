@@ -40,10 +40,10 @@ harness-injected synchronization; percentiles are estimated online with
 the $P^2$ algorithm (Jain \& Chlamtac, 1985), O(1) memory per quantile,
 and are \emph{estimates}, not order statistics---all tables say so.
 Each sweep configuration runs five trials; we report medians and the
-trial-to-trial coefficient of variation (CV).  Cross-mode comparisons
-use throughput and within-mode latency; iteration counts are calibrated
-per (payload, mode) with the mode's own operation and are therefore not
-comparable across modes.
+trial-to-trial coefficient of variation (CV).  Iteration counts are
+calibrated per (payload, mode) with the mode's own operation and are
+therefore not comparable across modes; cross-mode comparisons use
+throughput and within-mode latency.
 
 \paragraph{Hardware and software.}
 Two virtualized platforms: an AMD EPYC~9V74 runner with 4~vCPUs and an
@@ -92,8 +92,8 @@ full pipeline---token construction, sealing, and in-memory persistence
 attempt---at 4~KiB payloads while scaling threads.  Median latency is
 flat up to the platform's vCPU count (1.72\,\textmu s at one thread on
 the EPYC runner, 2.30\,\textmu s at four) with trial CV below 0.5\%,
-which is the empirical signature of the absence of structural lock
-contention claimed in Section~\ref{sec:type_system}.
+the empirical signature of the absence of structural lock contention
+claimed in Section~\ref{sec:type_system}.
 
 \input{section5_tables_generated}
 
@@ -120,10 +120,10 @@ without a file.  The corrected benchmark---a real file, WAL enabled,
 full synchronization---measures $220\,\textmu$s mean
 ($189$--$240\,\textmu$s 95\% CI) per durably persisted verdict on the
 same container, roughly $160\times$ the in-memory path.  We report the
-unflattering number because it is the one that answers the question
-``does governance cost nothing at runtime?''  It does not: construction is
-microsecond-scale, durable persistence is two orders of magnitude
-higher and bounded below by storage physics.
+unflattering number because it answers the question ``does governance
+cost nothing at runtime?'': construction is microsecond-scale, durable
+persistence is two orders of magnitude higher and bounded below by
+storage physics.
 
 % ----------------------------------------------------------------
 \subsection{Worked Examples}

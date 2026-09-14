@@ -55,6 +55,24 @@ The non-repudiability guarantee follows directly: because an
 presented for two different decisions.  Because it cannot be silently
 dropped, a decision that lacks evidence cannot be compiled.
 
+\paragraph{Affine versus linear (Section~\ref{sec:affine-linear}).}
+\label{sec:affine-linear}
+Rust's ownership is \emph{affine}: a value may be used zero or one
+times, not exactly once
+\cite{walker2005substructural, ahmed2009state}.
+BTV therefore recovers full linearity \emph{at the API surface}: every
+token is \texttt{\#[must\_use]}, the crate compiles with
+\texttt{\#![deny(unused\_must\_use)]}, and the sole destructors are
+\texttt{pub(crate)}---so silently discarding a token is a compile
+error that cannot be discharged outside the defining crate.  Three
+escape hatches remain, documented rather than denied:
+\texttt{mem::forget} stays callable on tokens the caller owns
+(leaking, not duplicating, the obligation); a panic between creation
+and consumption drops the token during unwinding; process abort loses
+it with the process.  None produces a materialized unevidenced
+\texttt{Verdict}; they bound the guarantee's \emph{liveness}, not its
+construction-time soundness.
+
 % ----------------------------------------------------------------
 \subsection{The Atomic Binding Operator}
 \label{sec:binding}
