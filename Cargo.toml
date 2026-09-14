@@ -1,0 +1,46 @@
+# Root workspace manifest for the silent-decisions-proof artifact.
+#
+# Unifies every Rust crate in this repository into a single Cargo
+# workspace so that:
+#
+#   1. The [profile.release] / [profile.bench] definitions below are the
+#      single source of truth for every benchmark build. Fat LTO across
+#      crate boundaries is what makes the Section 5 zero-cost-abstraction
+#      claim falsifiable: without it, the compiler preserves the call
+#      boundary between EvidenceToken/Verdict::new and the code that
+#      consumes them, measuring the cost of the type abstraction instead
+#      of proving its compile-time elimination.
+#
+#   2. btv-core::EvidenceToken and the mirrored types in the paper crates
+#      are compiled as one dependency graph, not as divergent isolated
+#      builds with independent lockfiles.
+#
+# No member manifest declares [profile.*] sections (verified), so nothing
+# had to be stripped from individual crates: the root below is the only
+# place profiles are defined.
+#
+# Excluded members (no [package] — not Rust crates):
+#   - paper3: LaTeX manuscript + Noir ZK circuits (circuits/src/main.nr);
+#     the Nargo.toml there belongs to the noir toolchain, not Cargo.
+#   - paper4, paper5, paper6: LaTeX manuscripts only.
+#   - tests/, scripts/, data/, reports/, docs/: data and tooling, not
+#     crates.
+
+[workspace]
+resolver = "2"
+members = [
+    "btv-core",
+    "btv-python",
+    "paper1",
+    "paper2",
+]
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+
+[profile.bench]
+inherits = "release"
+panic = "unwind"
