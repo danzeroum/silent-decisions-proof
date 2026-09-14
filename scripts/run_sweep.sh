@@ -54,7 +54,7 @@ echo ""
 echo "Running sweep — this will take multiple hours. Output: ${CSV_PATH}"
 echo "Per-configuration wall target: ${BTV_SWEEP_TARGET_WALL_SECS:-90}s"
 echo "(set BTV_SWEEP_TARGET_WALL_SECS=<seconds> for reduced-footprint collection;"
-echo " the paper's headline numbers must come from 90 s runs on dedicated")
+echo " the paper's headline numbers must come from 90 s runs on dedicated"
 echo " hardware — reduced runs are explicitly labeled in the fingerprint.)"
 
 cargo run --release --features sweep-bench --bin sweep_concurrent > "${CSV_PATH}"
