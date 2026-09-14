@@ -12,9 +12,9 @@
 //! failed sink, asserting RSS delta < 1 MB.
 //!
 //! Run: cargo run --release --features test-support \
-//!        --example rss_probe_fail_secure
+//!        --example `rss_probe_fail_secure`
 //!
-//! Epistemic footer: measures VmRSS on Linux only; allocator behavior can
+//! Epistemic footer: measures `VmRSS` on Linux only; allocator behavior can
 //! vary with platform allocator, but the assertion budget (1 MB) is two
 //! orders of magnitude below the F6 leak (12.5 MB).
 

@@ -117,7 +117,6 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 const PAYLOAD_SIZES: &[usize] = &[64, 512, 4096];
 const DEFAULT_TARGET_WALL_PER_CONFIG_SECS: u64 = 90;
 const CALIBRATION_SAMPLES: usize = 2_000;
-const MIN_ITERS: usize = 1_000_000;
 const TRIALS: usize = 5;
 
 /// Wall-clock target per (payload_bytes, mode) configuration. The committed
@@ -388,6 +387,11 @@ fn calibrate_iters(
         total += op(payload);
     }
     let per_op = total.as_secs_f64() / CALIBRATION_SAMPLES as f64;
+    eprintln!(
+        "calibration: per_op={:.0}ns -> iters={}",
+        per_op * 1e9,
+        ((target_wall.as_secs_f64() / per_op) as usize).max(min_iters)
+    );
     ((target_wall.as_secs_f64() / per_op) as usize).max(min_iters)
 }
 
@@ -564,10 +568,18 @@ fn sweep(thread_counts: &[usize], ops: &ModeOps<'_>) {
             // (OS-07): each mode meets the wall target with its own op, so
             // iteration counts are not comparable across modes — the
             // cross-mode comparison uses throughput + within-mode latency.
+            // The closure MUTATES the first 8 bytes of the buffer per sample
+            // (anti-LLVM lock 1, same as the measured loop): a constant
+            // input lets LLVM hoist the entire pipeline out of the
+            // calibration loop and "measure" ~74ns of Instant::now() noise.
+            let mut cal_iter: u64 = 0;
             let mut cal_payload = vec![0u8; payload_bytes];
-            let calibrate_op = |buf: &mut [u8]| -> Duration {
-                let mut cal_iter: u64 = 0;
-                let _ = &mut cal_iter;
+            for (i, b) in cal_payload.iter_mut().enumerate() {
+                *b = (i % 251) as u8;
+            }
+            let mut calibrate_op = |buf: &mut [u8]| -> Duration {
+                cal_iter += 1;
+                buf[0..8].copy_from_slice(&cal_iter.to_le_bytes());
                 match mode {
                     Mode::FullPipeline => {
                         let start = Instant::now();
