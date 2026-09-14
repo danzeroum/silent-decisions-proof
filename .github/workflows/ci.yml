@@ -161,20 +161,39 @@ jobs:
       - name: Install deps
         run: pip install pyyaml numpy
 
-      - name: Recompute N*
+      - name: Recompute N* (derived from primitives)
         run: python3 scripts/compute_crossover.py
 
-      - name: Verify N* for GDPR is 500,000
+      - name: Internal-consistency gate (OS-04)
+        # The gate asserts that rho and N* RE-DERIVE from the published
+        # primitives — it never asserts a particular N* value (that was the
+        # F4 defect: the old job verified the conclusion, 500k±10k, and
+        # would have failed if rho were corrected).
         run: |
-          python3 -c "
-          import csv
-          with open('data/n_star_by_regime.csv') as f:
-              rows = list(csv.DictReader(f))
-          gdpr = [r for r in rows if r['regime'] == 'GDPR'][0]
-          n_star = float(gdpr['n_star_no_credit'])
-          assert 490_000 <= n_star <= 510_000, f'N* for GDPR must be ~500,000; got {n_star}'
-          print(f'OK: GDPR N* = {n_star}')
-          "
+          python3 - <<'EOF'
+          import csv, sys
+          import yaml
+          params = yaml.safe_load(open('data/policy_parameters.yaml'))
+          c_fixed = params['c_fixed_usd_per_year']
+          c_var = params['c_variable_usd_per_decision']
+          rows = list(csv.DictReader(open('data/n_star_by_regime.csv')))
+          assert rows, 'n_star_by_regime.csv is empty'
+          for r in rows:
+              p = params['regimes'][r['regime']]
+              rho_expected = (p['enforcement_prob_per_year']
+                              * p['expected_fine_usd']
+                              / p['avg_controller_decisions_per_year'])
+              rho_used = float(r['rho_derived_usd_per_decision'])
+              assert abs(rho_used - rho_expected) <= 1e-12 * max(rho_expected, 1.0), \
+                  f"{r['regime']}: rho used {rho_used} != derived {rho_expected}"
+              n_full = r['n_star_full_avoidance']
+              if n_full:
+                  expect = c_fixed / (rho_used - c_var)
+                  assert abs(float(n_full) - expect) <= 1e-6 * expect, \
+                      f"{r['regime']}: N* full {n_full} != C/(rho-c_var) = {expect}"
+              print(f"OK: {r['regime']} rho={rho_used:.6f} (derived) N*_full={n_full or 'no crossover'}")
+          print('Internal consistency: all regimes re-derive from primitives.')
+          EOF
 
       - name: Upload reports
         uses: actions/upload-artifact@v4

@@ -1,3 +1,21 @@
+% ═══════════════════════════════════════════════════════════════════════════
+% SUPERSEDED — COMSI-2026-04-0112 audit, OS-04 (closes F4).
+%
+% The numeric derivation in this companion-manuscript section is WRONG and
+% is NOT maintained: it inherits the declared-rho model in which GDPR
+% rho = 0.01 contradicts the published equation rho = P_enf x E[fine] / N_bar
+% (= 0.108 for the old inputs), a 10.8x error, and derives a headline
+% crossover volume from it. The canonical, corrected model lives in the
+% artifact:
+%     data/policy_parameters.yaml        (primitives + cited cost components)
+%     scripts/compute_crossover.py       (rho DERIVED, corpus-based E[fine],
+%                                         corrected credit arithmetic)
+%     reports/tco_summary.md             (full derivation + bootstrap CIs)
+% The IEEE Computer submission (paper1) reports the economics only
+% qualitatively and cites no crossover volume (Rev 4). This file is kept
+% solely as a historical record of the companion draft.
+% ═══════════════════════════════════════════════════════════════════════════
+
 \section{The Compliance Crossover Analysis}
 \label{sec:crossover}
 

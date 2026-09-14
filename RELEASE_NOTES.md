@@ -27,7 +27,7 @@ June 2023 and is no longer supported by this library. See
 | 5 | Fail-secure partition | ✅ PASS (5/5) | `reports/failure_behavior.md` |
 | 6 | Concurrent load (p50/p95/p99) | ✅ PASS | `reports/load_stats.csv` |
 | 7 | Multi-hardware (ARM64) | ✅ PASS (QEMU) | `reports/hardware_comparison.md`, `reports/load_stats_arm64_qemu.csv` |
-| 8 | TCO reproducibility | ✅ PASS (N* = 500,000) | `reports/tco_summary.md`, `data/n_star_by_regime.csv` |
+| 8 | TCO reproducibility | ✅ PASS (rho/N* derived from primitives; internal-consistency gate) | `reports/tco_summary.md`, `data/n_star_by_regime.csv` |
 
 ## Architecture coverage
 
@@ -56,24 +56,23 @@ June 2023 and is no longer supported by this library. See
 | x86-64 native | 14.48 μs | 19.71 μs | 28.77 μs | 63 562 ops/s |
 | ARM64 QEMU | 220.02 μs | 431.23 μs | 611.78 μs | 2 934 ops/s |
 
-### TCO crossover
+### TCO crossover (OS-04 — derived, not declared; see `reports/tco_summary.md`)
 
-| Regime | ρ ($/decision) | N* (no credit) | N* (with credit δ) |
-|---|---:|---:|---:|
-| GDPR | $0.01 | **500,000** ✓ | 555,556 (δ=10%) |
-| EU AI Act | $0.02 | 250,000 | **500,000** (δ=50%) |
-| SEC | $1.04 | 4,808 | 4,808 (no credit) |
-| BR-LGPD | $0.005 | 1,000,000 | 1,000,000 (no credit) |
+rho = P_enf x E[fine] / N_bar with E[fine] estimated from the 20-case
+corpus (median, bootstrap CI); C_fixed = $2,700/yr base ($15,100 with a
+dedicated HSM), c_variable = $6e-6/decision; credit saving = rho x delta.
+N* = C_fixed / (rho - c_var) full-avoidance, C_fixed / (rho*delta - c_var)
+credit-only. Authoritative values: `data/n_star_by_regime.csv`.
 
 ## What was validated
 
 1. **Compile-time enforcement of linear ownership** for `Verdict`, `EvidenceToken`, `ComplianceToken`, `OperatorToken`, `EscalatedVerdict` — all 8 attack classes (struct literal, token reuse, external consume, silent drop, escalated struct literal, escalated token reuse, escalated consume external, escalated operator token drop) fail to compile with the expected `rustc` error.
 2. **`#![forbid(unsafe_code)]`** is enforced at the crate level; no `unsafe` may be introduced in `btv-core` source.
 3. **PyO3 binding** rejects all attempts to pass pre-computed hashes (`TypeError` for `str`/`dict`/`None`); only `bytes` is accepted.
-4. **Fail-secure behavior** under log partition: `issue_verdict` returns `Err(BtvError::LogUnavailable)` without constructing a `Verdict`; `EvidenceToken` is consumed via `mem::forget` to prevent retry.
+4. **Fail-secure behavior** under log partition: `issue_verdict` returns `Err(BtvError::LogUnavailable)` without constructing a `Verdict`; `EvidenceToken` is consumed by move semantics (the caller no longer owns it), so a retry cannot reuse it.
 5. **Concurrent correctness**: 2-thread rayon workload of 2000 ops completes with all `Verdict`s integrity-valid and 0 dropped.
 6. **ARM64 compatibility**: full test suite passes under QEMU emulation of `aarch64-unknown-linux-gnu`.
-7. **TCO determinism**: `scripts/compute_crossover.py` regenerates N* = 500,000 (GDPR) from versioned `data/enforcement_cases.csv` + `data/policy_parameters.yaml`.
+7. **TCO derivation (OS-04)**: `scripts/compute_crossover.py` derives rho from the published primitives (rho is never an input), estimates E[fine] from the corpus with bootstrap CIs, applies the corrected credit arithmetic, and the CI asserts internal consistency — never a particular N* value.
 
 ## What was NOT validated (and is documented as such)
 
@@ -108,6 +107,6 @@ The `.github/workflows/ci.yml` file defines 4 jobs:
 1. `fmt-clippy-audit` — format check, clippy pedantic, cargo audit
 2. `test-x86-64` — Rust tests + PyO3 tests + benchmarks
 3. `test-arm64-qemu` — cross-compile + QEMU test execution
-4. `tco-reproducibility` — recompute N* and verify GDPR = 500,000
+4. `tco-reproducibility` — recompute N* and verify internal consistency (rho used == rho derived)
 
 These will run on push to `artifact-v2` or `main`, and on PRs against either branch.

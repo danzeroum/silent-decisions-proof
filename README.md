@@ -126,7 +126,7 @@ BTV_UNDER_QEMU=1 cargo test --target aarch64-unknown-linux-gnu --features test-s
 | 5 | Fail-secure partition (5 tests) | ✅ 5/5 | ✅ 5/5 |
 | 6 | Concurrent load (p50/p95/p99) | ✅ p99=28.77μs, 63k ops/s | ✅ p99=611.78μs, 2.9k ops/s (QEMU) |
 | 7 | Multi-hardware | ✅ native | ✅ QEMU emulation (see note) |
-| 8 | TCO reproducibility | ✅ N* = 500,000 (GDPR); see `reports/tco_summary.md` | n/a |
+| 8 | TCO reproducibility | ✅ ρ/N* derived from primitives; consistency gate (see `reports/tco_summary.md`) | n/a |
 
 ## Trusted Computing Base (TCB)
 

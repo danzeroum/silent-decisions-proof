@@ -32,10 +32,10 @@ resolved.
 | Full derivation with public sources | `paper4/section5_crossover.tex` | ρ = P_enf × E[fine]/N̄_controller per regime; GDPR via DLA Piper 2025 enforcement data (€10M ≈ $10.8M median Art. 22 fine, ~10⁶ decisions/yr → ρ = $0.01); N* = C_fixed/ρ = $5,000/$0.01 = 500,000. **This is the complementary manuscript itself — exactly the dependency the Editor rejected as sole support.** |
 | Versioned parameters + sources | `data/policy_parameters.yaml` | All ρ/C_fixed/δ values with per-regime provenance comments; edit → recompute. |
 | Computed N* per regime | `data/n_star_by_regime.csv` | GDPR row: `n_star_no_credit = 500000.0`. |
-| Sensitivity grid data | `data/tco_plot_data.csv` (116 KB) | N* = C_fixed/ρ curves for the appendix plot. |
+| Sensitivity grid data | `data/tco_plot_data.csv` | Corrected N* = C_fixed/(rho − c_variable) curves for the appendix plot (OS-04). |
 | Enforcement case data | `data/enforcement_cases.csv` | 20 regulatory cases backing the penalty model. |
-| Reproducible recompute | `scripts/compute_crossover.py` | Deterministic; regenerates CSV + appendix snippet + `reports/tco_summary.md`. |
-| CI guard (executable evidence) | `.github/workflows/ci.yml`, job `tco-reproducibility` | Asserts GDPR N* ∈ [490k, 510k] on every push — the DATA is machine-verified. |
+| Reproducible recompute | `scripts/compute_crossover.py` | Deterministic; rho DERIVED from primitives (OS-04), corpus-based E[fine] with bootstrap CIs; regenerates CSV + appendix snippet + `reports/tco_summary.md`. |
+| CI guard (executable evidence) | `.github/workflows/ci.yml`, job `tco-reproducibility` | OS-04: asserts INTERNAL CONSISTENCY (rho used == rho derived; N* == C/(rho-c_var)) — never a particular N* value. |
 | Pre-built appendix snippet | `appendix_b_pgfplots.tex` (repo root, from `abcf186`) | PGFPlots sensitivity figure; comment says "Append to IEEE Computer manuscript Appendix B" — **NOT wired into `paper1/main.tex`** (which inputs no appendix). |
 
 **What the rewrite must do (choice the Editor offered):** import the

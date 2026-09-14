@@ -2,10 +2,10 @@ metric,value
 threads,2
 ops_per_thread,1000
 total_ops,2000
-p50_us,31.152
-p95_us,40.796
-p99_us,53.251
-mean_us,34.900
-stdev_us,81.975
-throughput_ops_per_s,28653
+p50_us,41.912
+p95_us,54.539
+p99_us,67.698
+mean_us,50.632
+stdev_us,245.731
+throughput_ops_per_s,19750
 emulated,false
