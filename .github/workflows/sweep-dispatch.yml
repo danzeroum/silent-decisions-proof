@@ -1,0 +1,68 @@
+# Sweep Dispatch — manual, reduced-footprint concurrency sweep on a
+# GitHub-hosted runner (Round 3, Task B3: second execution environment for
+# the E2 multi-hardware evidence).
+#
+# Triggered via workflow_dispatch (API or web UI) on the PR branch. Runs the
+# SAME reduced sweep as the sandbox collection (BTV_SWEEP_TARGET_WALL_SECS,
+# default 10 s per configuration) and uploads the raw CSV + environment
+# fingerprint as a workflow artifact; the branch maintainer commits them to
+# data/ as data/sweep_raw_<timestamp>_<runner>.csv after download.
+#
+# The paper's headline numbers must still come from 90 s runs on dedicated
+# hardware (see scripts/run_sweep.sh); this workflow exists so that a second
+# REAL CPU/architecture configuration is represented in the committed data
+# without anyone simulating or inventing hardware.
+
+name: Sweep Dispatch (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_wall_secs:
+        description: 'Per-configuration wall target in seconds (reduced collection)'
+        required: false
+        default: '10'
+
+jobs:
+  sweep:
+    name: Reduced concurrency sweep (3 modes)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run the reduced sweep via the reproducible wrapper
+        env:
+          BTV_SWEEP_TARGET_WALL_SECS: ${{ github.event.inputs.target_wall_secs || '10' }}
+        run: bash scripts/run_sweep.sh
+
+      - name: Stamp outputs with runner identity
+        run: |
+          set -euo pipefail
+          CSV=$(ls -t data/sweep_raw_*.csv | head -1)
+          TS=$(basename "${CSV}" .csv); TS=${TS#sweep_raw_}
+          HOST=$(uname -n)
+          mv "data/sweep_raw_${TS}.csv" "data/sweep_raw_${TS}_${HOST}.csv"
+          mv "data/sweep_env_${TS}.txt" "data/sweep_env_${TS}_${HOST}.txt"
+          {
+            echo "--- github runner ---"
+            echo "run_id: ${GITHUB_RUN_ID}"
+            echo "run_number: ${GITHUB_RUN_NUMBER}"
+            echo "runner_os: ${RUNNER_OS}"
+            echo "hostname: ${HOST}"
+            echo "--- os-release ---"
+            cat /etc/os-release | head -3
+          } >> "data/sweep_env_${TS}_${HOST}.txt"
+          echo "Stamped:"; ls -l data/sweep_raw_* data/sweep_env_*
+
+      - name: Upload raw data + fingerprint
+        uses: actions/upload-artifact@v4
+        with:
+          name: sweep-dispatch-data
+          path: |
+            data/sweep_raw_*.csv
+            data/sweep_env_*.txt
