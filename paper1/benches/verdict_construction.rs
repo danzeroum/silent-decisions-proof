@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, BatchSize};
-use silent_decisions_proof::{ComplianceToken, Decision, EvidenceToken, Verdict};
+use silent_decisions_proof::{ComplianceAuthority, Decision, EvidenceToken, Verdict};
 
 fn bench_verdict_new(c: &mut Criterion) {
     let mut group = c.benchmark_group("Verdict::new");
@@ -10,6 +10,9 @@ fn bench_verdict_new(c: &mut Criterion) {
     ];
 
     for (label, payload) in payloads {
+        // `ComplianceToken::new` is `pub(crate)`: tokens are issued through
+        // a `ComplianceAuthority` (validated jurisdiction allowlist).
+        let authority = ComplianceAuthority::new_from_env();
         group.bench_with_input(BenchmarkId::new("context_size", label), payload, |b, ctx| {
             let jur  = "BR-LGPD".to_string();
             let pol  = "1.0.0".to_string();
@@ -25,7 +28,9 @@ fn bench_verdict_new(c: &mut Criterion) {
                 },
                 |(ctx_owned, jur_owned, pol_owned, expl_owned)| {
                     let token = EvidenceToken::new(black_box(&ctx_owned));
-                    let compliance = ComplianceToken::new(jur_owned, pol_owned, 720);
+                    let compliance = authority
+                        .issue_token(&jur_owned, &pol_owned, 720)
+                        .expect("BR-LGPD is in the default allowlist");
                     Verdict::new(token, compliance, Decision::Deny, expl_owned)
                 },
                 BatchSize::SmallInput,
@@ -36,8 +41,12 @@ fn bench_verdict_new(c: &mut Criterion) {
 }
 
 fn bench_verify_integrity(c: &mut Criterion) {
+    // Same authority-based issuance as above (pub(crate) constructor).
+    let authority = ComplianceAuthority::new_from_env();
     let token = EvidenceToken::new(b"benchmark-context-integrity-check");
-    let compliance = ComplianceToken::new("BR-LGPD", "1.0.0", 720);
+    let compliance = authority
+        .issue_token("BR-LGPD", "1.0.0", 720)
+        .expect("BR-LGPD is in the default allowlist");
     let verdict = Verdict::new(
         token, compliance, Decision::Deny,
         "Credit score below threshold.".to_string(),
