@@ -250,6 +250,10 @@ cryptographically sealed via HMAC.
 \begin{proof}
 \texttt{EscalatedVerdict} is a sibling type to \texttt{Verdict}
 and does not affect the proof of Theorem~\ref{thm:enclosure}.
+The escalation path costs $8$ additional bytes:
+\texttt{std::mem::size\_of::\textless{}EscalatedVerdict\textgreater{}()}
+measures $160$ bytes versus $152$ for \texttt{Verdict}
+(x86-64; Section~\ref{sec:results}).
 Its sole constructor \texttt{EscalatedVerdict::new} requires an
 \texttt{OperatorToken} by value, following the same
 $\otimes$-I pattern as Axiom~\ref{ax:intro}.
@@ -266,3 +270,28 @@ verify by exhaustive case analysis (mirroring Cases~A, B, and~C
 of Theorem~\ref{thm:enclosure}) that no \texttt{EscalatedVerdict}
 can be forged, duplicated, or silently dropped.
 \end{proof}
+
+% ----------------------------------------------------------------
+\subsection{Polyglot Deployment: The FFI Trust Boundary}
+\label{sec:ffiboundary}
+
+Most production ML pipelines are polyglot: orchestration logic (agent
+frameworks, model servers, API gateways) runs in Python and other
+languages, while BTV's linear-type discipline is enforced by the Rust
+compiler.
+The PyO3 gateway (\texttt{btv-python}) is the sole authorized boundary
+between these worlds: a Python caller can invoke
+\texttt{issue\_verdict}, but cannot inspect, clone, or reconstruct a
+\texttt{Verdict}---it receives only an opaque, integrity-sealed
+\texttt{SealedVerdict} handle exposing read-only accessors and a
+\texttt{verify\_integrity} check.
+Theorem~\ref{thm:enclosure} is therefore enforced strictly within the
+\texttt{btv-core} and \texttt{btv-python} crates; it does not, and
+cannot, extend to the untrusted orchestrator itself.
+Consequently, the enforcement burden shifts downstream: the effector
+that materialises a decision's real-world consequence (the
+credit-denial API, the database write that blocks a transaction) must
+independently require and verify the sealed verdict handle before
+acting, and must reject any request that bypasses the gateway.
+The Rust enclave protects itself; it does not, by itself, protect the
+system that surrounds it.

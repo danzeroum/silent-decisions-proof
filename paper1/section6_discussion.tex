@@ -11,9 +11,14 @@
 %   Gap 3: ComplianceAuthority factory replaces public constructor
 %   Gap 4: CAL demoted to design trade-off; CAP analogy removed
 % Rev 3: 29 March 2026 — security audit patches applied:
-%   Patch 1.1: Trust-assumption alignment with Paper 2 (BTV_HMAC_KEY)
+%   Patch 1.1: Trust-assumption alignment with the log authority (BTV_HMAC_KEY)
 %   Patch 1.2: ComplianceAuthority factory (implemented, not proposed)
 %   Patch 1.3: Sixth future-work item — formal composition theorem
+% Rev 4: 14 September 2026 — IEEE Computer submission hygiene:
+%   E1: economics kept qualitative (no crossover volume, no companion cite)
+%   R2.1: CAL compressed to one paragraph (design trade-off, not theorem)
+%   E3: FFI threat model promoted into Section 4 (sec:ffiboundary); L4 points there
+%   Sibling-manuscript citations removed; refs.bib orphan entries pruned
 % -----------------------------------------------------------------------------
 
 \section{Discussion}
@@ -34,7 +39,7 @@ while closing each gap.
 The \texttt{unsafe} keyword grants the programmer the ability to
 bypass borrow-checker and visibility rules, including the private
 field restrictions that enforce the encapsulation boundary
-(Section~\ref{sec:linear_types}).
+(Section~\ref{sec:encapsulation}).
 Production deployments should enforce a zero-\texttt{unsafe} policy
 over the transitive dependency graph, auditable via
 \texttt{cargo geiger}~\cite{cargogeiger}.
@@ -95,15 +100,13 @@ The reference implementation now reads the HMAC key from the
 \texttt{BTV\_HMAC\_KEY} environment variable at runtime, falling back
 to a compile-time constant only when the variable is unset.
 This closes L1 for deployments that inject a key from an HSM or KMS.
-However, L1 also surfaces an architectural asymmetry with the trust
-model of BTV-Transparency~\cite{btv-t-repo}: Paper~2's Persistence
-Enclosure Theorem relies on Axiom~3.3 (Log Authority), which assumes
-the Log's Ed25519 private key is held in an HSM inaccessible to the
-System Operator. The verdict integrity seal offers the same
-guarantee only when \texttt{BTV\_HMAC\_KEY} is provisioned from the
-same HSM infrastructure that protects the Log Authority key.
-Without this alignment, the system's overall non-repudiation
-guarantee is bounded by the weakest key-management practice.
+However, L1 also surfaces an architectural asymmetry that recurs
+whenever a tamper-evident audit log is deployed alongside BTV: the
+verdict integrity seal offers its strongest guarantee only when
+\texttt{BTV\_HMAC\_KEY} is provisioned from the same HSM or KMS
+infrastructure that protects the audit log's signing key.
+Without such alignment, a deployment's overall non-repudiation
+guarantee is bounded by its weakest key-management practice.
 The type-level guarantee (Theorem~\ref{thm:enclosure}) is independent
 of key management and remains valid regardless of the HMAC key source.
 
@@ -138,103 +141,49 @@ a new one is a natural generalisation that preserves
 $V \multimap (E \otimes C)$ at each step.
 
 \paragraph{L4 — Polyglot pipelines.}
-Production AI systems rarely execute in a single-language process.
-Python orchestrators, C++ inference engines, and Java API gateways
-must all participate in the same governance boundary.
-Because the theorem holds within Safe Rust (Axiom 3), external
-code constitutes $\Gamma_{\text{ext}}$ by definition, and cannot
-construct a \texttt{Verdict} directly.
-
-We propose two complementary patterns.
-First, an \emph{accountability enclave}: a Rust gateway crate
-exposing a C-ABI boundary,
-
-\begin{lstlisting}[language=Rust,caption={FFI gateway
-  (accountability enclave pattern)}]
-#[no_mangle]
-pub extern "C" fn btv_create_verdict(
-    context_ptr:  *const u8,
-    context_len:  usize,
-    jurisdiction: *const c_char,
-    // ...
-) -> *mut BtvVerdictHandle { ... }
-\end{lstlisting}
-
-\noindent
-External code in any language requests a verdict from the
-gateway; the gateway applies all BTV invariants internally.
-This is structurally analogous to how SQLite enforces ACID
-properties regardless of the calling language: the
-guarantees are encoded inside the engine, not in the caller.
-
-Second, a \emph{BTV sidecar} deployed alongside each service in a
-multi-service gRPC pipeline (analogous to Envoy/Istio mTLS
-proxies), which intercepts decision calls and enforces the
-evidence-chain protocol at each hop.
-This pattern addresses L3 and L4 jointly: the sidecar
-constructs a new \texttt{EvidenceToken} at each pipeline stage,
-chaining them into the multi-step evidence structure.
-In both patterns, the Enclosure Theorem is preserved: external
-callers remain in $\Gamma_{\text{ext}}$ and cannot bypass
-\texttt{Verdict::new}.
+Production AI systems rarely execute in a single-language process:
+Python orchestrators, C++ inference engines, and Java API gateways must
+all participate in the same governance boundary.
+Because the theorem holds within Safe Rust (Axiom~\ref{ax:encap}),
+external code constitutes $\Gamma_{\text{ext}}$ by definition, and
+cannot construct a \texttt{Verdict} directly.
+Section~\ref{sec:ffiboundary} analyses this boundary as a threat
+model: the PyO3 gateway (\texttt{btv-python}) keeps external callers
+inside $\Gamma_{\text{ext}}$, while a \emph{BTV sidecar} deployed
+alongside each service in a multi-service pipeline can intercept
+decision calls and chain a fresh \texttt{EvidenceToken} at each stage,
+addressing L3 and L4 jointly.
 
 % ----------------------------------------------------------------
 \subsection{CAL Design Trade-Offs}
 \label{sec:cal}
 
-The four limitations above reflect a deliberate set of design
-choices made in the reference implementation.
-We observe that a production governance kernel faces tensions among
-three desirable properties:
-\textbf{C}onsistency (every materialized verdict has a causally-bound
-evidence chain),
-\textbf{A}vailability (the system can always issue a verdict in
-finite time), and
-\textbf{L}egality (tokens are issued only by a verified authority).
-In the reference implementation, Consistency and Legality are
-prioritised: when evidence cannot be produced or the compliance
-authority is unreachable, the system fails securely rather than
-issuing an unevidenced verdict, at the cost of reduced availability.
-
-We present this as a practical design observation rather than a
-formal impossibility result.
-Whether a result analogous to the FLP impossibility theorem~\cite{flp1985}
-can be proved for accountability systems under asynchronous network
-conditions is an open question we identify as future work.
-
-To partially address the availability cost, the reference
-implementation introduces \texttt{EscalatedVerdict}---a sibling type
-to \texttt{Verdict} that formalises human escalation as a
-linearly-typed alternative.
-When an \texttt{EvidenceToken} cannot be produced (e.g., model
-timeout, unavailable context), the developer may construct an
-\texttt{EscalatedVerdict} by consuming exactly one
-\texttt{OperatorToken}: a cryptographic attestation binding a named
-human operator to the decision act.
-The type law for the escalated path is
-$V_{\mathrm{esc}} \multimap (O \otimes \mathbf{1})$,
-where $O$ is the sole linear resource and $\mathbf{1}$ denotes the
-ordinary (non-linear) parameters (decision, context reference, reason).
-Corollary~\ref{cor:escalated} (Section~\ref{sec:escalated}) proves
-that this path preserves $\mathcal{S} = \emptyset$: no
-\texttt{EscalatedVerdict} can be constructed without consuming its
-\texttt{OperatorToken}, and the four compile-fail tests mirror
-Cases~A--C of the main theorem.
-The measured overhead is comparable:
-\texttt{size\_of::\allowbreak<EscalatedVerdict>()} $= 160$~bytes
-versus $152$~bytes for \texttt{Verdict}, confirming that structured
-human oversight introduces negligible memory cost.
-This extension structurally aligns with EU AI Act Art.~14 (human
-oversight for high-risk systems)~\cite{eu2024aiact}: the system
-cannot silently fall back to an unevidenced automated verdict---it
-must either produce full automated evidence or explicitly escalate
-to a named, cryptographically bound human operator.
+A production governance kernel faces a three-way tension among
+\textbf{C}onsistency (every materialized verdict carries a
+causally-bound evidence chain), \textbf{A}vailability (the system can
+always issue a verdict in finite time), and \textbf{L}egality (tokens
+are issued only by a verified authority).
+Existing audit-logging designs effectively choose
+consistency-with-availability over legality: the decision path keeps
+issuing decisions even when the logging pipeline fails or drops
+records, so the resulting log carries no enforceable evidentiary
+guarantee.
+BTV makes the opposite choice: when evidence cannot be produced or
+the compliance authority is unreachable, the system fails securely
+rather than issuing an unevidenced verdict, accepting reduced
+availability---a deliberate posture for decisions with legal
+consequences, partially recovered by the \texttt{EscalatedVerdict}
+path (Section~\ref{sec:escalated}).
+We present this as a practical design observation, not a formal
+impossibility result; whether an FLP-style impossibility
+theorem~\cite{flp1985} holds for accountability systems remains an
+open question.
 
 % ----------------------------------------------------------------
 \subsection{Future Work}
 \label{sec:future}
 
-Five directions are most immediate.
+Six directions are most immediate.
 First, implementing the \texttt{AttestableContext} extension
 (Section~\ref{sec:scope}) and the \texttt{ComplianceAuthority}
 factory (L2) would close the semantic-truthfulness and
@@ -256,14 +205,11 @@ composed invariant $(V_{\mathrm{auto}} \oplus V_{\mathrm{esc}})
 \multimap R$, where $R$ is the linear resource appropriate to
 each branch, would complete the type-theoretic account of
 mixed human-automated decision pipelines.
-Sixth, proving a formal composition theorem showing that the
-Constitutional Enclosure (this paper), Persistence Enclosure
-(Paper~2~\cite{btv-t-repo}), and $\varepsilon$-Statistical
-Consistency (Paper~3~\cite{btv-ar2026}) compose into a single
-end-to-end accountability invariant---specifically, that a system
-satisfying all three predicates simultaneously guarantees
-$\mathcal{S} = \emptyset \;\land\; \mathcal{E} = \emptyset
-\;\land\; \forall R:\,|\Delta\rho_g| \leq \varepsilon_g$---would
-close the composition gap identified in Paper~3
-(Section~7.3 of~\cite{btv-ar2026}) and provide the unified
-security statement that the series currently lacks.
+Sixth, formalising the composition of BTV's construction-time
+guarantee with complementary mechanisms for tamper-evident persistence
+and privacy-preserving redaction of transparency logs remains an open
+problem.  We conjecture that these mechanisms operate at distinct
+enforcement layers (construction-time, delivery-time, and audit-time
+respectively) with non-overlapping trust assumptions, making
+end-to-end composition plausible; proving this formally---ideally via
+a mechanised proof assistant---is left as future work.
