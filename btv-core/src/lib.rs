@@ -96,21 +96,82 @@ pub struct VerdictRecord {
     pub hmac_hex: String,
 }
 
+// ============================================================================
+// Integrity seal — single HMAC preimage shared by `Verdict` and
+// `VerdictRecord` (OS-01, closes audit finding F1).
+//
+// History: before this refactor, `Verdict::compute_hmac` authenticated
+// `(evidence_id raw 32 B, decision, explanation)` while
+// `VerdictRecord::verify_integrity` re-computed over
+// `(evidence_id_hex 64 chars, decision, explanation, jurisdiction,
+// policy_version, appeal_deadline_hours)`. Different preimages meant that
+// *no* persisted record ever verified. Both sides now feed the same
+// `SealFields` structure, in the same wire encoding, through `seal()`.
+// ============================================================================
+
+/// Domain-separation tag for the BTV integrity seal.
+///
+/// Prevents preimage reuse across protocols or seal generations; the
+/// trailing NUL terminates the tag unambiguously.
+const SEAL_DOMAIN: &[u8] = b"BTV-v1\x00";
+
+/// The exact field set authenticated by [`seal`], in the exact encoding
+/// that crosses the process boundary (`evidence_id` in hex).
+struct SealFields<'a> {
+    evidence_id_hex: &'a str,
+    decision: &'a str,
+    explanation: &'a str,
+    jurisdiction: &'a str,
+    policy_version: &'a str,
+    appeal_deadline_hours: u32,
+}
+
+/// Compute the 32-byte integrity seal over `fields`.
+///
+/// Domain separation: the preimage is `SEAL_DOMAIN` followed by each
+/// string field prefixed with its byte length as a `u32` big-endian, and
+/// finally `appeal_deadline_hours` as `u32` big-endian. Without
+/// length-prefixing, adjacent attacker-controlled fields (e.g.
+/// `explanation` and `jurisdiction`) would be ambiguous under
+/// concatenation; see the `seal_is_unambiguous` test.
+fn seal(fields: &SealFields<'_>) -> [u8; 32] {
+    let key = hmac_key();
+    let mut mac = HmacSha256::new_from_slice(&key).expect("HMAC key length valid");
+    mac.update(SEAL_DOMAIN);
+    for field in [
+        fields.evidence_id_hex.as_bytes(),
+        fields.decision.as_bytes(),
+        fields.explanation.as_bytes(),
+        fields.jurisdiction.as_bytes(),
+        fields.policy_version.as_bytes(),
+    ] {
+        mac.update(&(u32::try_from(field.len()).expect("field length fits u32")).to_be_bytes());
+        mac.update(field);
+    }
+    mac.update(&fields.appeal_deadline_hours.to_be_bytes());
+    let result = mac.finalize();
+    let mut out = [0u8; 32];
+    out.copy_from_slice(&result.into_bytes());
+    out
+}
+
 impl VerdictRecord {
     /// Re-verify the HMAC after deserialization.
     ///
-    /// Returns `false` if any field was modified in transit or storage.
+    /// Recomputes the seal over the *same* field set and encoding used at
+    /// `Verdict` construction time (see [`seal`]). Returns `false` if any
+    /// field was modified in transit or storage.
     #[must_use]
     pub fn verify_integrity(&self) -> bool {
-        let key = hmac_key();
-        let mut mac = HmacSha256::new_from_slice(&key).expect("HMAC key length valid");
-        mac.update(self.evidence_id_hex.as_bytes());
-        mac.update(self.decision.as_bytes());
-        mac.update(self.explanation.as_bytes());
-        mac.update(self.jurisdiction.as_bytes());
-        mac.update(self.policy_version.as_bytes());
-        mac.update(&self.appeal_deadline_hours.to_be_bytes());
-        let expected = mac.finalize().into_bytes();
+        let fields = SealFields {
+            evidence_id_hex: &self.evidence_id_hex,
+            decision: &self.decision,
+            explanation: &self.explanation,
+            jurisdiction: &self.jurisdiction,
+            policy_version: &self.policy_version,
+            appeal_deadline_hours: self.appeal_deadline_hours,
+        };
+        let expected = seal(&fields);
         match (hex::decode(&self.hmac_hex), expected) {
             (Ok(got), exp) => got.len() == exp.len() && got.ct_eq(&exp).into(),
             _ => false,
@@ -568,7 +629,18 @@ impl Verdict {
     ) -> Self {
         let appeal_deadline_hours = compliance.deadline_hours();
         let evidence_id = token.consume();
-        let hmac = Self::compute_hmac(&evidence_id, &decision, &explanation);
+        let evidence_id_hex = evidence_id.to_hex();
+        let jurisdiction = compliance.jurisdiction().to_string();
+        let policy_version = compliance.policy_version().to_string();
+        let fields = SealFields {
+            evidence_id_hex: &evidence_id_hex,
+            decision: decision.as_str(),
+            explanation: &explanation,
+            jurisdiction: &jurisdiction,
+            policy_version: &policy_version,
+            appeal_deadline_hours,
+        };
+        let hmac = seal(&fields);
         Verdict {
             evidence_id,
             compliance,
@@ -582,7 +654,15 @@ impl Verdict {
     /// Verify that the Verdict has not been tampered with since construction.
     #[must_use]
     pub fn verify_integrity(&self) -> bool {
-        let expected = Self::compute_hmac(&self.evidence_id, &self.decision, &self.explanation);
+        let fields = SealFields {
+            evidence_id_hex: &self.evidence_id.to_hex(),
+            decision: self.decision.as_str(),
+            explanation: &self.explanation,
+            jurisdiction: self.compliance.jurisdiction(),
+            policy_version: self.compliance.policy_version(),
+            appeal_deadline_hours: self.appeal_deadline_hours,
+        };
+        let expected = seal(&fields);
         expected.ct_eq(&self.hmac).into()
     }
 
@@ -617,6 +697,10 @@ impl Verdict {
     }
 
     /// Serialize to a [`VerdictRecord`] for persistence.
+    ///
+    /// The record carries the seal computed by `Verdict::new` over the
+    /// identical field set/encoding, so `record.verify_integrity()` returns
+    /// `true` for every untampered record (OS-01).
     #[must_use]
     pub fn to_record(&self) -> VerdictRecord {
         VerdictRecord {
@@ -628,19 +712,6 @@ impl Verdict {
             appeal_deadline_hours: self.appeal_deadline_hours,
             hmac_hex: hex::encode(self.hmac),
         }
-    }
-
-    fn compute_hmac(evidence_id: &Blake3Hash, decision: &Decision, explanation: &str) -> [u8; 32] {
-        let key = hmac_key();
-        let mut mac = HmacSha256::new_from_slice(&key).expect("HMAC key length is valid");
-        mac.update(evidence_id.as_bytes());
-        mac.update(decision.as_bytes());
-        mac.update(explanation.as_bytes());
-        let result = mac.finalize();
-        let bytes = result.into_bytes();
-        let mut out = [0u8; 32];
-        out.copy_from_slice(&bytes);
-        out
     }
 }
 
@@ -1053,5 +1124,119 @@ mod tests {
         let v = EscalatedVerdict::new(tok, Decision::Allow, ctx, "human override".to_string());
         assert!(v.verify_integrity());
         assert_eq!(v.operator_id(), &[0x42; 32]);
+    }
+
+    // ========================================================================
+    // OS-01 gate — unified seal preimage (closes F1)
+    // ========================================================================
+
+    fn sample_record() -> VerdictRecord {
+        let token = EvidenceToken::new(b"subject:alice | action:credit | score:0.42");
+        let authority = ComplianceAuthority::new_for_test();
+        let compliance = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
+        let verdict = Verdict::new(
+            token,
+            compliance,
+            Decision::Deny,
+            "below threshold".to_string(),
+        );
+        verdict.to_record()
+    }
+
+    /// Gate 1/3: construct -> to_record() -> verify_integrity() == true.
+    /// Before OS-01 this returned `false` for EVERY persisted record
+    /// (different HMAC preimages on the two sides of `to_record`).
+    #[test]
+    fn record_seal_roundtrip() {
+        let record = sample_record();
+        assert!(
+            record.verify_integrity(),
+            "persisted record seal must verify after the unified-seal refactor"
+        );
+    }
+
+    /// Gate 2/3: tampering with each of the six authenticated fields must
+    /// invalidate the seal (one test per field).
+    #[test]
+    fn record_tamper_evidence_id_hex_detected() {
+        let mut r = sample_record();
+        // A different (still well-formed) evidence id hex, obtained by
+        // hashing a different context (pub(crate) consume is in scope here).
+        let token = EvidenceToken::new(b"different-context");
+        r.evidence_id_hex = token.consume().to_hex();
+        assert!(!r.verify_integrity());
+    }
+
+    #[test]
+    fn record_tamper_decision_detected() {
+        let mut r = sample_record();
+        r.decision = if r.decision == "deny" { "allow" } else { "deny" }.to_string();
+        assert!(!r.verify_integrity());
+    }
+
+    #[test]
+    fn record_tamper_explanation_detected() {
+        let mut r = sample_record();
+        r.explanation = "tampered".to_string();
+        assert!(!r.verify_integrity());
+    }
+
+    #[test]
+    fn record_tamper_jurisdiction_detected() {
+        let mut r = sample_record();
+        r.jurisdiction = "EU-GDPR".to_string();
+        assert!(!r.verify_integrity());
+    }
+
+    #[test]
+    fn record_tamper_policy_version_detected() {
+        let mut r = sample_record();
+        r.policy_version = "9.9.9".to_string();
+        assert!(!r.verify_integrity());
+    }
+
+    #[test]
+    fn record_tamper_appeal_deadline_detected() {
+        let mut r = sample_record();
+        r.appeal_deadline_hours += 1;
+        assert!(!r.verify_integrity());
+    }
+
+    /// Gate 3/3: the seal is unambiguous under field-boundary shifts.
+    ///
+    /// Moving one character from `explanation` to `jurisdiction` keeps the
+    /// naive concatenation identical (`"abcde" || "F-BR" == "abcd" || "eF-BR"`
+    /// family of collisions). With u32 big-endian length prefixes the two
+    /// preimages differ, so the seal must NOT verify for the shifted record
+    /// when it carries the original seal.
+    #[test]
+    fn seal_is_unambiguous() {
+        let token = EvidenceToken::new(b"ctx");
+        let authority = ComplianceAuthority::new_for_test();
+        let compliance = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
+        let verdict = Verdict::new(token, compliance, Decision::Deny, "abcd".to_string());
+        let mut shifted = verdict.to_record();
+        // Original: explanation="abcd", jurisdiction="F-BR"? No — build the
+        // shifted variant explicitly: move the last char of explanation into
+        // jurisdiction, i.e. explanation="abc", jurisdiction="d"-prefixed.
+        shifted.explanation = "abc".to_string();
+        shifted.jurisdiction = format!("d{}", shifted.jurisdiction);
+        shifted.hmac_hex = hex::encode({
+            // Seal of the ORIGINAL (unshifted) field values — the attacker's
+            // hope is that concatenation ambiguity carries it over.
+            let fields = SealFields {
+                evidence_id_hex: &shifted.evidence_id_hex,
+                decision: &shifted.decision,
+                explanation: "abcd",
+                jurisdiction: shifted.jurisdiction.trim_start_matches('d'),
+                policy_version: &shifted.policy_version,
+                appeal_deadline_hours: shifted.appeal_deadline_hours,
+            };
+            seal(&fields)
+        });
+        assert!(
+            !shifted.verify_integrity(),
+            "field-boundary shift must invalidate the seal (length-prefix domain separation)"
+        );
     }
 }
