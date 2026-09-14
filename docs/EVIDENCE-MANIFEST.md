@@ -243,3 +243,18 @@ it: every claim in the response letter should point at one row above.
    hunk-by-hunk human approval.
 3. **PAT rotation** — the repository access token was re-exposed in chat
    during Rounds 1–3; rotate it before merge.
+
+---
+
+## Rodada 4 — Cirurgia textual da Seção 6 (14 set 2026)
+
+Commit: `fb6e9d5` (branch `review/bench-workspace-ffi`, PR #4).
+
+| ID | O que mudou | Arquivo:linha (pós-edição) |
+|---|---|---|
+| E1 | Claim de crossover quantitativo removido; reformulado como observação qualitativa sobre ponto de inflexão de custo marginal | paper1/section6_discussion.tex (§6.3, linhas 158–180; header Rev 4, linhas 17–21) |
+| R2.1 | CAL comprimido a um parágrafo de trade-off de design; framing FLP mantido como questão aberta | paper1/section6_discussion.tex:158–180, `\label{sec:cal}` |
+| E3 | Threat model FFI promovido para o corpo principal, citando a arquitetura real do btv-python | paper1/section4_theorem.tex:275–297, `\label{sec:ffiboundary}` (novo §4.7) |
+| R4b/A | Overhead empírico do EscalatedVerdict (160B vs 152B, x86-64) restaurado no proof do Corolário 4.8 — o datum constava apenas no parágrafo CAL removido e estava ausente do restante do manuscrito (Art.~14 e a type law já estavam no Corolário) | paper1/section4_theorem.tex:253–256 |
+| — | Contagem de palavras final | 5.938 / 6.000 (pandoc, `main.tex` com `\input` resolvido) |
+| — | Verificação soares2026b (R4b, 14 set 2026) | `github.com/danzeroum/BuildToValueGovernance` verificado **público e acessível sem autenticação** (HTTP 200; API GitHub `private:false`; branch default `main`). Conteúdo confere com a entrada bib: framework BTV — interceptação de chamadas LLM, validação LGPD/GDPR/EU AI Act, evidência criptográfica HMAC. A entrada não fixa branch/tag/commit específico. |
