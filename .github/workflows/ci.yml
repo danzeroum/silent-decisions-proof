@@ -67,7 +67,11 @@ jobs:
 
       - name: Run Rust unit + integration tests
         working-directory: btv-core
-        run: cargo test --features test-support --lib --test test_partition --test test_load
+        # test_status_quo_contrast (Round 3, Task B1): the fail-open vs.
+        # fail-secure contrast experiment behind the E2 status-quo baseline —
+        # the status quo issues decisions while records vanish; BTV's
+        # Verdict exists only through consumed linear tokens.
+        run: cargo test --features test-support --lib --test test_partition --test test_load --test test_status_quo_contrast
 
       - name: Run trybuild compile-fail tests
         working-directory: btv-core

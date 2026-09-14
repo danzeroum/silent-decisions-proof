@@ -19,6 +19,8 @@ mkdir -p "${OUT_DIR}"
 
 {
     echo "timestamp_utc: ${TIMESTAMP}"
+    echo "sweep_target_wall_secs: ${BTV_SWEEP_TARGET_WALL_SECS:-90} (default 90; override via BTV_SWEEP_TARGET_WALL_SECS — Round 3, Task B2)"
+    echo "sweep_modes: full_pipeline, verdict_only, status_quo_async_log (Round 3, Task B1)"
     echo "--- rustc ---"
     rustc --version
     echo "--- cargo ---"
@@ -50,6 +52,10 @@ echo "regardless of iteration count or thread count. No special RAM"
 echo "precautions are needed."
 echo ""
 echo "Running sweep — this will take multiple hours. Output: ${CSV_PATH}"
+echo "Per-configuration wall target: ${BTV_SWEEP_TARGET_WALL_SECS:-90}s"
+echo "(set BTV_SWEEP_TARGET_WALL_SECS=<seconds> for reduced-footprint collection;"
+echo " the paper's headline numbers must come from 90 s runs on dedicated")
+echo " hardware — reduced runs are explicitly labeled in the fingerprint.)"
 
 cargo run --release --features sweep-bench --bin sweep_concurrent > "${CSV_PATH}"
 

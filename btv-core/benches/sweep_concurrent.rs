@@ -2,10 +2,24 @@
 //!
 //! Measures per-thread p50/p95/p99 latency and aggregate throughput of
 //! EvidenceToken + ComplianceToken -> Verdict::new under Rayon parallelism,
-//! isolating the absence of structural lock contention claimed in Section 5.
+//! isolating the absence of structural lock contention claimed in Section 5,
+//! PLUS (Round 3, Task B1) a minimal status-quo baseline mode,
+//! Mode::StatusQuoAsyncLog, demanded by the editorial letter's E2: the same
+//! decision data (payload + jurisdiction + policy version + deadline +
+//! explanation) serialized as a JSON record and handed to a fire-and-forget
+//! async logging channel, with NO linear-type discipline — the structural
+//! guarantee is precisely what the status quo lacks, and the contrast is the
+//! measurement.
 //!
 //! Run:  cargo run --release --features sweep-bench --bin sweep_concurrent \
 //!           > data/sweep_raw.csv
+//!
+//! Reduced-footprint collection (Round 3, Task B2): set
+//! BTV_SWEEP_TARGET_WALL_SECS=<seconds> to shrink the per-configuration
+//! wall-clock target below the committed 90 s default — e.g. 10 s for a
+//! sandboxed or CI-hosted representative run. The value used is part of the
+//! run's provenance and must be recorded alongside the CSV
+//! (scripts/run_sweep.sh writes it into data/sweep_env_<timestamp>.txt).
 //!
 //! The binary is gated behind the opt-in `sweep-bench` feature so that plain
 //! `cargo build --workspace` / `cargo test --workspace` (and CI) never
@@ -60,6 +74,42 @@
 //!   (~20–25 ns), identical in both modes, so it cancels in cross-mode
 //!   differences.
 //!
+//! StatusQuoAsyncLog mode (Round 3, Task B1 — the E2 baseline):
+//!   Implements the minimal status-quo pattern the paper describes as the
+//!   dominant industry practice ("a system may emit a denial, log it
+//!   asynchronously, and silently drop the log"): serialize a structured
+//!   JSON decision record and hand it to an async channel, fire-and-forget.
+//!   The record carries the SAME decision data as the BTV modes — decision,
+//!   jurisdiction, policy version, appeal deadline, explanation — plus the
+//!   FULL decision context, hex-encoded: the status quo has no compact
+//!   cryptographic binding (a 32-byte BLAKE3 digest) and must embed the
+//!   whole context to preserve any evidentiary value, so its record size
+//!   scales with payload size. That scaling is a property of the pattern
+//!   under comparison, not a harness artifact.
+//!   Channel discipline (three deliberate choices):
+//!   1. THREAD-LOCAL — one channel pair per Rayon worker task, built in
+//!      the setup region, NEVER shared across threads. A single global
+//!      MPSC queue would inject cross-thread lock contention into the hot
+//!      path and strawman the baseline: BTV's hashing path is lock-free,
+//!      so an unfairly slow baseline would be (rightly) rejected by a
+//!      reviewer. What is being measured is the per-decision cost of the
+//!      logging pattern — serialization, allocation, hand-off — not the
+//!      provisioning of a shared queue.
+//!   2. RECEIVER DROPPED AT SETUP — send() therefore takes the
+//!      disconnected fast path (Err, non-blocking, no queue growth): the
+//!      black-box dummy sink. This keeps resident memory O(1) per thread
+//!      across millions of iterations (an undrained live queue would grow
+//!      linearly and OOM the sweep) while still exercising the real send
+//!      path. The fail-open SEMANTICS this implies — the decision "goes
+//!      out" even though the record is never persisted — are demonstrated
+//!      in the dedicated integration test tests/test_status_quo_contrast.rs
+//!      (fail-open) against Verdict::new's structural token-consumption
+//!      requirement (fail-secure).
+//!   3. SEND ERROR EXPLICITLY IGNORED — `let _ = tx.send(...)` is the
+//!      correct expression of fire-and-forget: unwrapping or propagating
+//!      the Err would panic the worker thread and fake a fail-secure
+//!      behavior the status quo does not have.
+//!
 //! Calibration methodology:
 //!   Iteration count is calibrated ONCE per (payload_bytes, mode) pair,
 //!   BEFORE the thread-count loop, and reused across all thread counts and
@@ -67,10 +117,14 @@
 //!   measured single-threaded, and recalibrating per thread-count would
 //!   introduce sampling noise into the very axis (thread count) whose
 //!   comparability the experiment exists to establish. The calibration
-//!   probe measures the FULL pipeline in both modes, so a VerdictOnly
-//!   configuration runs fewer wall-seconds than the 90 s target (its
-//!   per-op cost is lower) while iteration counts stay comparable across
-//!   modes — which is what the cross-mode comparison requires.
+//!   probe measures the FULL pipeline in all modes, so a VerdictOnly or
+//!   StatusQuoAsyncLog configuration runs fewer (or, for large payloads
+//!   where serializing the whole context costs more than hashing it, more)
+//!   wall-seconds than the target while iteration counts stay comparable
+//!   across modes — which is what the cross-mode comparison requires.
+//!   The committed default target is 90 s per configuration;
+//!   BTV_SWEEP_TARGET_WALL_SECS overrides it for reduced-footprint
+//!   collection runs (documented per-run in the sweep_env fingerprint).
 //!
 //! API wiring (btv-core 0.2.0, signatures inspected in src/lib.rs):
 //!   - `EvidenceToken::new(&[u8]) -> EvidenceToken` — infallible (BLAKE3).
@@ -90,13 +144,30 @@
 
 use rayon::prelude::*;
 use std::hint::black_box;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const PAYLOAD_SIZES: &[usize] = &[64, 512, 4096];
-const TARGET_WALL_PER_CONFIG: Duration = Duration::from_secs(90);
+const DEFAULT_TARGET_WALL_PER_CONFIG_SECS: u64 = 90;
 const CALIBRATION_SAMPLES: usize = 2_000;
 const MIN_ITERS: usize = 1_000_000;
 const TRIALS: usize = 5;
+
+/// Wall-clock target per (payload_bytes, mode) configuration. The committed
+/// default (90 s) is the value the paper's headline data collection must
+/// use. BTV_SWEEP_TARGET_WALL_SECS overrides it for reduced-footprint runs
+/// — e.g. 10 s in the Round 3 sandbox/CI collection — and the effective
+/// value is part of each run's provenance (stderr banner + sweep_env
+/// fingerprint written by scripts/run_sweep.sh).
+fn target_wall_per_config() -> Duration {
+    match std::env::var("BTV_SWEEP_TARGET_WALL_SECS") {
+        Ok(raw) => raw
+            .trim()
+            .parse::<u64>()
+            .map(Duration::from_secs)
+            .unwrap_or(Duration::from_secs(DEFAULT_TARGET_WALL_PER_CONFIG_SECS)),
+        Err(_) => Duration::from_secs(DEFAULT_TARGET_WALL_PER_CONFIG_SECS),
+    }
+}
 
 // ============================================================================
 // Online P² quantile estimator (Jain & Chlamtac, 1985)
@@ -201,6 +272,13 @@ impl P2Estimator {
 enum Mode {
     FullPipeline,
     VerdictOnly,
+    /// Minimal status-quo baseline (Round 3, Task B1): JSON serialization
+    /// of the same decision data + fire-and-forget channel hand-off, with
+    /// NO linear-type discipline. See the file header for the channel
+    /// discipline (thread-local pair, dropped receiver, ignored send
+    /// error) and tests/test_status_quo_contrast.rs for the fail-open vs.
+    /// fail-secure semantics this mode stands for.
+    StatusQuoAsyncLog,
 }
 
 impl Mode {
@@ -208,8 +286,53 @@ impl Mode {
         match self {
             Mode::FullPipeline => "full_pipeline",
             Mode::VerdictOnly => "verdict_only",
+            Mode::StatusQuoAsyncLog => "status_quo_async_log",
         }
     }
+}
+
+// ============================================================================
+// Status-quo decision record (Task B1 — the E2 baseline)
+// ============================================================================
+//
+/// The structured JSON record the status quo serializes per decision — a
+/// SIEM-style decision event. The field set mirrors the public data of a
+/// BTV `Verdict` (decision, jurisdiction, policy_version, deadline,
+/// explanation) plus the FULL decision context, hex-encoded: without a
+/// compact cryptographic binding (BTV's 32-byte BLAKE3 digest) the status
+/// quo must embed the whole context to preserve any evidentiary value, so
+/// the record scales with payload size. Same decision inputs as the other
+/// modes: `Decision::Deny`, "EU-GDPR", "sweep-policy-1", 720 h deadline,
+/// "sweep-bench" explanation.
+#[derive(serde::Serialize)]
+struct StatusQuoRecord<'a> {
+    ts_unix_ms: u64,
+    decision: &'a str,
+    jurisdiction: &'a str,
+    policy_version: &'a str,
+    context_hex: String,
+    appeal_deadline_hours: u32,
+    explanation: &'a str,
+}
+
+/// Serialize one status-quo decision record. Timestamps each record, as a
+/// real async logger does (SystemTime::now is a vDSO call, ~20–25 ns —
+/// the same order as the Instant::now() the timing window itself carries).
+fn build_status_quo_record(payload: &[u8]) -> String {
+    let ts_unix_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    let record = StatusQuoRecord {
+        ts_unix_ms,
+        decision: "deny",
+        jurisdiction: "EU-GDPR",
+        policy_version: "sweep-policy-1",
+        context_hex: hex::encode(payload),
+        appeal_deadline_hours: 720,
+        explanation: "sweep-bench",
+    };
+    serde_json::to_string(&record).expect("serializing StatusQuoRecord cannot fail")
 }
 
 /// Per-thread measurement state — O(1) memory: three P² estimators (five
@@ -254,6 +377,26 @@ where
         *b = (i % 251) as u8;
     }
 
+    // StatusQuoAsyncLog — thread-local fire-and-forget sink (Round 3, B1).
+    // One channel pair PER run_thread invocation (= per Rayon worker task),
+    // built here in the setup region, OUTSIDE every timed window, and never
+    // shared across threads (a single global MPSC queue would put
+    // cross-thread lock contention on the measured path — a strawman
+    // baseline; see the file header). The Receiver is dropped immediately
+    // so send() takes the disconnected fast path: the measured cost is the
+    // status quo's per-decision overhead (JSON serialization + String
+    // allocation + hand-off call), not queue provisioning, and resident
+    // memory stays O(1) across millions of iterations.
+    let status_quo_tx = match mode {
+        Mode::StatusQuoAsyncLog => {
+            let (tx, rx) = std::sync::mpsc::channel::<String>();
+            drop(rx);
+            Some(tx)
+        }
+        _ => None,
+    };
+    let sq_tx = status_quo_tx.as_ref();
+
     let warmup = (iters / 20).max(100);
 
     // Thread-local P² estimators — see the file header for why nothing
@@ -286,6 +429,29 @@ where
                 let c = compliance_new();
                 let start = Instant::now();
                 black_box(&verdict_new(e, c));
+                start.elapsed().as_nanos() as f64
+            }
+            Mode::StatusQuoAsyncLog => {
+                // Same decision inputs as the other modes (payload bytes +
+                // EU-GDPR + deny + sweep-policy-1 + 720 h), serialized as a
+                // JSON record and fired at the async channel. NO linear
+                // types participate — that absence IS the baseline.
+                payload[0..8].copy_from_slice(&(iter as u64).to_le_bytes());
+                // Resolve the thread-local sender OUTSIDE the timed window
+                // (one predictable branch, untimed — same posture as the
+                // untimed token construction in VerdictOnly).
+                let tx = sq_tx.expect("thread-local channel built in setup");
+                let start = Instant::now();
+                let record = build_status_quo_record(black_box(&payload));
+                // Fire-and-forget: the send result is EXPLICITLY ignored.
+                // Unwrapping here would panic the worker on the very
+                // disconnected-channel condition this mode deliberately
+                // arranges — faking a fail-secure behavior the status quo
+                // does not have. The decision is already "out" the moment
+                // this arm returns; whether the record is ever persisted is
+                // not this code's concern (see
+                // tests/test_status_quo_contrast.rs).
+                let _ = tx.send(black_box(record));
                 start.elapsed().as_nanos() as f64
             }
         };
@@ -365,6 +531,10 @@ fn sweep<F, G, E, C, V>(
     V: Send,
 {
     // CSV column semantics (documented for the Section 5.1 methodology):
+    //   mode — full_pipeline | verdict_only | status_quo_async_log
+    //       (status_quo_async_log = the E2 baseline: same decision data,
+    //       JSON serialization + fire-and-forget channel hand-off, no
+    //       linear-type discipline)
     //   p50_ns / p95_ns / p99_ns — arithmetic MEAN across threads of the
     //       thread-local P² quantile ESTIMATES (online, O(1) memory — not
     //       exact order statistics; Jain & Chlamtac 1985).
@@ -372,7 +542,12 @@ fn sweep<F, G, E, C, V>(
     //   mean_ns    — arithmetic mean latency over all timed operations.
     println!("trial,mode,threads,payload_bytes,iters_per_thread,wall_ms,throughput_ops_s,p50_ns,p95_ns,p99_ns,p99_max_ns,mean_ns");
 
-    let modes = [Mode::FullPipeline, Mode::VerdictOnly];
+    let modes = [
+        Mode::FullPipeline,
+        Mode::VerdictOnly,
+        Mode::StatusQuoAsyncLog,
+    ];
+    let target_wall = target_wall_per_config();
 
     for &payload_bytes in PAYLOAD_SIZES {
         for &mode in &modes {
@@ -381,7 +556,7 @@ fn sweep<F, G, E, C, V>(
                 *b = (i % 251) as u8;
             }
             let mut cal_iter: u64 = 0;
-            let iters = calibrate_iters(TARGET_WALL_PER_CONFIG, &mut cal_payload, |buf| {
+            let iters = calibrate_iters(target_wall, &mut cal_payload, |buf| {
                 cal_iter += 1;
                 buf[0..8].copy_from_slice(&cal_iter.to_le_bytes());
                 let start = Instant::now();
@@ -449,6 +624,22 @@ fn main() {
     if !thread_counts.contains(&cores) {
         thread_counts.push(cores);
     }
+
+    // Provenance banner — STDERR ONLY (stdout is the CSV data stream and
+    // must stay machine-parseable). scripts/run_sweep.sh captures the
+    // environment fingerprint separately; this banner ties the mode list
+    // and the effective wall target to the run itself.
+    eprintln!(
+        "sweep_concurrent provenance: modes=[full_pipeline, verdict_only, \
+         status_quo_async_log] payloads={:?} thread_counts={:?} trials={} \
+         target_wall_per_config={}s (default {}s; override: \
+         BTV_SWEEP_TARGET_WALL_SECS)",
+        PAYLOAD_SIZES,
+        thread_counts,
+        TRIALS,
+        target_wall_per_config().as_secs(),
+        DEFAULT_TARGET_WALL_PER_CONFIG_SECS
+    );
 
     use btv_core::{ComplianceAuthority, Decision, EvidenceToken, Verdict};
 
