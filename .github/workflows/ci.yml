@@ -19,8 +19,8 @@ jobs:
         with:
           submodules: false
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust toolchain (pinned — single source: rust-toolchain.toml, OS-09)
+        uses: dtolnay/rust-toolchain@1.98.1
         with:
           components: rustfmt, clippy
 
@@ -58,8 +58,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust toolchain (pinned)
+        uses: dtolnay/rust-toolchain@1.98.1
 
       - name: Install Python
         uses: actions/setup-python@v5
@@ -112,8 +112,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust toolchain with aarch64 target
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install pinned Rust toolchain with aarch64 target
+        # The pin in rust-toolchain.toml (OS-09) means cargo resolves 1.98.1
+        # INSIDE this repository; the aarch64 std must therefore be added to
+        # THAT toolchain, not to a floating stable channel.
+        uses: dtolnay/rust-toolchain@1.98.1
         with:
           targets: aarch64-unknown-linux-gnu
 
