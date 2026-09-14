@@ -132,7 +132,7 @@ BTV_UNDER_QEMU=1 cargo test --target aarch64-unknown-linux-gnu --features test-s
 
 See `reports/tcb_summary.md` for the full TCB declaration. Summary:
 
-- `rustc` 1.98.0 stable, `std`
+- `rustc` per `rust-toolchain.toml` (single source, OS-09), `std`
 - `blake3`, `hmac`, `sha2`, `subtle` (cryptographic primitives)
 - `rusqlite` + `libsqlite3-sys` (persistence backend)
 - `BTV_HMAC_KEY` / `BTV_AUTHORITY_KEY` (HSM/KMS in production)

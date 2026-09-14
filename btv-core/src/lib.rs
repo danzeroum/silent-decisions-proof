@@ -1183,6 +1183,13 @@ impl EscalatedVerdict {
         &self.reason
     }
 
+    /// Test-only: bypass the HMAC to tamper with the reason field, so
+    /// Clause 14 can verify that `verify_integrity` detects it.
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn tamper_reason_for_test(&mut self, new_reason: &str) {
+        self.reason = new_reason.to_string();
+    }
+
     fn compute_hmac(
         operator_id: &[u8; 32],
         operator_signature: &[u8; 32],
@@ -1318,6 +1325,20 @@ mod tests {
         let token = EvidenceToken::new(b"decision-context");
         let hash = token.consume();
         assert_ne!(hash.as_bytes(), &[0u8; 32]);
+    }
+
+    /// Clause 9: `OperatorToken` is linear — consume moves and destroys it.
+    /// Lives here (not in the integration suite) because `consume()` is
+    /// `pub(crate)` by design: an external call is itself a compile error
+    /// (Clause 13, `escalated_consume_external.rs`).
+    #[test]
+    fn clause_9_operator_token_is_linear() {
+        let authority = OperatorAuthority::new_for_test();
+        let token = authority.issue_token([0x01; 32]);
+        let (id, sig) = token.consume(); // token is moved and destroyed
+                                         // let _second = token.consume(); // would produce E0382
+        assert_eq!(id, [0x01; 32]);
+        assert_ne!(sig, [0u8; 32], "Signature must be non-trivial");
     }
 
     #[test]

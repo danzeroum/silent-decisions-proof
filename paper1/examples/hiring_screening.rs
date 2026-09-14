@@ -52,17 +52,17 @@ fn screen_candidate(c: &Candidate, cutoff: f64) -> Verdict {
 
     let token = EvidenceToken::new(context.as_bytes());
     // EU AI Act: 720 hours (30 days) appeal window for high-risk decisions
-    // ComplianceToken is issued through a ComplianceAuthority; this demo
-    // authority allows the regulation identifier used in the scenario.
-    let authority = ComplianceAuthority::new(
-        b"btv-demo-authority-key".to_vec(),
-        vec!["EU-AIACT-2024/1689".to_string()],
-    );
+    // ComplianceToken is issued through the recognized ComplianceAuthority
+    // (OS-02: tokens are signed with the BTV_AUTHORITY_KEY-resolved key and
+    // verified inside Verdict::new — a demo authority with a foreign key
+    // would be rejected).
+    let authority = ComplianceAuthority::new_from_env();
     let compliance = authority
-        .issue_token("EU-AIACT-2024/1689", "1.0.0", 720)
-        .expect("jurisdiction is allowlisted above");
+        .issue_token("EU-AI-ACT", "1.0.0", 720)
+        .expect("EU-AI-ACT is in the default allowlist");
 
     Verdict::new(token, compliance, decision, explanation)
+        .expect("new_from_env authority holds the recognized key (OS-02)")
 }
 
 fn main() {

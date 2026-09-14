@@ -48,9 +48,7 @@ fn test_threads() -> usize {
         .ok()
         .and_then(|v| v.trim().parse::<usize>().ok())
         .unwrap_or(DEFAULT_TEST_THREADS);
-    let available = std::thread::available_parallelism()
-        .map(std::num::NonZeroUsize::get)
-        .unwrap_or(1);
+    let available = std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get);
     configured.clamp(1, available)
 }
 

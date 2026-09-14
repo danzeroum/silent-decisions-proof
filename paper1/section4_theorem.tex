@@ -250,10 +250,11 @@ cryptographically sealed via HMAC.
 \begin{proof}
 \texttt{EscalatedVerdict} is a sibling type to \texttt{Verdict}
 and does not affect the proof of Theorem~\ref{thm:enclosure}.
-The escalation path costs $8$ additional bytes:
 \texttt{std::mem::size\_of::\textless{}EscalatedVerdict\textgreater{}()}
-measures $160$ bytes versus $152$ for \texttt{Verdict}
-(x86-64; Section~\ref{sec:results}).
+measures $160$ bytes versus $184$ for \texttt{Verdict}
+(x86-64, rustc~1.98.1; Section~\ref{sec:results}) --- the automated
+verdict is the larger type because it carries the signed compliance
+token's 32-byte signature.
 Its sole constructor \texttt{EscalatedVerdict::new} requires an
 \texttt{OperatorToken} by value, following the same
 $\otimes$-I pattern as Axiom~\ref{ax:intro}.

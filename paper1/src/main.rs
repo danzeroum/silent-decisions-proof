@@ -57,7 +57,8 @@ fn main() {
         "Credit score 0.42 is below the required threshold of 0.50. \
          You may contest this decision within 720 hours."
             .to_string(),
-    );
+    )
+    .expect("new_from_env authority holds the recognized key (OS-02)");
 
     println!("  [3] Verdict constructed — V ⊸ (E ⊗ C) satisfied");
     println!(
@@ -102,7 +103,7 @@ fn main() {
     println!("  EvidenceToken::new(ctx); // dropped without .consume()");
     println!("─────────────────────────────────────────────────────────────────");
     println!();
-    println!("Run `cargo test` to verify all 15 proof clauses.");
+    println!("Run `cargo test` to verify all 17 proof clauses (canonical suite: btv-core).");
     // Reproducible implementation metrics — cite in Section 5.
     println!(
         "  size_of::<Verdict>()          = {} bytes",

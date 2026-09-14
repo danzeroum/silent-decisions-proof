@@ -1,0 +1,6 @@
+# Single source of truth for the toolchain (OS-09, closes H5).
+# §5.1 of the manuscript, the README, and reports/tcb_summary.md cite THIS
+# channel; rustup honors it for every command inside the repository.
+[toolchain]
+channel = "1.98.1"
+components = ["clippy", "rustfmt"]

@@ -62,7 +62,8 @@ fn main() {
         history_months
     );
 
-    let verdict = Verdict::new(token, compliance, decision_outcome, explanation);
+    let verdict = Verdict::new(token, compliance, decision_outcome, explanation)
+        .expect("new_from_env authority holds the recognized key (OS-02)");
 
     // --- Output: what an auditor or the applicant would see ---
     println!("  Applicant:    {}", applicant);
@@ -99,7 +100,8 @@ fn main() {
             .expect("BR-LGPD is in the default allowlist"),
         Decision::Deny,
         verdict.explanation().to_string(),
-    );
+    )
+    .expect("new_from_env authority holds the recognized key (OS-02)");
     println!("  Reproducibility check:");
     println!("    Original evidence:  {}", verdict.evidence_id().to_hex());
     println!(
