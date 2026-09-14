@@ -1,4 +1,4 @@
-timestamp_utc: 20260914T224433Z
+timestamp_utc: 20260914T231541Z
 sweep_target_wall_secs: 2 (default 90; override via BTV_SWEEP_TARGET_WALL_SECS — Round 3, Task B2)
 sweep_modes: full_pipeline, full_pipeline_durable, verdict_only, status_quo_async_log, status_quo_digest_log (OS-07: durable on-disk WAL+FULL arm; symmetric digest baseline)
 --- rustc ---
@@ -56,4 +56,4 @@ governor info unavailable (non-Linux or no cpufreq)
 --- turbo/no_turbo ---
 turbo state unavailable
 --- git commit ---
-c303f50739fe73909e67cd5abbdf65dbf6615276
+3889491b8afe66b6ec13e697a77f67f37d19e6bd

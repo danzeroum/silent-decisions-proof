@@ -71,8 +71,10 @@
 \includegraphics[width=\columnwidth]{figures/fig4_benchmark_overhead.pdf}
 \caption{BTV governance overhead vs.\ typical AI inference latency
   (logarithmic scale).  The full verdict construction cycle
-  (1.67\,\textmu{}s for a 4\,KiB context) is five orders of magnitude
-  faster than a typical LLM inference call, confirming that the
-  type-level guarantee is a zero-cost abstraction in practice.}
+  (7.27\,\textmu{}s for a 4\,KiB context, in-memory; \S\ref{sec:benchmarks})
+  is several orders of magnitude faster than a typical LLM inference
+  call; the type-level guarantee itself adds no runtime branch, so this
+  gap is entirely the cost of the cryptographic primitives it invokes,
+  not of the type system.}
 \label{fig:benchmark_overhead}
 \end{figure}

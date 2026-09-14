@@ -18,5 +18,8 @@ __pycache__/
 # OS-07 (COMSI-2026-04-0112, closes F7/F10): third environment, first run
 # with the 5-mode grid (full_pipeline_durable + status_quo_digest_log).
 # Reduced-footprint (BTV_SWEEP_TARGET_WALL_SECS=2, not the 90s headline
-# target) — see data/sweep_env_20260914T224433Z.txt for the label.
-!data/sweep_raw_20260914T224433Z.csv
+# target) — see data/sweep_env_20260914T231541Z.txt for the label. (A
+# first attempt at 20260914T224433Z ran concurrently with unrelated
+# cargo builds in the same session; re-run cleanly and replaced before
+# any number from it was cited anywhere.)
+!data/sweep_raw_20260914T231541Z.csv

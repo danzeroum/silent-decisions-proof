@@ -8,43 +8,22 @@
 % ─────────────────────────────────────────────────────────────────────────────
 
 \begin{abstract}
-As autonomous AI agents increasingly make decisions with legal
-consequences---credit, employment, healthcare---regulatory frameworks
-such as Brazil's LGPD (Art.~18) and the EU AI Act (Art.~86) demand
-strict, auditable accountability.
-Current Policy-as-Code (PaC) tools treat accountability as an
-asynchronous runtime property, generating post-hoc audit logs.
-We show that this architectural decoupling creates a structural
-vulnerability: \emph{silent decisions}---acts with legal consequences
-that lack a computationally bound, non-repudiable evidence chain.
-
-We introduce \emph{Bound-To-Verdict} (BTV), a framework that shifts
-AI accountability from a runtime audit obligation to a compile-time
-type guarantee.
-Drawing on Girard's Linear Logic~\cite{girard1987linear}, BTV encodes
-regulatory obligations as linear resource types.
-Under the BTV invariant, a decision \texttt{Verdict} ($V$) cannot
-materialize without atomically consuming its forensic
-\texttt{EvidenceToken} ($E$) and \texttt{ComplianceToken} ($C$),
-formalised as:
-\[
-  V \multimap (E \otimes C).
-\]
-We prove the \emph{Constitutional Enclosure Theorem}: in any Safe Rust
-program implementing this invariant, the set of materialized silent
-decisions $\mathcal{S}$ is empty by construction---an attempt to issue
-a decision without consuming its evidence is rejected by the compiler
-as a type error, not flagged at runtime.
-
-We provide a reference implementation in Safe Rust
-(\texttt{silent-decisions-proof}) to validate empirical viability.
-Criterion benchmarks show that this static guarantee operates as a
-zero-cost abstraction: the governance layer introduces 152 bytes of
-memory overhead and $1.67\,\mu$s of latency for 4\,KB payloads, with
-all overhead attributable exclusively to cryptographic primitives
-(BLAKE3 + HMAC-SHA256) that any accountable system must perform
-regardless of governance architecture.
-BTV demonstrates that cryptographic, non-repudiable AI accountability
-can be enforced structurally without compromising high-throughput
-performance.
+LGPD (Art.~18) and the EU AI Act (Art.~86) demand auditable
+accountability for AI decisions with legal consequences, but
+Policy-as-Code tools treat accountability as an asynchronous runtime
+property, generating post-hoc logs that a failed pipeline can simply
+never write --- a \emph{silent decision}. We introduce
+\emph{Bound-To-Verdict} (BTV): a \texttt{Verdict} ($V$) cannot be
+constructed within Safe Rust's type boundaries without atomically
+consuming an \texttt{EvidenceToken} ($E$) and a
+\texttt{ComplianceToken} ($C$), $V \multimap (E \otimes C)$, following
+Girard's Linear Logic~\cite{girard1987linear}. We prove the
+\emph{Constitutional Enclosure Theorem}: the set of materialized
+silent decisions is empty within the crate's type perimeter, under the
+Safe Rust and affine-ownership assumptions of \S\ref{sec:encapsulation}.
+A reference implementation validates this empirically: the type-level
+discipline emits no runtime code, so overhead is exactly the
+cryptographic primitives' cost (BLAKE3, HMAC-SHA256) --- except making
+the record \emph{durable}, which costs one to two orders of magnitude
+more, measured here rather than assumed away.
 \end{abstract}

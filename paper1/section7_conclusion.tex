@@ -34,26 +34,24 @@ detected at compile time.
 
 We proved the \emph{Constitutional Enclosure Theorem}: in any Safe
 Rust program that includes the BTV crate, the set $\mathcal{S}$ of
-materialized silent decisions is empty by construction.
+materialized silent decisions is empty within the crate's type
+perimeter, under the assumptions of \S\ref{sec:encapsulation}.
 The proof is exhaustive (three cases), machine-checkable
 (\texttt{cargo test}: seventeen clauses, four seconds), and accompanied
 by a Fail-Secure Corollary: a system that cannot produce evidence
 cannot issue a verdict---it fails securely rather than silently.
 
-Empirical benchmarks on the reference implementation confirm that
-this static guarantee is a zero-cost abstraction in runtime.
-The full governance cycle for a 4\,KB payload completes in
-$1.67\,\mu$s; every nanosecond of that cost is attributable to
-cryptographic primitives (BLAKE3 + HMAC-SHA256) that any
-accountable system must execute regardless of architecture.
-The type-level enforcement itself contributes zero overhead.
+Empirical benchmarks (\S\ref{sec:benchmarks}) confirm that the
+type-level enforcement itself adds no runtime branch: the governance
+cycle's measured cost is exactly the cryptographic primitives
+(BLAKE3, HMAC-SHA256) it invokes, and one to two orders of magnitude
+more once the record is made durable rather than kept in memory ---
+a cost this paper reports rather than assumes away.
 
-The implications extend beyond compliance engineering.
-If accountability can be expressed as a type invariant, then
-the correctness of governance becomes a property that compilers
-can check, proof assistants can verify, and regulators can audit
-through \texttt{cargo test} rather than through manual code
-review.
+The implications extend beyond compliance engineering: if
+accountability can be expressed as a type invariant, governance
+correctness becomes a property compilers can check and regulators can
+audit through \texttt{cargo test} rather than manual code review.
 Silent decisions are not an inevitable cost of deploying AI at
-scale---they are a bug that a sufficiently expressive type system
-eliminates entirely.
+scale---within the scope stated in \S\ref{sec:encapsulation}, they are
+a bug a sufficiently expressive type system rules out.

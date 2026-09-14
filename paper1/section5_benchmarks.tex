@@ -2,10 +2,13 @@
 % IEEE Computer — "Silent Decisions Are Type Errors"
 % Authors: Soares et al., 2026
 %
-% Benchmark data collected with:
-%   cargo bench --bench verdict_construction
-% on the hardware described in Section 5.1.
-% Raw output preserved in bench_results.txt (repository root).
+% OS-10 (COMSI-2026-04-0112, closes A2): every numeric cell below is
+% traceable to a committed CSV under data/ (see scripts/summarize_sweep.py,
+% which prints the exact median/CV values transcribed into the tables) or
+% to a fresh `cargo bench` run of btv-core/benches/verdict_construction.rs.
+% Raw sweep data: data/sweep_raw_20260914T171258Z.csv (env A),
+% data/sweep_raw_20260914T164735Z_runnervmlun5p.csv (env B), and
+% data/sweep_raw_20260914T231541Z.csv (env C; fingerprints in data/sweep_env_*.txt).
 
 \section{Empirical Validation}
 \label{sec:benchmarks}
@@ -13,150 +16,178 @@
 The Constitutional Enclosure Theorem guarantees that silent decisions
 are compile-time errors.  A natural question follows: does the
 compile-time guarantee impose a \emph{runtime cost}?  This section
-answers that question empirically.
+answers that question across two independent hardware platforms, under
+concurrency, and against two different readings of "the status quo"
+rather than one hand-picked baseline.
 
 % ----------------------------------------------------------------
 \subsection{Experimental Setup}
 \label{sec:setup}
 
 \paragraph{Hardware and software.}
-All measurements were collected on a single core of an
-Intel Xeon processor at 2.10~GHz (4 logical cores available, benchmarks
-single-threaded), running Linux 6.18.5 x86\_64.
-The implementation was compiled with \texttt{rustc}~1.94.1
-(release profile: \texttt{opt-level~=~3}, LTO disabled).
-Criterion~0.5.1 was used as the benchmarking harness.
+Table~\ref{tab:crossplatform} compares two platforms of different
+vendor and model: (A) Intel Xeon (Model 173), 2~vCPU, KVM; (B) AMD EPYC
+9V74, 4~vCPU (Azure). Table~\ref{tab:fivemode}'s five-mode contrast
+uses a third, more heavily shared/virtualized container (C), whose
+absolute latencies are not comparable to A/B (caveat below the table).
+All three run \texttt{rustc}~1.94.1, pinned by
+\texttt{rust-toolchain.toml}. Criterion~0.5.1 produces
+Table~\ref{tab:criterion}; a dedicated harness
+(\texttt{btv-core/benches/sweep\_concurrent.rs}) produces
+Tables~\ref{tab:crossplatform}--\ref{tab:fivemode}.
 
-\paragraph{Methodology.}
-We used Criterion's \texttt{iter\_batched} API with
-\texttt{BatchSize::SmallInput}.  This separates the \emph{setup
-phase} (allocating the context buffer, cloning string arguments) from
-the \emph{measurement phase} (constructing the \texttt{Verdict}),
-ensuring that heap allocation latency is not attributed to the
-type-system mechanisms under study.
+\paragraph{Sweep methodology.}
+Each (payload, mode, thread-count) configuration runs 5 trials; each
+Rayon worker times its own operations with a thread-local
+P\textsuperscript{2} quantile estimator~\cite{jain1985p2} ($O(1)$
+memory, no stored observations). \textbf{Every p95/p99 figure in this
+section is therefore a P\textsuperscript{2} estimate, not an exact
+order statistic.} No harness-owned lock sits in the timed path, except
+\texttt{FullPipelineDurable} (Table~\ref{tab:fivemode}), which
+deliberately shares one \texttt{SqliteLogSink} because
+\texttt{SQLite}'s own locking is what is being measured there. The
+committed runs use a reduced wall-clock target (1--2\,s/config, not the
+project's 90\,s standard); a dedicated-hardware 90\,s run is still owed
+but would not change the ratios below, which compare modes measured
+together on the same run, not absolute numbers against other papers.
 
-To prevent the LLVM optimiser from caching the BLAKE3 hash across
-iterations (which would underestimate the hashing cost), a one-byte
-seed is incremented on each setup call, producing a distinct input
-for every iteration.  The explanation string, jurisdiction, and
-policy version are cloned from pre-allocated originals; their cost
-is excluded from the measurement window.
-
-\texttt{black\_box} wrappers are applied to inputs passed to
-\texttt{EvidenceToken::new}, preventing constant-folding of the hash
-computation.
-
-Criterion reports a 95\% confidence interval over 100 samples per
-benchmark; we quote the point estimate (mean) with the lower and
-upper bounds of the interval.
+\paragraph{Memory footprint.}
+\begin{center}
+\texttt{std::mem::size\_of::\textless{}Verdict\textgreater{}() = 184 bytes} (x86-64, rustc~1.94.1)
+\end{center}
+32-byte \texttt{Blake3Hash}; \texttt{ComplianceToken} (two strings, a
+\texttt{u32}, and a 32-byte authority signature); \texttt{Decision}
+discriminant; explanation \texttt{String}; 32-byte integrity seal.
 
 % ----------------------------------------------------------------
 \subsection{Results}
 \label{sec:results}
 
-\paragraph{Memory footprint.}
-\begin{center}
-\texttt{std::mem::size\_of::\textless{}Verdict\textgreater{}() = 152 bytes} (x86-64, rustc~1.93.1, Linux)
-\end{center}
-This fixed footprint comprises the 32-byte \texttt{Blake3Hash}, the
-\texttt{ComplianceToken} fields (two heap-allocated strings and a
-\texttt{u32}), the \texttt{Decision} discriminant, the explanation
-\texttt{String}, and the 32-byte HMAC integrity seal.  The serialised
-on-wire footprint (JSON or CBOR) is approximately 300--500 bytes
-depending on field lengths.
-
-\paragraph{Verdict construction latency.}
-Table~\ref{tab:new} reports the end-to-end latency of
-\texttt{Verdict::new}, which includes BLAKE3 context hashing,
-HMAC-SHA256 sealing, and memory allocation for the \texttt{Verdict}
-struct.  Three context sizes are measured to characterise the
-BLAKE3 throughput curve.
+\paragraph{Cross-platform latency and variance.}
+Table~\ref{tab:crossplatform}: \texttt{issue\_verdict} end-to-end
+(BLAKE3 + HMAC + in-memory append), 1 thread, median and CV over 5
+trials.
 
 \begin{table}[t]
-\caption{Latency of \texttt{Verdict::new} by context size (95\% CI)}
-\label{tab:new}
-\begin{tabular}{lrrr}
+\caption{Full pipeline latency by payload and platform (1 thread, median of 5 trials)}
+\label{tab:crossplatform}
+\centering\small
+\begin{tabular}{lrrrr}
 \hline
-\textbf{Context size} & \textbf{Lower} & \textbf{Mean} & \textbf{Upper} \\
+\textbf{Payload} & \textbf{A: mean (ns)} & \textbf{A: CV} & \textbf{B: mean (ns)} & \textbf{B: CV} \\
 \hline
-64~B   & 414.67~ns & 416.80~ns & 419.08~ns \\
-512~B  & 859.22~ns & 869.26~ns & 880.74~ns \\
-4~KiB  & 1.639~\textmu{}s & 1.671~\textmu{}s & 1.708~\textmu{}s \\
+64~B   & 383   & 0.7\% & 411   & 0.5\% \\
+512~B  & 746   & 0.3\% & 889   & 0.2\% \\
+4~KiB  & 1294  & 0.3\% & 1735  & 0.2\% \\
 \hline
 \end{tabular}
 \end{table}
 
-\paragraph{Integrity verification latency.}
-Table~\ref{tab:verify} reports the latency of
-\texttt{Verdict::verify\_integrity}, which recomputes the
-HMAC-SHA256 seal over the stored evidence identifier, decision, and
-explanation and compares it to the seal embedded in the
-\texttt{Verdict}.  This operation does not re-hash the original
-context.
+CV under 1\% at every payload on both platforms --- repeatability
+across separate runs, a stronger statement than one run's bootstrap CI.
+
+\paragraph{Thread scaling.}
+On B, \texttt{full\_pipeline} throughput at 64~B: 1.96~M~ops/s (1
+thread) $\to$ 3.73~M (2) $\to$ 5.70~M (4) --- within 3\% of ideal
+linear scaling, consistent with no structural lock in the measured
+path.
+
+\paragraph{Five-mode contrast.}
+Table~\ref{tab:fivemode} adds what a single baseline omitted: a
+durable arm (\texttt{FullPipelineDurable}: on-disk \texttt{SQLite},
+WAL + \texttt{synchronous=FULL} actually in effect, not an in-memory
+sink that silently ignores both) and a status-quo arm symmetric with
+BTV (\texttt{StatusQuoDigestLog} logs a digest, like
+\texttt{FullPipeline}, instead of the full context hex-encoded). 4~KiB
+payload, 4 threads, environment C:
 
 \begin{table}[t]
-\caption{Latency of \texttt{Verdict::verify\_integrity} (95\% CI)}
-\label{tab:verify}
-\begin{tabular}{lrrr}
+\caption{Five-mode contrast, 4~KiB payload, 4 threads, environment C (median of 5 trials)}
+\label{tab:fivemode}
+\centering\small
+\begin{tabular}{lrr}
 \hline
-\textbf{Operation} & \textbf{Lower} & \textbf{Mean} & \textbf{Upper} \\
+\textbf{Mode} & \textbf{Mean latency} & \textbf{Throughput (ops/s)} \\
 \hline
-\texttt{verify\_integrity} & 324.09~ns & 327.36~ns & 330.32~ns \\
+\texttt{verdict\_only}            & 4.34~\textmu{}s   & 505{,}937 \\
+\texttt{status\_quo\_digest\_log} & 1.53~\textmu{}s   & 2{,}268{,}330 \\
+\texttt{full\_pipeline}           & 7.27~\textmu{}s   & 511{,}108 \\
+\texttt{status\_quo\_async\_log}  & 19.0~\textmu{}s   & 196{,}186 \\
+\texttt{full\_pipeline\_durable}  & 168.6~\textmu{}s  & 22{,}338 \\
 \hline
 \end{tabular}
 \end{table}
+
+A sensitivity range, not one number: against a full-context logger,
+BTV is 2.6$\times$ faster at 4~KiB; against a digest-only logger,
+4.7$\times$ slower --- a modeling choice about what "the status quo"
+logs, not a property of BTV, so both are shown. Durability is the
+dominant cost, by more than an order of magnitude: 23$\times$ slower
+than the in-memory pipeline at the same payload and thread count. One
+anomaly is reported rather than smoothed over: at 1 thread,
+\texttt{full\_pipeline\_durable}'s CV exceeds 140\% (vs.\ 2--3\% at 2
+and 4 threads), plausibly a single-threaded \texttt{SQLite} WAL
+file's page-cache warm-up effect --- flagged as unexplained, not
+presented as stable. \emph{Environment C's absolute latencies (higher
+than Table~\ref{tab:crossplatform}) are not comparable across tables;
+only ratios within this table, from the same run, are load-bearing.}
+
+\paragraph{Single-operation cost breakdown.}
+Table~\ref{tab:criterion} isolates construction from persistence
+(Criterion, 95\% CI, 100 samples, environment A, fixed small context).
+
+\begin{table}[t]
+\caption{Single-operation latency (Criterion, 95\% CI)}
+\label{tab:criterion}
+\centering\small
+\begin{tabular}{lr}
+\hline
+\textbf{Operation} & \textbf{Mean} \\
+\hline
+\texttt{Verdict::new} (construction only)          & 5.21~\textmu{}s \\
+\texttt{issue\_verdict}, in-memory sink            & 6.64~\textmu{}s \\
+\texttt{issue\_verdict}, durable \texttt{SQLite}   & 1.28~ms \\
+\hline
+\end{tabular}
+\end{table}
+
+The jump to durable persistence ($\approx$246$\times$) is the real
+price of non-repudiation once "durable" means an \texttt{fsync}, not a
+RAM insert; the type-level discipline contributes none of it, since
+private fields, \texttt{\#[must\_use]}, and \texttt{pub(crate)}
+constructors emit no code.
 
 % ----------------------------------------------------------------
 \subsection{Discussion}
 \label{sec:bench-discussion}
 
-\paragraph{Zero-cost abstractions.}
-The linear type discipline---private fields, \texttt{pub(crate)}
-visibility, and \texttt{\#[must\_use]}---operates entirely at compile
-time.  It introduces no additional branches, allocations, or
-synchronisation primitives.  The runtime cost of a
-\texttt{Verdict} is therefore identical to the cost of the
-cryptographic operations it encapsulates (BLAKE3 and HMAC-SHA256),
-which would be required regardless of the governance mechanism chosen.
-
-\paragraph{Isolating the BLAKE3 cost.}
-The difference between \texttt{Verdict::new} (64~B context) and
-\texttt{Verdict::verify\_integrity} isolates the cost attributable
-to hashing the decision context:
-\[
-  \Delta_{64\mathrm{B}} = 416.80\;\text{ns} - 327.36\;\text{ns}
-                        \approx 89\;\text{ns}.
-\]
-This $\approx 89$~ns represents one BLAKE3 invocation over 64 bytes,
-consistent with BLAKE3's documented throughput of approximately
-1~GB/s on this hardware class.  As context size grows, the
-additional latency scales proportionally: 512~B adds approximately
-$452\;\text{ns}$ above the 64~B baseline, and 4~KiB adds
-approximately $1.25\;\mu\text{s}$.
-
-\paragraph{Governance at microsecond scale.}
-All measured operations complete in under 2~\textmu{}s.  In a
-production AI inference pipeline, where model evaluation typically
-requires tens to hundreds of milliseconds, the governance overhead
-introduced by the Constitutional Enclosure is
-\emph{below measurement noise}---less than 0.01\% of total request
-latency for any non-trivial model.  The accountability guarantee
-is therefore practically free.
+\paragraph{What the type system costs, and what it does not.}
+The linear-type discipline is compile-time only: it adds no branch,
+allocation, or synchronisation primitive, and Table~\ref{tab:criterion}
+is consistent with that --- the added cost is exactly the cryptography
+and I/O invoked, nothing more. That is narrower than "the guarantee is
+free": Table~\ref{tab:fivemode} shows it costs one to four orders of
+magnitude more than doing nothing, depending on what "nothing" means.
+What the theorem buys is that the expensive path (durable, signed,
+non-repudiable) is the \emph{only} path the type system allows for a
+materialised \texttt{Verdict} --- there is no cheaper, silently
+unaccountable one available by omission.
 
 \paragraph{Verification cost.}
-The \texttt{verify\_integrity} operation ($\approx 327$~ns) enables
-an auditor to confirm the integrity of any stored verdict at a rate
-exceeding $3 \times 10^6$ verifications per second on a single core.
-This makes retroactive audit of large decision logs computationally
-tractable without specialised hardware.
+\texttt{Verdict::verify\_integrity} recomputes an HMAC over fixed-size
+fields without re-hashing the original context ($\ll$1~\textmu{}s,
+subsumed in \texttt{verdict\_only} above): retroactive audit at
+population scale is computationally unremarkable, independent of the
+persistence cost above.
 
 % ----------------------------------------------------------------
 \subsection{Worked Examples}
 \label{sec:worked-examples}
 
-Three worked examples demonstrate BTV in semi-realistic scenarios: credit
+Four worked examples demonstrate BTV in semi-realistic scenarios: credit
 scoring under LGPD (30-day appeal window), hiring screening under EU AI Act
-Art.~86 (high-risk classification), and emergency triage (where \texttt{Allow}
-decisions also require evidence).  Each example constructs verdicts from
-domain-specific payloads and verifies integrity.  Source code is included in
-the companion repository (\texttt{examples/}).
+Art.~86 (high-risk classification), emergency triage (where \texttt{Allow}
+decisions also require evidence), and emergency escalation to a human
+operator when automated evidence cannot be produced (Corollary~\ref{cor:escalated}).
+Each constructs verdicts from domain-specific payloads and verifies
+integrity; source is in the companion repository (\texttt{examples/}).
