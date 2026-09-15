@@ -48,7 +48,7 @@ direction the measurements point---which is not the flattering one.
 \subsection{Experimental Setup}
 \label{sec:setup}
 
-\paragraph{Methodology.}
+\paragraph*{Methodology.}
 Micro-benchmarks use Criterion's \texttt{iter\_batched} discipline with
 \texttt{black\_box} on every input crossing an optimization boundary and a
 per-iteration seed making each hashed context distinct.  The sweep
@@ -59,7 +59,7 @@ five trials; we report medians and the trial-to-trial coefficient of
 variation (CV).  Iteration counts are calibrated per (payload, mode) using
 that mode's own operation, so they are not comparable across modes.
 
-\paragraph{Hardware, software, and what this collection is not.}
+\paragraph*{Hardware, software, and what this collection is not.}
 All three tables come from one collection on one host: an Intel Xeon
 virtual machine, 4~vCPUs, Linux x86\_64, \texttt{rustc}~1.98.1 pinned via
 \texttt{rust-toolchain.toml}, 5\,s wall target per configuration.  Two
@@ -77,7 +77,7 @@ only and carries no performance claim.
 \subsection{Results}
 \label{sec:results}
 
-\paragraph{Construction latency.}
+\paragraph*{Construction latency.}
 Table~\ref{tab:construction} reports the end-to-end cost of
 \texttt{Verdict::new}---BLAKE3 context hashing, authority-signature
 verification, HMAC-SHA256 sealing, and allocation.  The payload-scaling
@@ -90,7 +90,7 @@ type discipline, which emits no instruction at all.
 
 \input{section5_table1_construction}
 
-\paragraph{Thread scaling, and where contention actually lives.}
+\paragraph*{Thread scaling, and where contention actually lives.}
 Table~\ref{tab:platforms} separates the two persistence postures under
 concurrency.  The in-memory path is flat---7.82\,\textmu{}s at one thread
 and at four, CV below 0.3\%---the empirical signature of the absent lock
@@ -109,22 +109,22 @@ indifferent to that choice; the latency budget is not.
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{figures/fig4_benchmark_overhead.pdf}
-\caption{Measured median latency of the BTV and status-quo logging
-  paths at 4~KiB, one thread (logarithmic scale). The rows compare
-  distinct implementation and persistence postures, not a single
-  end-to-end number; type-level enforcement adds no runtime branch,
-  and the measured costs are those of hashing, token verification,
-  sealing, encoding, and---where enabled---durable persistence.}
+\caption{Measured latency at 4~KiB and one thread (logarithmic scale;
+  medians across five trials). The rows compare distinct implementation
+  and persistence postures, not a single end-to-end number: durable
+  persistence, not the type boundary alone, dominates the measured
+  latency, whose cost is that of hashing, token verification, sealing,
+  and encoding.}
 \label{fig:benchmark_overhead}
 \end{figure}
 
-\paragraph{Why the construction rows differ.}
+\paragraph*{Why the construction rows differ.}
 Table~\ref{tab:construction} times the full public path, including token
 issuance and verification.  Table~\ref{tab:fivemode}'s smaller
 ``prebuilt-token binding'' row creates tokens outside the timed region and
 measures only their binding.  It is not a second end-to-end estimate.
 
-\paragraph{What accountability costs against the status quo.}
+\paragraph*{What accountability costs against the status quo.}
 Table~\ref{tab:fivemode} and Figure~\ref{fig:benchmark_overhead} show
 the comparison an architect actually faces.
 Against a status quo that logs the complete decision context, the durable
@@ -148,7 +148,7 @@ exists.  The comparison is therefore not like-for-like, and we decline
 to present it as though it were: what the numbers price is the
 difference between a record that exists and one that might.
 
-\paragraph{Correction of record.}
+\paragraph*{Correction of record.}
 These figures replace earlier ones that were wrong: the harness seeded
 each payload from a trial-local counter, so later trials replayed evidence
 the log already held, and the append-only sink correctly returned success

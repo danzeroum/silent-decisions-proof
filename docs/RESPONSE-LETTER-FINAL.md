@@ -43,9 +43,10 @@ architectural or empirical limitation.
    hardware and duration limitations.
 7. A polyglot/PyO3 threat-model sketch is included in the main text. It names
    the downstream enforcement assumption and the limits of the Rust boundary.
-8. Figures were redrawn to correct the type-law direction, update the LGPD
-   citation, and align benchmark values with the revised empirical
-   evaluation.
+8. Figures were redrawn to improve readability, correct the legal citation
+   and type-law direction, and align the benchmark visualization with the
+   revised measured data. A new figure illustrates the polyglot/FFI trust
+   boundary (Section 4.7), previously discussed only in prose.
 9. Definitions and explanations were expanded so that governance,
    compliance, and systems readers can follow the argument without prior
    familiarity with Rust, affine ownership, FFI, or cryptographic primitives.

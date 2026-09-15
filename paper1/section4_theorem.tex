@@ -128,7 +128,8 @@ within this API perimeter.
 
 \begin{proof}
 We analyze the public construction and extraction paths closed by the
-crate's encapsulation assumptions (Figure~\ref{fig:enclosure_perimeter}).
+crate's encapsulation assumptions (summarised in
+Table~\ref{tab:protections}).
 
 \medskip
 \noindent\textbf{Case~A: Struct-literal construction.}
@@ -175,16 +176,6 @@ can be obtained in $\Gamma_{\mathit{ext}}$ without passing through
 such term is a Materialized Verdict; therefore
 $\mathcal{S}_{P}=\varnothing$ within the stated perimeter.
 \end{proof}
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{figures/fig3_enclosure_perimeter.pdf}
-\caption{The Constitutional Enclosure perimeter: attack vectors A--C are
-  rejected by the compiler (\texttt{E0451}, \texttt{E0624},
-  \texttt{unused\_must\_use}); the only well-typed path to a
-  \texttt{Verdict} is \texttt{Verdict::new}.}
-\label{fig:enclosure_perimeter}
-\end{figure}
 
 % ----------------------------------------------------------------
 \subsection{Corollary: Fail-Secure by Construction}
@@ -269,7 +260,7 @@ forged, duplicated, or silently dropped.
 Most production ML pipelines are polyglot: orchestration logic (agent
 frameworks, model servers, API gateways) runs in Python and other
 languages, while BTV's linear-type discipline is enforced by the Rust
-compiler.
+compiler (Figure~\ref{fig:ffi_boundary}).
 The PyO3 gateway (\texttt{btv-python}) is the sole authorized boundary
 between these worlds: a Python caller can invoke
 \texttt{issue\_verdict}, but cannot inspect, clone, or reconstruct a
@@ -286,3 +277,13 @@ independently require and verify the sealed verdict handle before
 acting, and must reject any request that bypasses the gateway.
 The Rust enclave protects itself; it does not, by itself, protect the
 system that surrounds it.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig5_ffi_boundary.pdf}
+\caption{The FFI trust boundary in a polyglot deployment. The Rust
+  gateway is the only path to a sealed \texttt{Verdict} handle; routing
+  every downstream effect through that handle is an infrastructure
+  obligation outside the Rust type theorem.}
+\label{fig:ffi_boundary}
+\end{figure}

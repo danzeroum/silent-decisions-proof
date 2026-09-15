@@ -34,14 +34,14 @@ weakening the core invariant.
 \subsection{Scope and Boundaries of the Guarantee}
 \label{sec:scope}
 
-\paragraph{Unsafe Rust.}
+\paragraph*{Unsafe Rust.}
 The scope limits of \S\ref{sec:encapsulation} and \S\ref{sec:threat}
 apply here too: enforcing a zero-\texttt{unsafe} policy across the
 dependency graph (auditable via \texttt{cargo geiger}~\cite{cargogeiger})
 is an operational decision, not a theoretical barrier, and requires no
 change to the BTV crate itself.
 
-\paragraph{Semantic truthfulness and the AttestableContext extension.}
+\paragraph*{Semantic truthfulness and the AttestableContext extension.}
 The theorem guarantees that \emph{some} byte sequence was hashed and
 bound to a verdict, not that it faithfully represents the context
 presented at inference time: a caller could pass
@@ -78,7 +78,7 @@ designed to validate the theoretical claims of this paper.
 Four implementation choices trade production robustness for
 clarity of exposition; each has a well-defined remediation path.
 
-\paragraph{L1 — Static HMAC key (mitigated).}
+\paragraph*{L1 — Static HMAC key (mitigated).}
 The reference implementation reads the HMAC key from
 \texttt{BTV\_HMAC\_KEY} at runtime, falling back to a compile-time
 constant only when unset, closing L1 for deployments that inject a
@@ -90,7 +90,7 @@ non-repudiation. The type-level guarantee
 (Theorem~\ref{thm:enclosure}) is independent of key management and
 holds regardless of the key source.
 
-\paragraph{L2 — \texttt{ComplianceAuthority} factory, HMAC-signed
+\paragraph*{L2 — \texttt{ComplianceAuthority} factory, HMAC-signed
 (implemented).}
 The \texttt{ComplianceToken::new} constructor was originally
 \texttt{pub}, letting any external crate self-declare a jurisdiction
@@ -109,14 +109,14 @@ between "validated" and "authorized." The type law tightens to
 $(E \otimes C_{\text{signed}}) \multimap V$; the encapsulation
 boundary (Axioms~1--3) is preserved.
 
-\paragraph{L3 — Single-node evidence chain.}
+\paragraph*{L3 — Single-node evidence chain.}
 \texttt{EvidenceToken} captures a single BLAKE3 hash; multi-step
 pipelines (retrieval, re-ranking, generation, scoring) each carry
 accountability implications. A \emph{chain} of evidence tokens, each
 stage consuming the prior and producing a new one, generalises
 naturally while preserving $(E \otimes C) \multimap V$ at each step.
 
-\paragraph{L4 — Polyglot pipelines.}
+\paragraph*{L4 — Polyglot pipelines.}
 Since the theorem holds within Safe Rust (Axiom~\ref{ax:encap}),
 external code is $\Gamma_{\text{ext}}$ by definition and cannot
 construct a \texttt{Verdict} directly; \S\ref{sec:ffiboundary}
