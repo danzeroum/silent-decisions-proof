@@ -1,8 +1,6 @@
 target/
 paper1/target/
 paper2/target/
-__pycache__/
-*.pyc
 
 # Raw sweep output from local runs of scripts/run_sweep.sh. Final CSVs cited
 # in the paper must be explicitly committed with descriptive names.
@@ -14,12 +12,5 @@ __pycache__/
 # are the committed evidence pair (CSV + environment fingerprint alongside).
 !data/sweep_raw_20260914T171258Z.csv
 !data/sweep_raw_20260914T164735Z_runnervmlun5p.csv
-
-# OS-07 (COMSI-2026-04-0112, closes F7/F10): third environment, first run
-# with the 5-mode grid (full_pipeline_durable + status_quo_digest_log).
-# Reduced-footprint (BTV_SWEEP_TARGET_WALL_SECS=2, not the 90s headline
-# target) — see data/sweep_env_20260914T231541Z.txt for the label. (A
-# first attempt at 20260914T224433Z ran concurrently with unrelated
-# cargo builds in the same session; re-run cleanly and replaced before
-# any number from it was cited anywhere.)
 !data/sweep_raw_20260914T231541Z.csv
+!data/sweep_raw_20260914T231611Z_chunked5s.csv

@@ -1,0 +1,17 @@
+timestamp_utc: 20260914T231611Z
+collection: CHUNKED via BTV_SWEEP_MODES (host reaps long background processes); 5 chunks concatenated in mode order
+sweep_target_wall_secs: 5 (reduced-footprint VM snapshot — NOT the 90s dedicated-hardware headline run; explicitly labeled per EVIDENCE-MANIFEST)
+sweep_modes: full_pipeline, full_pipeline_durable, verdict_only, status_quo_async_log, status_quo_digest_log (OS-07: 5 modes)
+trials: 5
+storage_caveat: containerized overlayfs — durable-mode fsync semantics may be weaker than bare metal; the durable numbers here are a LOWER bound on real-storage cost
+durable_sink: single shared on-disk SqliteLogSink (WAL + synchronous=FULL), realistic single-log deployment
+--- rustc ---
+rustc 1.98.1 (48a229cea 2026-09-01)
+--- cargo ---
+cargo 1.98.1 (797e8a9bc 2026-08-05)
+--- kernel ---
+Linux c-6aa85678-14f3c1c7-d713eb32a30c 5.10.134-013.15.kangaroo.al8.x86_64 #1 SMP Thu Jul 30 12:54:59 UTC 2026 x86_64 GNU/Linux
+--- cpu ---
+Model name:                         Intel(R) Xeon(R) Processor
+--- git commit ---
+c303f50739fe73909e67cd5abbdf65dbf6615276

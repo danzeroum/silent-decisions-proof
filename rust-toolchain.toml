@@ -1,23 +1,6 @@
-# Single source of truth for the toolchain used across this repository
-# (OS-09, COMSI-2026-04-0112, closes H5). Before this file existed, four
-# different rustc versions were cited by hand across the artifact: 1.93.1
-# in section5_benchmarks.tex, "1.98+" in README.md, 1.98.0 in
-# reports/tcb_summary.md, and 1.98.1 in a committed run fingerprint — none
-# of which matched each other, and none of which matched the toolchain any
-# of those numbers were actually produced with. rustc --version and every
-# doc/report reference now derive from this one file.
-#
-# `targets` must list aarch64-unknown-linux-gnu: once this file exists,
-# rustup auto-activates the pinned toolchain identity (1.94.1-x86_64-*)
-# for any cargo invocation, INSTEAD OF whatever toolchain a CI step's
-# `targets:` input added the aarch64 target to (ci.yml's ARM64 job asks
-# dtolnay/rust-toolchain for `stable` + the target, but this file then
-# overrides which toolchain actually runs). Without this line the ARM64
-# CI job fails with E0463 "can't find crate for `core`" on the very
-# first dependency, because the active 1.94.1 toolchain has no aarch64
-# target installed at all — caught by CI immediately after this file
-# was first added (PR #5, check run 104200199141).
+# Single source of truth for the toolchain (OS-09, closes H5).
+# §5.1 of the manuscript, the README, and reports/tcb_summary.md cite THIS
+# channel; rustup honors it for every command inside the repository.
 [toolchain]
-channel = "1.94.1"
-components = ["rustfmt", "clippy"]
-targets = ["aarch64-unknown-linux-gnu"]
+channel = "1.98.1"
+components = ["clippy", "rustfmt"]

@@ -51,25 +51,18 @@ fn screen_candidate(c: &Candidate, cutoff: f64) -> Verdict {
     );
 
     let token = EvidenceToken::new(context.as_bytes());
-    // EU AI Act: 720 hours (30 days) appeal window for high-risk decisions.
-    // ComplianceToken is issued through a ComplianceAuthority; this demo
-    // authority allows the regulation identifier used in the scenario, but
-    // (OS-09, COMSI-2026-04-0112) must sign with the SAME key
-    // `Verdict::new` verifies against, or OS-02's signature check rejects
-    // it. `ComplianceAuthority::new_from_env` resolves that recognized key
-    // but its allowlist has no room for this scenario's custom
-    // jurisdiction string, so this demo resolves the key the same way and
-    // builds its own authority around it, rather than an unrelated key.
-    let authority_key = std::env::var("BTV_AUTHORITY_KEY")
-        .map(|k| k.into_bytes())
-        .unwrap_or_else(|_| b"btv-authority-key-proof-of-concept-2026".to_vec());
-    let authority = ComplianceAuthority::new(authority_key, vec!["EU-AIACT-2024/1689".to_string()]);
+    // EU AI Act: 720 hours (30 days) appeal window for high-risk decisions
+    // ComplianceToken is issued through the recognized ComplianceAuthority
+    // (OS-02: tokens are signed with the BTV_AUTHORITY_KEY-resolved key and
+    // verified inside Verdict::new — a demo authority with a foreign key
+    // would be rejected).
+    let authority = ComplianceAuthority::new_from_env();
     let compliance = authority
-        .issue_token("EU-AIACT-2024/1689", "1.0.0", 720)
-        .expect("jurisdiction is allowlisted above");
+        .issue_token("EU-AI-ACT", "1.0.0", 720)
+        .expect("EU-AI-ACT is in the default allowlist");
 
     Verdict::new(token, compliance, decision, explanation)
-        .expect("authority signs with the same key Verdict::new verifies against")
+        .expect("new_from_env authority holds the recognized key (OS-02)")
 }
 
 fn main() {

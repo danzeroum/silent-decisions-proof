@@ -10,11 +10,13 @@
 
 | Implementação | p50 (μs) | p95 (μs) | p99 (μs) | média (μs) | stdev (μs) | throughput (ops/s) |
 |---|---:|---:|---:|---:|---:|---:|
-| BTV-Rust-native (criterion, mean only) | 1.10 | 1.10 | 1.10 | 1.10 | 0.01 | 910576 |
-| BTV-PyO3 (Python bench) | 2.23 | 3.40 | 5.74 | 2.39 | 1.07 | 419257 |
-| BTV-Rust+SQLite WAL+FULL (criterion, mean only) | 10.34 | 10.34 | 10.34 | 10.34 | 0.26 | 96755 |
-| OpenTelemetry pós-hoc (BatchProcessor+NullExporter) | 17.70 | 24.55 | 47.06 | 20.87 | 33.05 | 47912 |
-| SQLite ACID bare (BEGIN..COMMIT) | 8.61 | 13.08 | 23.11 | 9.80 | 4.50 | 102039 |
+| BTV-Rust-native (criterion, mean only) | — | — | — | 4.29 | 18.08 | 233260 |
+| BTV-PyO3 (Python bench) | 7.66 | 12.06 | 18.03 | 7.93 | 3.46 | 126111 |
+| BTV-Rust+SQLite WAL+FULL (criterion, mean only) | — | — | — | 208.93 | 120.41 | 4786 |
+| OpenTelemetry pós-hoc (BatchProcessor+NullExporter) | 17.77 | 25.11 | 47.71 | 20.76 | 31.45 | 48164 |
+| SQLite ACID bare (BEGIN..COMMIT) | 8.61 | 13.99 | 20.53 | 9.96 | 4.25 | 100442 |
+
+**OS-08 note:** linhas rotuladas "mean (Criterion)" NÃO têm percentis — Criterion reporta a média no `estimates.json`; as células p50/p95/p99 estão vazias no CSV em vez de conter a média copiada (o defect F8). O throughput das linhas Python é o recíproco da média em laço single-threaded (igual a ops/wall_clock neste desenho).
 
 ## Notas metodológicas
 
@@ -26,9 +28,9 @@
 
 ## Interpretação para o manuscrito
 
-- O BTV nativo (Rust, in-memory) adiciona ~1.10 μs de overhead puro (hash BLAKE3 + HMAC-SHA256 + construção de structs).
-- Quando persistido em SQLite WAL+FULL, o BTV fica em ~10.34 μs — comparável ao baseline SQLite ACID bare (~9.80 μs).
-- Através do PyO3, o overhead de FFI adiciona ~1.29 μs sobre o nativo, mas ainda é ~0.1× mais rápido que OpenTelemetry pós-hoc (que tem custo de enfileiramento assíncrono).
+- O BTV nativo (Rust, in-memory) adiciona ~4.29 μs de overhead puro (hash BLAKE3 + HMAC-SHA256 + construção de structs).
+- Quando persistido em SQLite WAL+FULL, o BTV fica em ~208.93 μs — comparável ao baseline SQLite ACID bare (~9.96 μs).
+- Através do PyO3, o overhead de FFI adiciona ~3.64 μs sobre o nativo, mas ainda é ~0.4× mais rápido que OpenTelemetry pós-hoc (que tem custo de enfileiramento assíncrono).
 
 ## Limitações
 

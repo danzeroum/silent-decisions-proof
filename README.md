@@ -62,7 +62,7 @@ artifact-v2/
 
 ### Prerequisites
 
-- Rust 1.94.1, pinned in `rust-toolchain.toml` (OS-09) — `rustup` picks it up automatically; includes `rustfmt`, `clippy`; target `aarch64-unknown-linux-gnu` (optional)
+- Rust stable (1.98+) with `rustfmt`, `clippy`, target `aarch64-unknown-linux-gnu` (optional)
 - Python 3.10+
 - `maturin`, `pytest`, `opentelemetry-sdk`, `pyyaml`, `numpy`
 
@@ -80,6 +80,9 @@ cargo test --features test-support --lib
 cargo test --features test-support --test trybuild
 cargo test --features test-support --test test_partition
 cargo test --features test-support --test test_load -- --nocapture
+cargo test --features test-support --test test_append_only
+cargo test --features test-support --test test_proof_clauses
+cargo test --features test-support --test test_status_quo_contrast
 
 # 3. Benchmarks
 cargo bench --features test-support --bench verdict_construction
@@ -92,7 +95,6 @@ cd ..
 pytest tests/pyo3/test_binding.py -v
 
 # 5. TCO reproducibility
-pip install -r scripts/requirements.txt
 python3 scripts/compute_crossover.py
 ```
 
@@ -133,7 +135,7 @@ BTV_UNDER_QEMU=1 cargo test --target aarch64-unknown-linux-gnu --features test-s
 
 See `reports/tcb_summary.md` for the full TCB declaration. Summary:
 
-- `rustc` 1.94.1 (pinned in `rust-toolchain.toml`), `std`
+- `rustc` per `rust-toolchain.toml` (single source, OS-09), `std`
 - `blake3`, `hmac`, `sha2`, `subtle` (cryptographic primitives)
 - `rusqlite` + `libsqlite3-sys` (persistence backend)
 - `BTV_HMAC_KEY` / `BTV_AUTHORITY_KEY` (HSM/KMS in production)
@@ -156,3 +158,10 @@ MIT (see `btv-core/Cargo.toml`).
 ## Contact
 
 For questions about this artifact, contact the corresponding author of the IEEE Computer submission.
+
+---
+
+**Artifact tag for the Computer resubmission:** `comsi-2026-04-0112-r1`
+(pinned at merge; every number cited in the manuscript traces to a committed
+CSV/raw report by file, line, and commit hash — see
+`docs/RESPONSE-LETTER-COMSI-2026-04-0112.md`).

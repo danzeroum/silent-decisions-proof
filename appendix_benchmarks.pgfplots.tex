@@ -9,7 +9,7 @@
     bar width=14pt,
     width=\columnwidth,
     height=5cm,
-    ylabel={Latência p95 ($\mu$s)},
+    ylabel={Latência média ($\mu$s)},
     symbolic x coords={BTV-Rust, BTV-PyO3, BTV+SQLite, OTel-pós-hoc, SQLite-bare},
     xtick=data,
     x tick label style={rotate=30,anchor=east,font=\small},
@@ -19,15 +19,15 @@
     ymin=0,
 ]
 \addplot[fill=blue!50] coordinates {
-    (BTV-Rust, 1.10)
-    (BTV-PyO3, 3.40)
-    (BTV+SQLite, 10.34)
-    (OTel-pós-hoc, 24.55)
-    (SQLite-bare, 13.08)
+    (BTV-Rust, 4.29)
+    (BTV-PyO3, 7.93)
+    (BTV+SQLite, 208.93)
+    (OTel-pós-hoc, 20.76)
+    (SQLite-bare, 9.96)
 };
 \end{axis}
 \end{tikzpicture}
-\caption{Latência p95 por implementação ($N=5{,}000$ para Python; $N=100$ para Rust/criterion). BTV-Rust e BTV+SQLite sãoCriterion means (não p95); ver Tabela~\ref{tab:bench-stats}.}
+\caption{Latência MÉDIA por implementação ($N=5{,}000$ para Python; $N=100$ para Rust/Criterion). Todas as barras plotam médias (Criterion fornece média, não percentis — OS-08/F8); ver Tabela~\ref{tab:bench-stats}.}
 \label{fig:bench-baseline}
 \end{figure}
 
@@ -38,13 +38,13 @@
 \small
 \begin{tabular}{lrrrr}
 \toprule
-Implementação & p50 ($\mu$s) & p95 ($\mu$s) & p99 ($\mu$s) & ops/s \\
+Implementação & média ($\mu$s) & stdev ($\mu$s) & ops/s & estatística de latência \\
 \midrule
-BTV-Rust-native & 1.10 & 1.10 & 1.10 & 910576 \\
-BTV-PyO3 & 2.23 & 3.40 & 5.74 & 419257 \\
-BTV-Rust+SQLite WAL+FULL & 10.34 & 10.34 & 10.34 & 96755 \\
-OpenTelemetry pós-hoc & 17.70 & 24.55 & 47.06 & 47912 \\
-SQLite ACID bare & 8.61 & 13.08 & 23.11 & 102039 \\
+BTV-Rust-native & 4.29 & 18.08 & 233260 & mean (Criterion) \\
+BTV-PyO3 & 7.93 & 3.46 & 126111 & measured percentiles (perf_counter, single-threaded) \\
+BTV-Rust+SQLite WAL+FULL & 208.93 & 120.41 & 4786 & mean (Criterion) \\
+OpenTelemetry pós-hoc & 20.76 & 31.45 & 48164 & measured percentiles (perf_counter, single-threaded) \\
+SQLite ACID bare & 9.96 & 4.25 & 100442 & measured percentiles (perf_counter, single-threaded) \\
 \bottomrule
 \end{tabular}
 \end{table}

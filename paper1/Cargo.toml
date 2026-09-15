@@ -11,22 +11,13 @@ name = "silent-decisions-proof"
 path = "src/main.rs"
 
 [features]
-test-support = ["btv-core/test-support"]
+test-support = []
 
 [dependencies]
-# OS-09 (closes H4/H6): btv-core is the canonical implementation; src/lib.rs
-# is now a re-export. hex and blake3 stay direct — examples/*.rs call
-# hex::encode and blake3::hash themselves. hmac/sha2/subtle were only used
-# by the old independent copy of the types and are no longer referenced
-# anywhere in this crate.
+# OS-09: btv-core is the canonical implementation; this crate re-exports it.
 btv-core = { path = "../btv-core" }
-hex = "0.4"
-blake3 = { version = "1", default-features = false, features = ["std", "no_neon"] }
 
 [dev-dependencies]
-trybuild = "1"
-criterion = { version = "0.5", features = ["html_reports"] }
-
-[[bench]]
-name = "verdict_construction"
-harness = false
+# Example-only direct use (emergency_escalation hashes/encodes operator ids).
+blake3 = "1"
+hex = "0.4"

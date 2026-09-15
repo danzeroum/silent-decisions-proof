@@ -63,7 +63,7 @@ fn main() {
     );
 
     let verdict = Verdict::new(token, compliance, decision_outcome, explanation)
-        .expect("new_from_env resolves the recognized authority key (OS-02)");
+        .expect("new_from_env authority holds the recognized key (OS-02)");
 
     // --- Output: what an auditor or the applicant would see ---
     println!("  Applicant:    {}", applicant);
@@ -101,7 +101,7 @@ fn main() {
         Decision::Deny,
         verdict.explanation().to_string(),
     )
-    .expect("new_from_env resolves the recognized authority key (OS-02)");
+    .expect("new_from_env authority holds the recognized key (OS-02)");
     println!("  Reproducibility check:");
     println!("    Original evidence:  {}", verdict.evidence_id().to_hex());
     println!(

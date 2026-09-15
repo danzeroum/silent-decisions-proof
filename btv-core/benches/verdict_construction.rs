@@ -7,21 +7,29 @@ use btv_core::{
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 fn bench_verdict_construction(c: &mut Criterion) {
-    c.bench_function("verdict_construction_in_memory", |b| {
-        b.iter(|| {
-            let token = EvidenceToken::new(black_box(b"score:0.42|threshold:0.50"));
-            let authority = ComplianceAuthority::new_for_test();
-            let compliance = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
-            let v = Verdict::new(
-                token,
-                compliance,
-                Decision::Deny,
-                "Below threshold".to_string(),
-            )
-            .expect("new_for_test authority holds the recognized key");
-            black_box(v);
-        })
-    });
+    // Three context sizes characterize the BLAKE3 throughput curve (the
+    // payload-scaling story of Section 5). Contexts are filled with
+    // distinct byte patterns; construction includes authority-signed token
+    // issuance + signature verification (OS-02), which is the real cost.
+    let make_context = |len: usize| -> Vec<u8> { (0..len).map(|i| (i % 251) as u8).collect() };
+    for (label, len) in [("64B", 64), ("512B", 512), ("4KiB", 4096)] {
+        let context = make_context(len);
+        c.bench_function(&format!("verdict_construction_{label}"), |b| {
+            b.iter(|| {
+                let token = EvidenceToken::new(black_box(context.as_slice()));
+                let authority = ComplianceAuthority::new_for_test();
+                let compliance = authority.issue_token("BR-LGPD", "1.0.0", 720).unwrap();
+                let v = Verdict::new(
+                    token,
+                    compliance,
+                    Decision::Deny,
+                    "Below threshold".to_string(),
+                )
+                .expect("new_for_test authority holds the recognized key");
+                black_box(v);
+            })
+        });
+    }
 }
 
 fn bench_issue_verdict_inmemory(c: &mut Criterion) {

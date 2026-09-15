@@ -55,6 +55,10 @@ The non-repudiability guarantee follows directly: because an
 presented for two different decisions.  Because it cannot be silently
 dropped, a decision that lacks evidence cannot be compiled.
 
+This distinction between the crate's linear discipline and Rust's own
+ownership model is precise enough to need its own name; we return to
+it as ``affine versus linear'' below (Section~\ref{sec:affine-linear}).
+
 % ----------------------------------------------------------------
 \subsection{The Atomic Binding Operator}
 \label{sec:binding}
@@ -95,6 +99,7 @@ The HMAC integrity seal computed inside \texttt{new} binds
 into a tamper-evident record, making post-hoc alteration detectable.
 
 \paragraph{Affine, not strictly linear.}
+\label{sec:affine-linear}
 Precision matters: in substructural-type-theory
 terms~\cite{walker2005substructural,pierce2002tapl}, Rust ownership is
 \emph{affine} (used zero or one times) rather than strictly

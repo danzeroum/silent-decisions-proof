@@ -553,13 +553,31 @@ fn sweep(thread_counts: &[usize], ops: &ModeOps<'_>) {
     //   mean_ns    — arithmetic mean latency over all timed operations.
     println!("trial,mode,threads,payload_bytes,iters_per_thread,wall_ms,throughput_ops_s,p50_ns,p95_ns,p99_ns,p99_max_ns,mean_ns");
 
-    let modes = [
+    let all_modes = [
         Mode::FullPipeline,
         Mode::FullPipelineDurable,
         Mode::VerdictOnly,
         Mode::StatusQuoAsyncLog,
         Mode::StatusQuoDigestLog,
     ];
+    // BTV_SWEEP_MODES="a,b,..." filters the mode list (OS-07): allows
+    // chunked collection on hosts that cannot hold a 15-config run in one
+    // process; concatenate the chunk CSVs (documented in the fingerprint).
+    let modes: Vec<Mode> = match std::env::var("BTV_SWEEP_MODES") {
+        Ok(spec) => {
+            let wanted: Vec<&str> = spec.split(',').map(str::trim).collect();
+            all_modes
+                .iter()
+                .copied()
+                .filter(|m| wanted.contains(&m.as_str()))
+                .collect()
+        }
+        Err(_) => all_modes.to_vec(),
+    };
+    if modes.is_empty() {
+        eprintln!("BTV_SWEEP_MODES matched no modes; running all");
+        panic!("empty mode selection");
+    }
     let target_wall = target_wall_per_config();
 
     for &payload_bytes in PAYLOAD_SIZES {

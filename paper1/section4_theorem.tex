@@ -100,15 +100,21 @@ Axiom~\ref{ax:intro}.
 \subsection{Threat Model}
 \label{sec:threat}
 
-The theorem holds under the \emph{Safe Rust} memory model; the
-\texttt{unsafe} keyword can bypass borrow-checker and visibility
-rules, so \texttt{unsafe} code is explicitly out of scope. This is not
-a practical limitation: \texttt{cargo geiger}~\cite{cargogeiger}
-reports every \texttt{unsafe} block transitively reachable from the
-dependency graph, and a zero-\texttt{unsafe} audit guarantees the
-theorem applies to the entire compiled binary. Macro-generated code is
-in scope: procedural macros run before the type checker and cannot
-circumvent visibility rules without themselves using \texttt{unsafe}.
+The theorem holds under the \emph{Safe Rust} memory model.
+The \texttt{unsafe} keyword grants the programmer the ability to
+bypass borrow-checker and visibility rules; consequently, code that
+uses \texttt{unsafe} is explicitly out of scope.
+
+This is not a practical limitation in governance contexts: production
+deployments can enforce the absence of \texttt{unsafe} code via
+\texttt{cargo geiger}~\cite{cargogeiger}, which reports every
+\texttt{unsafe} block transitively reachable from the dependency
+graph.  A zero-\texttt{unsafe} audit guarantees that the theorem
+applies to the entire compiled binary.
+
+Macro-generated code is in scope: procedural macros run before the
+type checker and cannot produce terms that circumvent visibility rules
+without themselves using \texttt{unsafe}.
 
 % ----------------------------------------------------------------
 \subsection{Proof of the Constitutional Enclosure Theorem}
@@ -246,13 +252,9 @@ cryptographically sealed via HMAC.
 and does not affect the proof of Theorem~\ref{thm:enclosure}.
 \texttt{std::mem::size\_of::\textless{}EscalatedVerdict\textgreater{}()}
 measures $160$ bytes versus $184$ for \texttt{Verdict}
-(x86-64; Section~\ref{sec:results}): the escalation path is $24$ bytes
-\emph{smaller}, since \texttt{EscalatedVerdict} carries an
-\texttt{OperatorToken}'s identity and signature directly rather than a
-full \texttt{ComplianceToken} (which itself carries an authority
-signature, \S\ref{sec:results}). The relative size is a byproduct of
-which fields each type embeds, not a claim either construction is
-cheaper in the sense that matters for the proof.
+(x86-64, rustc~1.98.1; Section~\ref{sec:results}) --- the automated
+verdict is the larger type because it carries the signed compliance
+token's 32-byte signature.
 Its sole constructor \texttt{EscalatedVerdict::new} requires an
 \texttt{OperatorToken} by value, following the same
 $\otimes$-I pattern as Axiom~\ref{ax:intro}.

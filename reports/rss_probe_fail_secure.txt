@@ -1,11 +1,12 @@
 # RSS probe — fail-secure path (OS-06 gate, closes F6)
 # Command: cargo run --release --features test-support --example rss_probe_fail_secure
-# Toolchain: rustc 1.94.1 (e408947bf 2026-03-25), pinned by rust-toolchain.toml (OS-09)
+# Toolchain: rustc 1.98.1 (48a229cea 2026-09-01), pinned by rust-toolchain.toml (OS-09)
 # Kernel: Linux 6.18.44-fc-v24 x86_64
-# Date: 2026-09-14, re-verified for COMSI-2026-04-0112 response letter
-# (Supersedes a prior run on rustc 1.98.1 from a different environment,
-# pre-OS-09 toolchain unification; same result, delta well under budget.)
-RSS before=2132 kB  after=2136 kB  delta=4 kB / 200000 rejected decisions
+# Date: 2026-09-15, re-verified after the PR#4/PR#5 merge (single-toolchain
+# unification landed at 1.98.1; re-run to keep this citation truthful).
+# (Reproduced 3x; delta=4 kB each run — consistent with the two prior runs
+# on rustc 1.94.1 and rustc 1.98.1-pre-unification, both also delta=4 kB.)
+RSS before=2108 kB  after=2112 kB  delta=4 kB / 200000 rejected decisions
 PASS: delta < 1 MB over 200000 rejected decisions (pre-fix leak: ~12,504 kB)
 
 # Pre-fix measurement (audit F6, for comparison):

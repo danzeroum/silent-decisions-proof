@@ -3,27 +3,29 @@
 % Paper: "Silent Decisions Are Type Errors: Enforcing AI Accountability
 %         via Linear Resource Types"
 % Venue: IEEE Computer — Special Issue on AI Governance
-% Deadline: 13 April 2026
+% Deadline: 13 April 2026 (Rev 5: OS-11 — moderated claims, 150-word cap;
+% the desk returned the previous 250-word abstract for this exact reason)
 % Authors: Daniel Lau Pereira Soares
 % ─────────────────────────────────────────────────────────────────────────────
 
 \begin{abstract}
-LGPD (Art.~18) and the EU AI Act (Art.~86) demand auditable
-accountability for AI decisions with legal consequences, but
-Policy-as-Code tools treat accountability as an asynchronous runtime
-property, generating post-hoc logs that a failed pipeline can simply
-never write --- a \emph{silent decision}. We introduce
-\emph{Bound-To-Verdict} (BTV): a \texttt{Verdict} ($V$) cannot be
-constructed within Safe Rust's type boundaries without atomically
-consuming an \texttt{EvidenceToken} ($E$) and a
-\texttt{ComplianceToken} ($C$), $V \multimap (E \otimes C)$, following
-Girard's Linear Logic~\cite{girard1987linear}. We prove the
-\emph{Constitutional Enclosure Theorem}: the set of materialized
-silent decisions is empty within the crate's type perimeter, under the
-Safe Rust and affine-ownership assumptions of \S\ref{sec:encapsulation}.
-A reference implementation validates this empirically: the type-level
-discipline emits no runtime code, so overhead is exactly the
-cryptographic primitives' cost (BLAKE3, HMAC-SHA256) --- except making
-the record \emph{durable}, which costs one to two orders of magnitude
-more, measured here rather than assumed away.
+As autonomous AI agents make decisions with legal
+consequences---credit, employment, healthcare---regulatory frameworks
+such as Brazil's LGPD (Art.~18) and the EU AI Act (Art.~86) demand
+auditable accountability.  Policy-as-Code tools treat accountability as
+an asynchronous runtime property, leaving decisions structurally able
+to exist without evidence: \emph{silent decisions}.
+We introduce \emph{Bound-To-Verdict} (BTV), which shifts AI
+accountability from runtime audit obligation to compile-time type
+guarantee.  Drawing on linear logic, BTV encodes regulatory obligations
+as linear resource types: a \texttt{Verdict} ($V$) cannot be constructed
+within Safe Rust boundaries without atomically consuming its
+\texttt{EvidenceToken} ($E$) and authority-signed
+\texttt{ComplianceToken} ($C$), formalised as $V \multimap (E \otimes
+C_{\text{signed}})$.  We prove the \emph{Constitutional Enclosure
+Theorem}: under this invariant, the set of materialized silent
+decisions is empty within the crate's type perimeter, under the
+assumptions of Section~4.3.  A Safe Rust reference implementation shows
+the type-level enforcement adds no runtime branch; the measured cost is
+that of the cryptographic primitives and of durable persistence.
 \end{abstract}
