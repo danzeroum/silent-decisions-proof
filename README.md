@@ -68,6 +68,25 @@ artifact-v2/
 
 ### Run all tests (x86-64)
 
+**Scope note (G4, COMSI-2026-04-0112 Round 2):** `-D clippy::pedantic` is a
+`btv-core`-only gate, both here and in CI — it is the canonical
+implementation the manuscript's claims trace to. The README previously
+implied this gate held workspace-wide (Test 2's "0 clippy errors" row);
+it does not, and `cargo clippy --workspace --all-targets -- -D
+clippy::pedantic` was never run as a whole before this round. Doing so
+surfaces roughly 40 further findings this repository does not hold to
+that bar: 9 in `paper1`'s demo examples (uninlined format args, lossy
+numeric casts — style, not correctness, in code that exists to be read
+by a human alongside the manuscript), 20 in `paper2`/`btv-transparency`
+(a separate, unrelated manuscript's crate sharing this workspace — see
+`docs/EVIDENCE-MANIFEST.md`), and 14+ in `btv-python` (missing
+`# Errors` doc sections and `#[must_use]` on PyO3 binding methods,
+mostly documentation completeness on thin FFI glue rather than defects
+in the enforcement logic). `paper1/src/main.rs`'s two findings that
+*were* previously reported (missing backticks in its doc comment) are
+fixed as of this round; the rest are disclosed, not fixed, because nothing
+in that ~40 traces to the accountability guarantees this artifact makes.
+
 ```bash
 # 1. Format + lint + audit
 cd btv-core
@@ -123,7 +142,7 @@ BTV_UNDER_QEMU=1 cargo test --target aarch64-unknown-linux-gnu --features test-s
 | # | Test | Status (x86-64) | Status (ARM64 QEMU) |
 |---|---|---|---|
 | 1 | trybuild compile-fail (8 cases) | ✅ 8/8 | ⚠️ skipped (see `reports/hardware_comparison.md`) |
-| 2 | TCB / unsafe audit | ✅ `#![forbid(unsafe_code)]`, 0 vulns, 0 clippy errors | n/a |
+| 2 | TCB / unsafe audit | ✅ `#![forbid(unsafe_code)]`, 0 vulns, 0 clippy errors (`btv-core`, `-D clippy::pedantic` — the gate CI runs; `btv-python`'s PyO3 binding layer is not held to the same pedantic gate, see note below) | n/a |
 | 3 | PyO3 binding (13 tests) | ✅ 13/13 | n/a (PyO3 is x86 only) |
 | 4 | Baseline comparative (3 impls) | ✅ see `reports/benchmark_baseline.md` | n/a |
 | 5 | Fail-secure partition (5 tests) | ✅ 5/5 | ✅ 5/5 |
@@ -162,6 +181,9 @@ For questions about this artifact, contact the corresponding author of the IEEE 
 ---
 
 **Artifact tag for the Computer resubmission:** `comsi-2026-04-0112-r1`
-(pinned at merge; every number cited in the manuscript traces to a committed
-CSV/raw report by file, line, and commit hash — see
-`docs/RESPONSE-LETTER-COMSI-2026-04-0112.md`).
+(every number cited in the manuscript traces to a committed CSV/raw report
+by file, line, and commit hash — see `docs/RESPONSE-LETTER.md`). The tag
+itself is stale as of Round 2 (G1: it points at a commit ~20 files behind
+`main`, predating this round's fixes) and will be moved to the final
+submission commit once every other Round 2 item closes — see the response
+letter's G1 entry.

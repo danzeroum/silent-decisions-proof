@@ -234,15 +234,22 @@ it: every claim in the response letter should point at one row above.
 
 1. **90 s/config sweep on dedicated hardware** (`scripts/run_sweep.sh`,
    no env override, CPU governor `performance`, turbo disabled) — the
-   citable headline dataset. The two committed Round 3 datasets are
-   reduced-target and labeled as such.
-2. **Two `.stderr` fixtures of paper2 retained for human review** (Round
-   2 finding): rustc 1.98.1 no longer emits one `= note:` line in two
-   fixtures; the diff is substantive (not gutter-only), so per the
-   standing rule they were regenerated but NOT committed — awaiting
-   hunk-by-hunk human approval.
-3. **PAT rotation** — the repository access token was re-exposed in chat
-   during Rounds 1–3; rotate it before merge.
+   citable headline dataset. The committed datasets remain reduced-target
+   and labeled as such.
+2. **PAT rotation** — the repository access token was re-exposed in chat
+   during Rounds 1–3; rotate it now. The PR #4/#5 merge this obligation
+   said to precede has already happened, so this is overdue, not merely
+   pending, and cannot be closed by any commit — only by revoking the
+   token in GitHub's own settings.
+
+Resolved this round (G3, COMSI-2026-04-0112 Round 2): the two `paper2`
+`.stderr` fixtures noted above as "retained for human review, diff
+substantive" were re-examined — `git diff` on the regenerated files shows
+exactly one `= note: ... originates in the macro \`todo\`` line removed
+per file, a diagnostic-verbosity change under the newer pinned toolchain,
+not a change to what's being asserted. The Round 2 audit independently
+reached the same conclusion ("o diff é de uma linha de `note`, não
+semântico") and instructed committing it; done.
 
 ---
 
@@ -277,4 +284,17 @@ Commit: `fb6e9d5` (branch `review/bench-workspace-ffi`, PR #4).
 | OS-10 | A2 | §5 reescrita dos CSVs; tabelas geradas | `scripts/gen_section5_tables.py` → `paper1/section5_tables_generated.tex` |
 | OS-11 | A4 | claims moderados; abstract 149 palavras | `scripts/count_words.py` (PASS); grep de frases banidas vazio |
 | OS-12 | F11 | 4 refs de R2 com DOIs verificados; §2.3 reescopada; §3 afim×linear | `grep -c "^@" paper1/refs.bib` == 15 (pós-merge PR#4→PR#5: 3 chaves duplicadas removidas, `jain1985p2` religada a `\cite`); todas as 15 citadas, zero duplicatas |
-| OS-13 | D1–D4 | `docs/RESPONSE-LETTER-COMSI-2026-04-0112.md` | carta ponto a ponto com arquivo:linha e hash |
+| OS-13 | D1–D4 | `docs/RESPONSE-LETTER.md` (única carta desde G7, Rodada 2 — `docs/RESPONSE-LETTER-COMSI-2026-04-0112.md` foi consolidada nela e removida) | carta ponto a ponto com arquivo:linha e hash |
+
+## G1–G8 traceability (COMSI-2026-04-0112, Rodada 2)
+
+| Ordem | Achado | Artefato gerado | Evidência executável |
+|---|---|---|---|
+| G8 | segurança | escalado ao autor — não é uma ação de commit | rotação do PAT no próprio GitHub (pendente, ver obrigações permanentes acima) |
+| G6 | CI vermelha no `main` | componentes explícitos e sequenciais nos 3 jobs de CI que rodam cargo | run verde em `753c7f3` (4/4 jobs, nenhum skipped) |
+| G3 | `cargo test --workspace` falhava | 2 fixtures `.stderr` de `paper2` regeneradas (diff de 1 linha `note:`, não semântico) | `cargo test --workspace --features test-support` == exit 0 |
+| G4 | `cargo clippy --workspace` falhava; README implicava escopo workspace-wide | 2 lints reais corrigidos em `paper1/src/main.rs`; ~40 restantes (paper1 examples, paper2, btv-python) divulgados, não forçados; README escopado | `cargo clippy -p btv-core ...` == exit 0 (o portão que a CI de fato roda) |
+| G5 | benchmark durável media replay idempotente da OS-03, não escrita real | nonce global (`AtomicU64`) em `sweep_concurrent.rs`; `SqliteLogSink::count_rows()`; gate `assert_eq!` ao final do run | `expected_rows == actual_rows` no fim do sweep |
+| G2 | `corpus_median` de BR-LGPD nunca tocou o corpus (`regime` CSV="BR" vs YAML="BR_LGPD") | CSV normalizado para `BR_LGPD`; gate estendido em `compute_crossover.py` | `python3 scripts/compute_crossover.py` imprime `Corpus provenance: OK` |
+| G7 | duas cartas-resposta; "Part R1" numerava R1.1–R1.3 sem fonte verificada | consolidadas em `docs/RESPONSE-LETTER.md`; numeração R1.x removida | uma única carta no repositório |
+| G1 | tag `comsi-2026-04-0112-r1` (`abb7ca2`) 20+ arquivos atrás do `main` | — | `git diff --stat <tag> HEAD` (pendente — ver nota G1 na carta-resposta) |

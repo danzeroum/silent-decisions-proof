@@ -1,8 +1,8 @@
 //! # Silent Decisions Are Type Errors — Live Demo
 //!
 //! Demonstrates the Constitutional Enclosure Theorem in action:
-//! every materialized Verdict consumed exactly one EvidenceToken
-//! and one ComplianceToken. No silent decisions are possible.
+//! every materialized `Verdict` consumed exactly one `EvidenceToken`
+//! and one `ComplianceToken`. No silent decisions are possible.
 
 use silent_decisions_proof::{
     ComplianceAuthority, Decision, EscalatedVerdict, EvidenceToken, Verdict,

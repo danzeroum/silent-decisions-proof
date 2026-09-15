@@ -225,7 +225,43 @@ def main() -> int:
             if abs(expect - r["n_star_full_avoidance"]) > 1e-6 * max(expect, 1.0):
                 print(f"INCONSISTENT: {r['regime']} N* full", file=sys.stderr)
                 return 1
+        # G2 (COMSI-2026-04-0112 Round 2): a `fine_source: corpus_median`
+        # regime is a claim that expected_fine_usd came FROM the corpus —
+        # verify it, don't just trust the label. This is F4's exact defect
+        # pattern (a declared number wearing a derived number's label) in
+        # miniature: BR_LGPD's corpus_fine_stats() call silently matched
+        # zero rows for a full round (the CSV said regime="BR", the YAML
+        # key says "BR_LGPD") and nobody noticed because the declared
+        # $100k happened to equal the real median anyway. A gate that only
+        # checks rho's arithmetic never sees this — it has to check that
+        # corpus_median claims actually touched a nonempty corpus.
+        if r["fine_source"] == "corpus_median":
+            if not r["corpus_n"]:
+                print(
+                    f"INCONSISTENT: {r['regime']} declares fine_source: corpus_median "
+                    "but corpus_n == 0 — expected_fine_usd is not derived from anything; "
+                    "check data/enforcement_cases.csv's `regime` column against this "
+                    "regime's key in data/policy_parameters.yaml",
+                    file=sys.stderr,
+                )
+                return 1
+            if abs(r["expected_fine_usd"] - r["corpus_median"]) > 1e-9 * max(
+                abs(r["corpus_median"]), 1.0
+            ):
+                print(
+                    f"INCONSISTENT: {r['regime']} expected_fine_usd="
+                    f"{r['expected_fine_usd']} != corpus median {r['corpus_median']} "
+                    "— policy_parameters.yaml's declared value has drifted from the "
+                    "corpus it claims to be derived from",
+                    file=sys.stderr,
+                )
+                return 1
     print("Internal consistency: OK (rho and N* re-derive from primitives)", file=sys.stderr)
+    print(
+        "Corpus provenance: OK (every corpus_median regime has corpus_n > 0 and "
+        "expected_fine_usd == corpus median)",
+        file=sys.stderr,
+    )
 
     # ---- Canonical N* table -------------------------------------------------
     nstar_path = DATA / "n_star_by_regime.csv"
@@ -274,8 +310,16 @@ def main() -> int:
         f.write("|---|---:|---:|---:|---:|---:|\n")
         for regime, s in stats.items():
             if s.get("n", 0) == 0:
-                f.write(f"| {regime} | 0 | — (no corpus cases; `fine_source: assumption`) "
-                        "| — | — | — |\n")
+                # G2: name the regime's ACTUAL declared fine_source, not a
+                # hardcoded "assumption" — that hid the BR_LGPD/"BR" key
+                # mismatch behind a label implying a documented, deliberate
+                # choice instead of a corpus lookup that silently matched
+                # nothing. The gate above already refuses to reach this
+                # point for any regime declaring corpus_median with n == 0,
+                # so this line is defense in depth, not the only check.
+                declared_source = regimes[regime]["fine_source"]
+                f.write(f"| {regime} | 0 | — (no corpus cases; "
+                        f"`fine_source: {declared_source}`) | — | — | — |\n")
             else:
                 lo_m, hi_m = s["median_ci"]
                 lo_a, hi_a = s["mean_ci"]
