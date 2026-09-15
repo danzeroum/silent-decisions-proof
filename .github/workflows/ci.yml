@@ -20,10 +20,19 @@ jobs:
           submodules: false
 
       - name: 'Install Rust toolchain (pinned; single source: rust-toolchain.toml, OS-09)'
-        # Components come from rust-toolchain.toml itself; declaring them
-        # here too raced with the file-driven install ('bin/cargo-fmt'
-        # conflict) and intermittently broke the job.
+        # A prior revision of this step removed `components:` here on the
+        # theory that it raced with rust-toolchain.toml's own declaration.
+        # That misdiagnosed the failure: this job (and its single-process
+        # `cargo fmt --check` / `cargo clippy` first-use) has been reliable
+        # in every observed run, explicit components or not. The actual
+        # race is in the `test-x86-64` job's toolchain step (see its
+        # comment) — a multi-crate parallel `cargo test` racing rustup's
+        # implicit component auto-install against itself. Restored here
+        # for consistency with that job's now-explicit installs, not
+        # because this job ever exhibited the race.
         uses: dtolnay/rust-toolchain@1.98.1
+        with:
+          components: rustfmt, clippy
 
       - name: Install cargo-audit
         run: cargo install cargo-audit --locked || true
@@ -60,7 +69,21 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Rust toolchain (pinned)
+        # Explicit components, not just the rust-toolchain.toml declaration:
+        # this job's first cargo invocation below is a multi-target `cargo
+        # test` that compiles several crates in parallel, and letting
+        # rust-toolchain.toml's implicit "install missing components on
+        # first use" path handle it let concurrent rustc processes each
+        # independently race to add rustfmt to the same toolchain, hitting
+        # rustup's 'detected conflict: bin/cargo-fmt' bug (intermittent —
+        # this job failed on this exact error at 86a8f67, again at 591bcae,
+        # and again at 5db1869, on three unrelated code states, which rules
+        # out the code and points at this race). An explicit, sequential
+        # install here — before any cargo command runs — finishes the
+        # transaction once, so nothing later finds components missing.
         uses: dtolnay/rust-toolchain@1.98.1
+        with:
+          components: rustfmt, clippy
 
       - name: Install Python
         uses: actions/setup-python@v5
@@ -124,10 +147,15 @@ jobs:
       - name: Install pinned Rust toolchain with aarch64 target
         # The pin in rust-toolchain.toml (OS-09) means cargo resolves 1.98.1
         # INSIDE this repository; the aarch64 std must therefore be added to
-        # THAT toolchain, not to a floating stable channel.
+        # THAT toolchain, not to a floating stable channel. Components are
+        # also explicit here (see test-x86-64's toolchain step for why):
+        # this job's first cargo command is likewise a multi-crate parallel
+        # build, the same shape that hit the rustup 'bin/cargo-fmt' install
+        # race in that job.
         uses: dtolnay/rust-toolchain@1.98.1
         with:
           targets: aarch64-unknown-linux-gnu
+          components: rustfmt, clippy
 
       - name: Install QEMU and cross toolchain
         run: |
