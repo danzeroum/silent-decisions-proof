@@ -31,7 +31,9 @@ for figsrc in figure-src/fig*.tex; do
         exit 1; }
       mv "figure-src/$(basename "${figsrc%.tex}").pdf" "$figpdf"
     elif command -v pdflatex >/dev/null; then
-      (cd figure-src && pdflatex -interaction=nonstopmode "$(basename "$figsrc")" >/dev/null 2>&1)
+      (cd figure-src && pdflatex -interaction=nonstopmode "$(basename "$figsrc")" >/dev/null 2>&1) || {
+        echo "BUILD-MANUSCRIPT: FAIL — figure $figsrc did not compile" >&2
+        exit 1; }
       mv "figure-src/$(basename "${figsrc%.tex}").pdf" "$figpdf"
     else
       echo "BUILD-MANUSCRIPT: FAIL — no LaTeX engine for figures" >&2; exit 1

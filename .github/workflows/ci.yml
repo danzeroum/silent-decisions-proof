@@ -213,8 +213,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             latexdiff texlive-extra-utils lmodern pandoc zip unzip \
-            texlive-latex-base texlive-latex-recommended texlive-publishers \
-            texlive-fonts-recommended texlive-fonts-extra texlive-science
+            texlive-latex-base texlive-latex-recommended texlive-latex-extra \
+            texlive-publishers texlive-fonts-recommended texlive-fonts-extra \
+            texlive-science
 
       - name: Compile and enforce typographic gates
         run: |
@@ -235,10 +236,10 @@ jobs:
         with:
           name: submission-files
           path: |
-            paper1/main.pdf
-            dist/COMSI-2026-04-0112_main-latex.zip
-            dist/COMSI-2026-04-0112_tracked-changes.pdf
-            dist/COMSI-2026-04-0112_author-response.pdf
+            release/COMSI-2026-04-0112_main_final.pdf
+            release/COMSI-2026-04-0112_source.zip
+            release/COMSI-2026-04-0112_main_tracked_changes.pdf
+            release/COMSI-2026-04-0112_response_letter_final.pdf
 
   tco-reproducibility:
     name: TCO Reproducibility

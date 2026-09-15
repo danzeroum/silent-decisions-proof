@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # Build the single LaTeX source archive requested as the Main Manuscript
 # upload (R1: includes the five figure PDFs and their versioned TikZ sources).
+#
+# Also copies paper1/main.pdf to the release/ clean-PDF deliverable: no
+# other script did this (verified — grep main_final across scripts/*.sh
+# and .github/workflows/ci.yml returned nothing), so the committed
+# main_final.pdf had no automated link back to paper1/main.pdf and could
+# silently go stale relative to the actual compiled manuscript.
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -11,6 +17,9 @@ archive="$out_dir/COMSI-2026-04-0112_source.zip"
 
 command -v zip >/dev/null
 command -v unzip >/dev/null
+
+test -s "$source_dir/main.pdf"
+cp "$source_dir/main.pdf" "$out_dir/COMSI-2026-04-0112_main_final.pdf"
 
 rm -rf "$stage_dir"
 mkdir -p "$stage_dir/figures" "$stage_dir/figure-src"
