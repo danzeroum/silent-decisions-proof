@@ -33,8 +33,9 @@ issued a real row (end-of-run sanity gate: rows persisted == operations
 issued), closing a prior round's silent idempotent-replay defect
 (COMSI-2026-04-0112 Round 2, G5). Provenance:
 \texttt{data/sweep\_raw\_20260915T024430Z\_g5fix.csv}. Rows:
-BTV in-memory sink; BTV with durable on-disk SQLite; BTV verdict
-construction alone; status quo logging a digest plus metadata; status
+BTV in-memory sink; BTV with durable on-disk SQLite; BTV binding with
+tokens built outside the timed region; status quo digest plus metadata;
+status
 quo logging the full context as JSON, fire-and-forget.}
 \label{tab:fivemode}
 \small
@@ -44,7 +45,7 @@ Mode & p50 (\textmu s) & p99 (\textmu s) & throughput (k ops/s)\\
 \hline
 BTV, in-memory sink & 7.82 & 25.87 & 113.9\\
 BTV, durable SQLite & 261.44 & 511.55 & 3.1\\
-BTV, construction only & 4.69 & 8.56 & 114.7\\
+BTV, prebuilt binding & 4.69 & 8.56 & 114.7\\
 Status quo, digest only & 1.68 & 2.28 & 507.6\\
 Status quo, full context & 23.61 & 46.04 & 38.4\\
 \hline

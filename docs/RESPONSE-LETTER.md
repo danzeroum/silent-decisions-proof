@@ -1,206 +1,202 @@
-# Response to the Editorial Decision — COMSI-2026-04-0112
+# Summary of Changes and Response to Reviewers
 
-**Manuscript:** "Silent Decisions Are Type Errors: Enforcing AI Accountability via Linear Resource Types"
+**Manuscript ID:** COMSI-2026-04-0112
+
+**Title:** “Silent Decisions Are Type Errors: Enforcing AI Accountability via Linear Resource Types”
+
 **Author:** Daniel Lau Pereira Soares
-**Responding to:** Major-revisions decision (24-Aug-2026) and the pre-resubmission guidance audit of 14-Sep-2026
-**Repository state at submission:** `danzeroum/silent-decisions-proof`, branch `claude/brave-curie-22eks7`, commit `6c988e680042cff7d6e008685619d7095fac3f5d` (superseded — see revision history immediately below)
 
-## Revision history
-
-**Round 3 — editorial closure (this revision).** A third guidance-audit pass, after the Round 2 fixes landed, found one defect the G5 recollection had left behind and that no gate would have caught: §5's cross-platform table still quoted the two pre-OS-02 snapshots, whose full-pipeline figure (1.72 µs at 4 KiB) was 4.5× *below* the Criterion measurement of that same operation (7.65 µs) printed two tables earlier in the same manuscript — a component costing more than the pipeline containing it, visible to any reader without running anything. §5 was rewritten a second time around a single-collection rule: every numeric cell of all three tables now comes from one collection on one host, so the tables are mutually consistent by construction. The retired cross-platform comparison is disclosed as a narrowing of the multi-hardware claim in E2 below, not quietly dropped. The same pass restored the argument the corrected numbers had displaced: §5 now states why the 11.1× multiplier is not a like-for-like comparison, citing the artifact's own fail-open experiment, rather than reporting the ratio and stopping.
-
-**Round 1 → Round 2 consolidation (G7, this revision):** A second letter, `docs/RESPONSE-LETTER-COMSI-2026-04-0112.md`, existed alongside this one from the point where PR #4's remediation branch merged into `main` through this branch's own merge of that state. The pre-resubmission guidance audit's Round 2 (`ORDENS-DE-SERVICO-R1.md`, ordem G7) directed consolidating to one letter and removing that letter's "Part R1" section, which numbered three items (R1.1–R1.3) as if quoting Reviewer 1's original report. Neither working session had R1's original review text available (see Part B below); the Round 2 audit independently confirmed, having read the actual R1 report, that R1's review is narrative and unnumbered — so that numbering was a reconstruction from the shared audit document's F7/F8/F9/F10 findings, not a verified quotation, and citing a reviewer's position with invented specificity is worse than not citing it. **That letter is deleted as of this revision.** Its two pieces of content this letter lacked — the mechanized-proof scope argument and the submitted-PDF reconciliation — are folded in below (R2.2 and the "Reconciliation of the submitted PDF" section); everything else it covered is already addressed here under the equivalent E/R2/H items, and its self-audit findings (F1–F6) are the same six this letter's Part E already reports in its own words.
-
-**PR #4 → PR #5 merge reconciliation (Round 1):** This letter was drafted against this branch's tip *before* the parallel remediation branch (PR #4) merged into `main`. `main` then advanced past this branch's base, so this branch merged `main` back in to reconcile the two independently-converged fixes for the same OS-01..OS-13 items before either was submitted. Two consequences for how to read what follows:
-
-1. **Figures below that were measured before the merge (word counts, the clause-count grep, the gate table) were re-measured against the merged tree** and corrected inline where the merge changed them — notably the abstract/body word counts, and the clause-count command itself, which the merge split across two files (see Part D and the gate table).
-2. **Four additional defects surfaced only during this merge reconciliation**, in the same self-audit spirit as Part E, and are fixed on this branch:
-   - **CI silently never ran two of the four proof-clause/regression test files.** `btv-core/tests/test_append_only.rs` (the F3/OS-03 append-only regression suite) and `btv-core/tests/test_proof_clauses.rs` (11 of the 17 numbered proof clauses) were never named by any `--test` flag in `.github/workflows/ci.yml`'s "Run Rust unit + integration tests" step; `cargo test` restricts execution to exactly the targets an explicit `--test` names, so both files silently never executed despite the manuscript's "seventeen clauses, `cargo test`, seconds" claim resting on them. Fixed by adding both to that step's invocation; both pass (3 and 11 tests respectively).
-   - **`paper1/refs.bib` carried three duplicate keys** (`deline2001vault`, `walker2005substructural`, `pierce2002tapl`, each defined twice — once from each branch's independent OS-12 work) plus one orphaned entry (`ahmed2009statedependent`, never `\cite`d; the manuscript body cites `ahmed2009state` instead, PR #4's key for the same paper). Classic BibTeX's duplicate-key tie-break is not something we chose to rely on either way; de-duplicated to one entry per reference (keeping the more complete copy — the ones carrying the corrected DOIs) and dropped the orphan. 15 entries remain, all cited, none duplicated (`grep -c "^@" paper1/refs.bib` == 15; verified 1:1 against every `\cite` key used).
-   - **The $P^2$ algorithm was named in prose, not cited.** `section5_benchmarks.tex` read "the $P^2$ algorithm (Jain \& Chlamtac, 1985)" as plain text instead of `~\cite{jain1985p2}` — the citation looked like a citation but was not one, and the bib entry was consequently orphaned (see above). Fixed to a real `\cite`.
-   - **`reports/rss_probe_fail_secure.txt` cited rustc 1.94.1** as "pinned by `rust-toolchain.toml` (OS-09)" when the merged `rust-toolchain.toml` pins 1.98.1 — the same species of contradiction OS-09 exists to close, just reopened by the merge bringing in a different toolchain pin than the one this report was last measured under. Re-ran the probe on 1.98.1 (3×, delta=4 kB every run, unchanged from the 1.94.1 figure) and corrected the citation.
-   - **`paper1/section3_type_system.tex` said the same thing twice.** Both branches independently added an R2.3 (affine-vs-linear) paragraph in different subsections of the same file — text-distant enough that git's merge auto-resolved them as non-conflicting, but semantically the section stated "Rust ownership is affine, not linear" twice, once right after introducing the two token types and again right after the type law, with overlapping but not identical citation sets. A reviewer reading straight through §3 would hit the same point twice within a few paragraphs. Consolidated to the second occurrence (better integrated: it directly follows the type law it qualifies and cross-references Table~\ref{tab:protections}'s Protection~C and Definition~\ref{def:silent}), moved the externally-referenced `\label{sec:affine-linear}` anchor onto it, and left a one-sentence forward-pointer where the first occurrence was. Word counts above are post-consolidation (body dropped from 5,867 to 5,780).
-
-## How to read this letter
-
-Each item below follows the same structure: **what was asked → what was done → exact location → commit**. Every claim of "done" was checked by execution (`cargo test`, `cargo clippy -D warnings`, `cargo bench`, `python3 scripts/verify_reports.py`, `python3 scripts/compute_crossover.py`, `python3 scripts/count_words.py`) rather than by reading the code and assuming it works — the guidance audit's central finding was that four prior rounds had not done this, and we do not want to repeat that mistake in this letter.
-
-Three commitments up front, because they are easy to bury in a long point-by-point list otherwise:
-
-1. **The economics section was removed from the manuscript, not weakened, and the artifact was cleaned up to match.** §E1 below explains why, and names the one place (a stale corpus fine estimate) that still needs a primary-source check we could not complete without external access.
-2. **Eleven numbered defects (F1–F11) and three hygiene inconsistencies (H4–H6) were found in our own audit of the artifact, not by a reviewer, and are now fixed with regression tests or generators that fail if they recur.** Part E below details the five (F1, F2, F3, F5, F6) that are not already the direct subject of an Editor or R2 item; the rest (F4 under E1, F7/F10 under E2, F5's report-generation half under R2.5, F8/F9/F11 and H4–H6 under E2/R2.6/R2.7/H2) are addressed inline where they belong. We say this plainly because a self-reported and self-fixed defect is a different thing, credibility-wise, than the same defect found on the second read of a resubmission — we would rather the record show which one this is.
-3. **All four references Reviewer 2 recommended were incorporated** (§R2.7) — none were excluded, so there is no exclusion to justify.
-
----
-
-## Reconciliation of the submitted PDF (prerequisite item, still open)
-
-The manuscript version actually submitted on 13-Apr-2026 (PDF `13622128`, 10 references, "fifteen clauses" per its own text) does not correspond to any tree in this repository's history: it cites a §6 economics section with a crossover volume and a reference [20], and neither is present anywhere in `main`'s history (`ebfa542`, PR #4 @ `67dd265`, or this round), and its clause count matches neither `paper1`'s nor `btv-core`'s count at any point we can find. We state this rather than guess at it: **we have not recovered or inspected the submitted PDF itself** — this description is what the prior round's parallel branch recorded after comparing it against the repository, and this round's independent guidance audit re-derived the identical facts (same file identifier, same reference count, same "fifteen clauses" text, same absent §6) by the same method, which is why we are confident enough in the description to state it here without having the file in hand ourselves. Neither of us can say which local working state produced it.
-
-**Resolution adopted:** this repository's current tree is the canonical artifact going forward. Every number this letter cites traces to a committed CSV, generator, or raw report by file, line, and commit, independent of what the 13-Apr PDF said. Before final resubmission, the actual PDF should be retrieved from ScholarOne and diffed against this tree's `paper1/main.tex` output — we flag this as **not done** rather than assume the discrepancy is immaterial; a submission portal returning a PDF that doesn't match any commit this letter can name is a process failure independent of anything this response fixes in the artifact.
-
----
-
-## Part A — The Editor's Decision (E1–E3)
-
-### E1 — Headline claim N\* = 500,000 decisions/year must not rest on an inaccessible companion manuscript
-
-**What was asked:** Either import the crossover derivation into the main manuscript with public sources named inline, or visibly weaken the claim.
-
-**What was done:** Weakened, in the specific sense the decision offered as an alternative to importing a companion manuscript — and then something the decision did not ask for, which we did anyway: the artifact's own derivation was corrected, because auditing it for this response surfaced that it was wrong.
-
-The manuscript (`paper1/*.tex`) contains no N\* claim, no crossover volume, and no reference to a companion economics manuscript anywhere — verified by `grep -rn "N\*\|500,000\|500000\|crossover" paper1/*.tex`, zero matches. This was already true before this round (Rev 4, commit `fb6e9d5`); what was not true before this round is that the *artifact* still asserted the old number: `README.md`, `RELEASE_NOTES.md`, `reports/tco_summary.md`, and a CI job all stated N\* = 500,000 even after the paper stopped claiming it, which is arguably worse than not removing it at all — a reviewer who clones the repository (which the review checklist instructs) would find the number the paper doesn't make, standing uncontested in the artifact cited as `[soares2026a]`.
-
-We found, by executing `scripts/compute_crossover.py` against the artifact's own published equation ρ = P_enf × E[fine] / N̄, that the GDPR row — the only row that produced the old headline number — contradicted that equation by a factor of 10.8×: the equation gives ρ ≈ 0.108, the file declared ρ = 0.01, and N\* = 500,000 followed only from the declared (wrong) value. We did not "fix" this by adjusting the declared constant to match the equation; we removed `rho_usd_per_decision` as an input entirely. `scripts/compute_crossover.py` now *derives* ρ for every regime from three primitive parameters (enforcement probability, expected fine, average decisions/year), and a CI job (`tco-reproducibility`) asserts that the derived ρ matches the ρ used downstream — never a target value of N\*, which is exactly the assertion that would have masked this bug (the original CI job asserted `490_000 ≤ N* ≤ 510_000`, which passes if and only if the wrong constant is kept).
-
-Expected fine is now estimated from a 20-case enforcement corpus (`data/enforcement_cases.csv`) via median with a bootstrap confidence interval, rather than from the GDPR statutory cap (a ceiling, not an expectation), and the compliance-credit formula was corrected — the previous version divided by a *reduced* penalty rate, which mathematically makes adopting the credit look *less* attractive, backwards from what a compliance credit should do.
-
-Data: `data/policy_parameters.yaml`, `data/enforcement_cases.csv`, `data/n_star_by_regime.csv`, `data/tco_plot_data.csv`. Script: `scripts/compute_crossover.py`. Report: `reports/tco_summary.md`. Commit: `5c85e4c` (derivation), this branch's HEAD (artifact-wide purge of the old number — verified: `grep -rn "500,000\|500000" README.md RELEASE_NOTES.md reports/ .github/` returns zero lines).
-
-**What is not yet done, honestly:** two of the twenty corpus fines (the SEC 2022 sweep entries) look inconsistent with the commonly-cited "$125M average per institution" figure for that enforcement wave, and `ROADMAP.md` already listed "verify fines against primary sources" as pending before this round. We did not verify all twenty against primary regulatory filings — that is manual legal-document work outside what this response can complete, and we are naming it rather than letting it pass as done.
-
-### E2 — Table 2: single-machine Criterion run; needs repetition on other hardware, variance under load, and a status-quo baseline comparison
-
-**What was asked:** Repeat on different hardware, measure variance under concurrent load, and compare against a status-quo baseline rather than an isolated number.
-
-**What was done:** All three, plus a fourth thing the decision did not ask for but that a defensive read of the artifact required — a second status-quo baseline, because the first one turned out not to be a fair comparison.
-
-- **Different hardware — and a deliberate narrowing of this claim (Round 3).** Two environments of different CPU vendor and model were collected (Intel Xeon 2 vCPU KVM; AMD EPYC 9V74 4 vCPU Azure), full grids of 90 and 135 configurations, 5 trials each (`data/sweep_raw_20260914T171258Z.csv`, `data/sweep_raw_20260914T164735Z_runnervmlun5p.csv`; commits `146bc6b`, `d1929dd`). **§5 no longer quotes either.** Both predate OS-02, which made `Verdict::new` verify the compliance token's authority signature — so their full-pipeline figure (1.72 µs at 4 KiB) measures strictly less work than the current code, and sat 4.5× *below* Table `tab:construction`'s Criterion measurement of that very operation (7.65 µs) in the same manuscript. A component costing more than the pipeline containing it is a contradiction a reader hits without running anything, so the cross-platform table was retired rather than patched: all three §5 tables now come from one collection on one host and are mutually consistent by construction. The two CSVs remain committed as provenance and are named in `scripts/gen_section5_tables.py`'s docstring as deliberately unread. **We state plainly that this makes the multi-hardware claim smaller than it was**: cross-platform latency comparison with the current code is now an open obligation alongside the 90 s run, and the manuscript says so in §5.1. Multi-architecture coverage that survives is compile-and-test on `aarch64`, which carries no performance claim.
-- **Variance under load:** `btv-core/benches/sweep_concurrent.rs`, thread-local P² quantile estimators (Jain & Chlamtac 1985; now cited, `paper1/refs.bib:jain1985p2`), CV over 5 trials. Table `tab:platforms` now reports thread scaling for *both persistence postures* on the headline host, which is strictly more informative than the retired cross-platform view: the in-memory path is flat from 1 to 4 threads (7.82 µs, CV < 0.3% — the empirical signature of the absent lock contention the type system predicts), while the durable path's p99 rises from 512 µs to 28 ms as four threads serialize on a single-writer SQLite log. We report that tail because it is the honest answer to whether the reference sink ships production-ready: it does not, and §5 says so.
-- **Status-quo baseline (first arm):** `Mode::StatusQuoAsyncLog` (commit `09b1d9b`) plus a fail-open/fail-secure contrast test, `btv-core/tests/test_status_quo_contrast.rs`.
-- **Status-quo baseline (second arm, this round):** the guidance audit found that the first arm serialized the *entire* decision context hex-encoded while BTV logs a 32-byte digest — a real methodological asymmetry (finding F10), and the artifact's own second baseline script (`scripts/benchmark_baseline.py`) already logged a SHA-256 digest, contradicting the first one. `Mode::StatusQuoDigestLog` (commit `3889491`) now logs a digest exactly as BTV does. Reported as a sensitivity range rather than one number (`paper1/section5_benchmarks.tex`, Table `tab:fivemode`): against the full-context logger, BTV is 11.1× *slower* at 4 KiB; against the digest-only logger, 155.5× *slower*. Both are shown because which one is "the status quo" is a modeling choice, not a fact about BTV, and hiding the unfavorable one would be exactly the kind of single-baseline cherry-pick E2 objected to in the first place. (These are the Round 2-corrected figures. The number first reported here — 2.6× *faster* against the full-context logger, 4.7× *slower* against the digest-only one — was wrong for the reason given in Part F, G5, and inverted once fixed; we correct it here rather than leave two contradictory numbers standing in the same letter.)
-- **Durability (F7, found in our own audit, not asked for by E2 but load-bearing for what E2's "realistic" comparison means):** the original durable-persistence benchmark used `SqliteLogSink::open_in_memory()`, where SQLite silently ignores the WAL and `synchronous=FULL` pragmas it claimed to use — the reported "durable ACID" number was a RAM insert. `Mode::FullPipelineDurable` (commit `3889491`) uses a real on-disk file; at the time, the honest number was reported as 23× slower than in-memory at the same payload and thread count (the same measurement Part F's G5 entry later identifies as a 10.22 µs durable p50), and was the number the manuscript reported rather than the RAM figure. That number has since been superseded: Round 2 (Part F, G5) found the durable-mode benchmark's payload nonce collided across trials and threads, so most "durable" operations silently no-op'd via OS-03's append-only idempotency instead of performing a real write. The corrected, gate-verified figure is 261.44 µs median, roughly 33× the in-memory path — not 23×; see Part F, G5, for the full defect history and the sanity gate that now prevents a recurrence.
-
-**Two more measurement-integrity defects, found while preparing this evidence (F8, F9):** `scripts/benchmark_baseline.py` copied Criterion's bootstrap mean into the p50/p95/p99 columns of a table and a PGFPlots figure literally labeled "p95 latency" — Criterion does not report percentiles, only a mean, so those columns now read `--` for Criterion-sourced rows rather than a fabricated triple (commit `2d6907f`). Separately, `btv-core/tests/test_load.rs` wrote `reports/load_stats.csv` as a side effect of `cargo test`, with thread count taken from whatever machine happened to run it and an "ARM64 emulated" label decided by a `p50 > 100µs` latency guess — reproducing this ourselves overwrote the committed evidence with a different machine's numbers under a wrong label, live, while preparing this response. Fixed by splitting the test (measures, asserts, writes nothing) from a new deliberately-run `btv-core/examples/load_report.rs` that produces the committed file explicitly, with an explicit thread count and an emulation label taken only from an explicit flag, never from measured latency (commit `2d6907f`); verified `cargo test --workspace` now leaves `git status --porcelain` empty, which it did not before this fix.
-
-Manuscript: `paper1/section5_benchmarks.tex` (rewritten in Round 2 and again in Round 3's editorial closure). Two remaining obligations, stated in the manuscript's own methodology paragraph rather than hidden: the citable headline dataset should come from a 90-second-per-configuration run on dedicated hardware with a pinned CPU governor (committed datasets use 1–10 s targets on shared/CI-class hardware, labeled as such in `data/sweep_env_*.txt`); and a second-platform collection with the current code, to restore the cross-platform comparison retired above. §5 also carries one further disclosure the decision did not ask for: the durable arm writes to a containerized overlay filesystem, so its fsync cost is a *lower* bound on bare-metal storage — the real multiplier against the status quo is larger than the one we print, not smaller.
-
-### E3 — Polyglot/FFI threat model must move from footnote to main text
-
-**What was asked:** Move the FFI trust boundary from a footnote/appendix into the main text as part of the threat model.
-
-**What was done:** New §4.7 (`paper1/section4_theorem.tex:275-297`, `\label{sec:ffiboundary}`, commit `fb6e9d5`), stating the boundary as a threat-model claim: the PyO3 gateway is the sole authorized crossing point, a Python caller receives only an opaque `SealedVerdict` with read-only accessors, and Theorem 4.6 does not and cannot extend past the Rust enclave — the enforcement burden shifts to the downstream effector, which must independently verify the sealed handle. This is honest about what it does *not* claim: it does not analyze PyO3's own `unsafe` safety preconditions, and it does not cover C++/Java bindings, because none exist in this artifact. The full "what a Python caller cannot do" list lives in `btv-python/README.md` and `btv-python/src/lib.rs`'s doc comment, both pre-existing and now cross-referenced from §4.7.
-
----
-
-## Part B — Reviewer 1
-
-R1's original review text was not among the working materials available for preparing this response (only the Editor's decision letter's E1–E3 items and the internal guidance audit were), and the guidance audit's own projections of how R1 and R2 would react to an unfixed resubmission are a prediction about this round, not a quotation of R1's original comments from the prior round. We are not willing to write a point-by-point R1 section from a document we have not read: doing so would mean either paraphrasing the decision letter's summary as if it were R1's own words, or inventing specific line items to look thorough, and this letter's whole premise is that a claim not checked against its source does not belong in it. If R1 raised items distinct from E1–E3 that the Editor did not fold into the decision letter, we ask that they be forwarded, and we will respond to them specifically rather than by inference.
-
-This restraint is not merely cautious in hindsight: an earlier draft of a companion letter to this one (since retired — see Revision history, G7) *did* number three items "R1.1–R1.3" as if quoting R1 directly. The Round 2 guidance audit, working from access to the actual R1 report that neither of our working sessions had, confirmed R1's review is narrative and unnumbered and ends in *Reject* — so that numbering was never a quotation, and presenting it as one would have been a real, avoidable error in a document whose entire premise is not making that kind of error.
-
----
-
-## Part C — Reviewer 2 (R2.1–R2.7)
-
-### R2.1 — Reformulate the "CAL Theorem" as a conceptual trilemma OR provide full formal semantics + theorem-level proof
-
-**Done.** `paper1/section6_discussion.tex`, §6.3 "CAL Design Trade-Offs" (`\label{sec:cal}`): stated explicitly as "a practical design observation, not a formal impossibility result," with the FLP analogy (`flp1985`) named as an open question rather than a proven result. Commit `67dd265` (Rev 4 compression to one paragraph); tightened further this round (commit `6c988e6`) without changing its claims.
-
-### R2.2 — Strengthen Constitutional Enclosure: explicit semantics, declared assumptions, mechanized verification (preferably)
-
-**The "explicit semantics, declared assumptions" half: done.** `paper1/section4_theorem.tex` states three definitions, three axioms, and a constructive proof by exhaustive case analysis (Theorem 4.6, `\label{thm:enclosure}`), each case backed by a compile-fail test that is actually run: `btv-core/tests/ui/*.rs` (9 fixtures, all exercised by named `clause_N` tests, split across `btv-core/src/lib.rs`'s test module and `btv-core/tests/test_proof_clauses.rs` — 17 in total, matching the count §1 and §7 now cite consistently; see the gate table at the end of this letter, and the note there confirming CI actually executes every one of them).
-
-**The "mechanized verification (preferably)" half: an explicit scope decision, argued here rather than left as silence or an unmarked gap.** No `.lean`/`.v`/`.thy` file exists in this repository, and none is planned for this resubmission. We considered the alternative (a minimal mechanized core — the enclosure theorem over a toy linear calculus, roughly 200 lines of Lean 4) and are not attempting it, for a reason stated plainly rather than by omission: the *Computer* submission window does not accommodate building and reviewing a mechanized proof to a standard we would stand behind, and a rushed one is worse evidence than none — a proof assistant script that type-checks by accident of a weakened lemma is a more dangerous kind of wrong than an honestly-scoped compile-fail suite, because it *looks* stronger than it is. R2's "(preferably)" itself concedes this is not a hard requirement. Our position: the 17-clause `trybuild` suite is the right evidence for this venue and this claim. It is machine-checked (every clause is a real compiler invocation, not a hand-verified argument), it runs in seconds in CI on every push, and — unlike a mechanized proof of an idealized model — it checks the *actual* `btv-core` source the manuscript's other claims trace to, not a re-encoding of it that could silently drift from the real implementation. What it does not give is metatheoretic generality (a proof that no Safe Rust program of this shape can violate the invariant, rather than a check that these nine adversarial programs specifically don't compile); `paper1/section6_discussion.tex`'s Future Work item 3 names mechanized verification as the next step precisely because the two are different kinds of evidence, not because we consider the current suite equivalent to it. We accept the risk that a reviewer weighs this differently than we do; we would rather have that disagreement stated than avoided.
-
-### R2.3 — Affine vs. linear ownership: state it and explain the closing mechanisms
-
-**Done this round.** `paper1/section3_type_system.tex`, new "Affine, not strictly linear" paragraph (commit `6c988e6`): states that Rust ownership is affine (0-or-1 uses) rather than strictly linear (exactly once), citing Walker's *Substructural Type Systems* (`walker2005substructural`, now in `refs.bib`); states that `#[must_use]` + `#![deny(unused_must_use)]` recovers linear behavior at the crate's API surface; and names the three escape hatches precisely — `mem::forget`, a panic between construction and consumption, and process abort — noting that none of the three lets a `Verdict` materialize without evidence (each only discards evidence, which is fail-secure, not a silent decision). This concept existed only in a `btv-core/src/lib.rs` doc comment before this round (verified: the word "affine" did not appear in any `paper1/*.tex` file prior to commit `6c988e6`).
-
-### R2.4 — Extend evaluation: production-realistic loads, distributed failures, multi-language inference stacks
-
-**Concurrency/load and polyglot: done. Distributed failures: scoped as future work, not claimed as solved.** Concurrency is the sweep harness described under E2 (thread counts [1,2,4], variance reported). The polyglot stack is `btv-python/` (PyO3 0.29, `#![forbid(unsafe_code)]`, 13/13 pytest passing in CI), now the subject of §4.7 per E3. Distributed failure evaluation has no artifact behind it; `paper1/section6_discussion.tex` L3/L4 names the single-node evidence-chain limitation and proposes a sidecar pattern as a direction, not a result. We are not claiming this item is closed.
-
-### R2.5 — TCO sensitivity with disclosed assumptions + supply-chain controls for unsafe deps
-
-**Done for the supply-chain half; the TCO half is now qualitative per E1's resolution.** `reports/tcb_summary.md` is regenerated entirely from raw evidence (`scripts/gen_tcb_summary.py`), not hand-written — commit `71fc41e`, closing a defect (F5) where the previous hand-written version listed two dependencies (`ring`, `rustls`) that were absent from `Cargo.lock` at the time, attributed a fabricated total to `blake3` (off by 4× from the CSV beside it), and quoted `cargo audit` output that had no result line. `scripts/verify_reports.py` now reconciles every number in the report against its source and runs in CI; we verified it passes (`VERIFY-REPORTS: OK`) before writing this letter. `data/policy_parameters.yaml` discloses every cost component with a public list-price citation (AWS KMS/EC2/S3/CloudHSM pricing pages, dated 2026-09-15) — the previous "$5,000/yr" figure had no citation and was implausible on its face. Since E1 moved the TCO claim itself to qualitative-only in the manuscript, the sensitivity analysis lives in the artifact (`appendix_b_pgfplots.tex`, `data/tco_plot_data.csv`) rather than as a manuscript figure.
-
-### R2.6 — Moderate categorical superiority claims
-
-**Done.** Swept `zero-cost abstraction`, `practically free`, `eliminates entirely`, `empty by construction`, and `cannot materialize` from every file in `paper1/` (verified: `grep -rniE` for all five patterns across `paper1/*.tex` returns zero matches after commit `6c988e6`). These appeared in the abstract, §1, §5, and §7 and had **not been touched in four prior rounds** despite three of those rounds making other changes to the same sections — the diffs that did land were compression to fit the word limit, not moderation, which is a different edit even when it touches the same lines. Replacements are specific, not vaguer: "cannot materialize" → "cannot be constructed within Safe Rust's type boundaries"; "empty by construction" → "empty within the crate's type perimeter, under the assumptions of [§3.3, "Scope of the Theorem" — `\S\ref{sec:encapsulation}` in the LaTeX source, auto-numbered rather than hand-typed for exactly this reason]"; "zero-cost abstraction" → a statement that the type-level mechanism adds no runtime branch, with the actual measured cost (cryptographic primitives, and durable persistence at a stated multiplier) reported instead of asserted away. §6.1 "Scope and Boundaries of the Guarantee" already carried the strongest existing hedging and was left standing, not weakened further — R2.6 asked for moderation of overclaims, not for the honest limitations section to be cut.
-
-### R2.7 — Engage the four recommended references (or justify exclusion)
-
-**All four incorporated; none excluded, so this is the strongest form of the response the decision letter itself named as available.** `paper1/refs.bib` (now 15/20 entries used):
-- DeLine & Fähndrich, *Enforcing High-Level Protocols in Low-Level Software*, PLDI 2001 (`deline2001vault`) — engaged as the closest prior system (Vault), not omitted: `paper1/section2_related_work.tex`'s closing paragraph now names it explicitly and scopes our novelty claim against it, rather than asserting priority as though it did not exist.
-- Walker, *Substructural Type Systems*, in *Advanced Topics in Types and Programming Languages* (`walker2005substructural`) — cited in both §2.3 and the new affine/linear paragraph in §3 (R2.3, above).
-- Pierce, *Types and Programming Languages* (`pierce2002tapl`) — cited alongside Walker as the textbook grounding for the substructural distinction.
-- Ahmed, Dreyer, and Rossberg, *State-Dependent Representation Independence*, POPL 2009 (`ahmed2009state`) — cited in §2.3 as the closest treatment of state-dependent representations, which is how we describe a `ComplianceToken`'s validity depending on the issuing authority's state.
-
-One correction we made in the course of adding these, worth stating plainly: the DOIs for the DeLine/Fähndrich and Ahmed/Dreyer/Rossberg papers, as given to us, each had the same two-digit transposition error relative to the ACM Digital Library's own listing (`.378821`→`.378811` and `.1480915`→`.1480925`). We verified all four DOIs against the publisher/ACM listings before citing them; `refs.bib` carries the corrected values.
-
----
-
-## Part D — Submission Hygiene (H1–H3)
-
-**H1 — no colored/highlighted text in the main file.** Unchanged from Rev 3: `xcolor` is loaded only for `lstlisting` styling; zero `\textcolor`/`\hl` in prose (`grep`-verified across all `paper1/*.tex`).
-
-**H2 — 4,000–6,000 word limit.** The abstract was itself the reason the desk returned this manuscript once already (13-Apr-2026): it measured 250 words against a 150-word limit that round, and had not been touched since despite three later rounds editing the same file. It is now 149 words. The main body (all seven sections, `\input` resolved, bibliography excluded) is 5,962 words, under the 6,000 ceiling — closer to it than earlier rounds left it, because Round 2's G5 fix required explaining a benchmark defect and its correction in the manuscript itself rather than only in this letter; §5's two rewritten paragraphs were trimmed twice to keep clear margin rather than landing exactly at the ceiling, which this manuscript's own history treats as a warning sign, not a target. Both counts come from a documented, versioned, and runnable method, `scripts/count_words.py` (previously the count existed only as a one-off `pandoc` invocation whose command was never committed) — we consider an undocumented counting method its own finding, separate from whether the count itself passed, since a method a reviewer cannot re-run is not evidence.
-
-**H3 — response letter with a summary of changes.** This document. `docs/EVIDENCE-MANIFEST.md` (commit `6d03016`, extended this round) is the underlying traceability map this letter draws from; every claim above should be checkable against it and against the cited commits without re-deriving anything from prose alone.
-
----
-
-## Part E — Findings from our own audit of the artifact (not raised by any reviewer)
-
-We ran the artifact rather than reading it, because the point of this round was to stop trusting our own prior claims. Five defects surfaced that no reviewer had flagged, because they lived entirely in the repository, not in the manuscript text a reviewer would read:
-
-- **F1 — the persisted record's integrity seal never verified.** `Verdict::compute_hmac` and `VerdictRecord::verify_integrity` authenticated different byte sequences, so every record that crossed the process boundary failed its own integrity check, silently, with zero test coverage catching it across four rounds. Fixed by unifying both onto one `seal()` function with length-prefixed, domain-separated fields (commit `38697a4`); verified by a round-trip test plus six field-level tamper tests plus one field-boundary-ambiguity test, all of which we re-ran before writing this letter (`record_seal_roundtrip`, `record_tamper_*` ×6, `seal_is_unambiguous` — 8/8 pass).
-- **F2 — the "signed" `ComplianceToken` was not signed.** `ComplianceAuthority.signing_key` was dead code (`cargo clippy` warned about it in the artifact's own published lint report, uncategorized); the manuscript's §6.2 described a cryptographic mechanism the code did not implement. Fixed: `ComplianceAuthority` now signs `(jurisdiction, policy_version, deadline_hours)` with HMAC, and `Verdict::new` verifies the signature, rejecting a forged or foreign-authority token (commit `e859e9b`; tests `forged_token_signature_rejected`, `rogue_authority_token_rejected`, `signed_token_happy_path`, `compliance_signature_is_unambiguous` — 4/4 pass). `paper1/section6_discussion.tex`'s L2 paragraph is corrected to describe this mechanism accurately (this round).
-- **F3 — the audit log was overwritable.** `SqliteLogSink::append` used `INSERT OR REPLACE`, so any caller could silently rewrite a previously-logged verdict by reusing its `evidence_id` — the opposite of append-only. Fixed: plain `INSERT`, with byte-identical replays accepted as idempotent and any divergent replay rejected as `BtvError::LogConflict` (commit `8529b6d`; test `append_same_id_different_payload_is_rejected` confirms the original record survives a conflicting write attempt).
-- **F5 — the TCB report contained fabricated numbers.** Covered under R2.5 above.
-- **F6 — the fail-secure path leaked memory, defended by a misreading of the compiler's own warning.** `issue_verdict` called `mem::forget` on rejected tokens, measured at ~64 bytes leaked per rejected decision (~14 GB/hour at the artifact's own claimed throughput); the design defense cited a clippy lint name that does not exist. Fixed: `drop(...)` in place of `mem::forget` (commit `813e901`); we re-ran the RSS probe ourselves before writing this letter — 4 kB delta over 200,000 rejected decisions, against a 1 MB budget (`cargo run --release --features test-support --example rss_probe_fail_secure`).
-
-We report these here, in our own words, rather than waiting for a reviewer to find them, for the reason stated at the top of this letter.
-
----
-
-## Part F — Round 2 independent validation (COMSI-2026-04-0112, `ORDENS-DE-SERVICO-R1.md`, G1–G8)
-
-Unlike Part E, these eight items were **not self-found**: they surfaced from an independent Round 2 guidance audit that re-ran its own adversarial probes against `main @ 5db1869` rather than trusting either branch's own test suite, and confirmed 11 of the prior round's 13 work orders genuinely closed before finding the eight below. We name that distinction because the letter's own stated premise is that self-reported and reviewer-found defects are not the same thing credibility-wise, and it would undercut that premise to blur who found what. All eight are fixed or explicitly scoped on this branch; the sequence follows the audit's own recommended order (PAT rotation, then CI/hygiene, then the scientific finding, then the corpus gate, then process, then re-tagging last).
-
-**G8 — security, addressed outside this repository.** `docs/EVIDENCE-MANIFEST.md`'s standing obligation to rotate the repository access token pasted in chat during Rounds 1–3 was still open after this round's merge. This is not something a commit can close; it requires revoking the token in GitHub's own settings, which is the author's action, not the artifact's.
-
-**G6 — CI red on `main`.** The exact failure the Round 2 audit caught at `5db1869` (`detected conflict: 'bin/cargo-fmt'` in the `test-x86-64` job) was independently found and fixed in this same working session, before the Round 2 report arrived: a prior attempted fix (commit `abb7ca2`) had changed the wrong job (`fmt-clippy-audit`, which was never actually failing) because of a misread of which job's log showed the error. Checking the job-level history across all three occurrences of this failure (at `86a8f67`, `591bcae`, and `5db1869`) showed it was always `test-x86-64`'s toolchain-install step racing rustup's implicit component auto-install against a multi-crate parallel `cargo test`. Fixed by making component installation explicit and sequential in all three CI jobs (PR #6, commit `ce445c1`); confirmed green on the actual merge-to-main commit (`753c7f3`, all 4 jobs, nothing skipped).
-
-**G3 — `cargo test --workspace --features test-support` failed at a clean clone.** Two `paper2` (`btv-transparency`, an unrelated manuscript sharing this Cargo workspace) trybuild `.stderr` fixtures were stale under the toolchain this round pins (1.98.1 dropped a `= note: ... originates in the macro \`todo\`` line the fixtures still expected). Regenerated both with `TRYBUILD=overwrite`; the diff is exactly that one line in each file, confirmed by re-running clean. `cargo test --workspace --features test-support` now exits 0. Separately, and not something the Round 2 audit flagged: bare `cargo test` with no feature flag fails even earlier, at `btv-core`'s own tests, because `new_for_test()` is gated behind `test-support` and nothing in the workspace enables it by default — this is disclosed here rather than fixed, since making `test-support` a default feature would mean production builds of the canonical crate compile in test-only constructors, which looks like the wrong trade to make unilaterally.
-
-**G4 — `cargo clippy --workspace --all-targets -- -D clippy::pedantic` failed on a gate the README implied was workspace-wide.** It was never actually run as a whole before this round; doing so surfaces the 2 findings the audit caught (`paper1/src/main.rs`'s doc comment missing backticks around `Verdict`/`EvidenceToken`/`ComplianceToken` — fixed) plus roughly 40 more the audit's own quick scan did not reach: 9 in `paper1`'s demo examples and 20 in `paper2`, both cosmetic (uninlined format args, lossy casts, matching-over-unit-type — style, not correctness), and 14+ in `btv-python`'s PyO3 binding layer (missing `# Errors` doc sections, missing `#[must_use]` on methods including Python dunder methods like `__enter__`), which are documentation-completeness pedantry on FFI glue rather than defects in the enforcement logic this manuscript's claims rest on. We did not force all ~40 through: `README.md` now states the gate's actual scope (`btv-core` only, matching what CI runs) instead of implying it holds workspace-wide.
-
-**G5 — the durable-persistence benchmark measured its own idempotent-replay path, not real writes; the "2.6× faster" headline inverts.** This is the one item that changes the manuscript's scientific content, not just its hygiene. `btv-core/benches/sweep_concurrent.rs`'s per-iteration payload nonce was local to a single `run_thread` call — it restarted at 0 every trial, and every thread within a trial — so trial 1 onward, and thread 1 onward within a trial, replayed the exact sequence of `evidence_id`s trial 0/thread 0 had already written. OS-03's append-only sink correctly recognized these as identical replays and returned `Ok(())` without a second `INSERT`, exactly as designed — the bug was never in OS-03, it was in the harness feeding it the same "unique" evidence twice. The published Table 3 durable p50 (10.22 µs) was measuring that fast no-op path for 4 of every 5 trials; §5's own prose separately claimed 220 µs for the same quantity with no committed CSV behind it, a 21× internal contradiction the audit caught by grepping for "220" and finding only an unrelated ARM64 QEMU number.
-
-Fixed on `btv-core/benches/sweep_concurrent.rs`: every durable-mode operation (calibration and the trial loop alike) now draws its payload nonce from one `AtomicU64` shared for the process's lifetime, so no two calls — across trials, threads, or thread-count configurations — can ever collide on an `evidence_id`. Added `SqliteLogSink::count_rows()` and a hard sanity gate in the harness's `main()`: after a run, `count_rows()` must equal the number of nonces issued, or the process panics naming the mismatch rather than emitting numbers nobody checked.
-
-**Recollected and verified.** A clean full 5-mode run (`data/sweep_raw_20260915T024430Z_g5fix.csv`, 5 s/config, Xeon 4 vCPU, nothing else competing for the host's CPU during collection) passed the new gate exactly: `expected_rows=1,803,460 actual_rows=1,803,460`. The corrected numbers at 4 KiB/1 thread: durable p50 **261.44 µs** (was 10.22 µs — the earlier figure was measuring the no-op replay path 4 trials out of 5), full-context status quo p50 23.61 µs, digest-only status quo p50 1.68 µs. `scripts/gen_section5_tables.py` (also fixed this round — it used to hardcode "FASTER"/"SLOWER" by which comparison it was, rather than deriving the word from the sign of the ratio) now reports: **durable is 11.1× slower than the full-context status quo** (inverting the previous "2.6× faster") **and 155.5× slower than the digest-only status quo** (previously reported as 7.6×, itself understated by the same defect). `paper1/section5_benchmarks.tex`'s "Five-mode accountability contrast" and "Durability is not free" paragraphs are rewritten with these numbers and state the inversion explicitly, per the audit's own recommendation to publish it plainly rather than bury it. Also closed in the same pass (**G5c**): Table 1 (`tab:construction`, `Verdict::new` latency by context size) previously cited `btv-core/target/criterion` directly — gitignored, so its numbers had no committed source despite the section header's "every numeric cell traces to a committed CSV" claim. Added `scripts/gen_construction_table.py`, which now generates `data/construction_latency_criterion.csv` and `paper1/section5_table1_construction.tex` from a fresh, reproducible Criterion run; the construction-latency floor prose figure is updated from ≈1.36 µs to the freshly-measured ≈5.36 µs for this container (a different environment than whatever produced the earlier number — the point of committing the CSV is that this is no longer something a reader has to take on faith).
-
-**G2 — BR-LGPD's `corpus_median` fine estimate never actually touched the corpus.** `scripts/compute_crossover.py`'s `corpus_fine_stats()` filters `data/enforcement_cases.csv` by `regime == "BR_LGPD"` (the key `data/policy_parameters.yaml` uses), but the CSV's `regime` column said `"BR"` for all five Brazilian cases — zero rows ever matched, `corpus_n` was silently 0, and `reports/tco_summary.md` printed "`fine_source: assumption`" for that row regardless of what `policy_parameters.yaml` actually declared, which is a second bug stacked on the first: the report's own text lied about why the number had no corpus backing it. The declared value ($100,000) happens to equal the real corpus median exactly, so nothing about the *output* looked wrong — this is F4's exact defect shape (a declared number wearing a derived number's label) in miniature, and the OS-04 gate that exists specifically to catch F4 checked rho's arithmetic without ever checking that a `corpus_median` claim had a nonempty corpus behind it. Fixed: relabeled the CSV's five BR rows to `BR_LGPD` (matching every other regime's convention); extended the consistency gate in `scripts/compute_crossover.py` to fail if any `fine_source: corpus_median` regime has `corpus_n == 0` or an `expected_fine_usd` that doesn't equal the corpus median to machine precision; fixed the `tco_summary.md` line to print the *actual* declared `fine_source`, not a hardcoded `"assumption"`, when `n == 0`.
-
-**G7 — two response letters, one citing a reviewer's numbering that was never verified.** Addressed above (Revision history) and throughout this document: this letter is now the only one, R2.2 carries the A5 scope argument the other letter's "Part R1" numbering displaced attention from, and the "Reconciliation of the submitted PDF" section folds in that letter's one genuinely distinct contribution.
-
-**G1 — the tag cited in `[soares2026a]` is not this artifact.** `comsi-2026-04-0112-r1` still points at `abb7ca2`, which predates every fix in this Part F and several from Part E's own merge reconciliation — `paper1/refs.bib`'s R2 references, the reconciled §5, both response letters, the CI fix, roughly 20 files' worth of divergence. Deliberately left for last, per the audit's own sequencing: re-tagging before G2–G5 land would just require doing it again. **Not yet done as of this letter** — see the gate table's note on this.
-
-| Gate | Command | Result |
-|---|---|---|
-| btv-core unit + integration tests (CI-exact) | `cargo test --features test-support --lib --test test_partition --test test_load --test test_status_quo_contrast --test test_append_only --test test_proof_clauses` (run from `btv-core/`) | pass (0 failures; 24+1+5+4+3+11 tests) |
-| trybuild compile-fail suite (CI-exact) | `cargo test --features test-support --test trybuild` (from `btv-core/`) | pass (1 test) |
-| btv-core clippy, CI-exact pedantic gate | `cargo clippy --all-targets --features test-support -- -D clippy::pedantic` (from `btv-core/`) | clean, exit 0 |
-| btv-core fmt | `cargo fmt --check` (from `btv-core/`) | clean, exit 0 |
-| Report reconciliation | `python3 scripts/verify_reports.py` | `VERIFY-REPORTS: OK` |
-| TCO internal consistency | `python3 scripts/compute_crossover.py` | derived ρ, no hand-set value |
-| RSS probe (F6) | `cargo run --release --features test-support --example rss_probe_fail_secure` | delta 4 kB / 200k calls |
-| Abstract word count | `python3 scripts/count_words.py --abstract` | 149 (≤150) |
-| Body word count | `python3 scripts/count_words.py` | 5,962 (≤6,000) |
-| Clause count matches manuscript | `grep -c "fn clause_" btv-core/src/lib.rs btv-core/tests/test_proof_clauses.rs` | 6 + 11 = 17 (matches §1/§7; split across two files post-merge, both now CI-executed — see Revision history) |
-| Bibliography: no duplicate keys, every entry cited | `grep -c "^@" paper1/refs.bib` vs. every `\cite` key cross-checked | 15 entries, 15 cited, zero duplicates, zero orphans |
-| Banned phrases | `grep -rniE "zero-cost\|practically free\|eliminates entirely\|empty by construction\|cannot materialize" paper1/*.tex` | zero matches |
-| Old headline number purged from artifact | `grep -rn "500,000\|500000" README.md RELEASE_NOTES.md reports/ .github/` | zero matches |
-| Workspace test suite from a clean clone (G3) | `cargo test --workspace --features test-support` | pass, exit 0 (`paper2`'s two stale trybuild fixtures regenerated) |
-| TCO corpus provenance (G2) | `python3 scripts/compute_crossover.py` | `Corpus provenance: OK` (every `corpus_median` regime has `corpus_n > 0` and `expected_fine_usd` == corpus median) |
-| Durability sanity gate (G5) | `sweep_concurrent`'s own end-of-run assertion | `expected_rows=1,803,460 actual_rows=1,803,460` (exact match) |
-| Construction-latency provenance (G5c) | `python3 scripts/gen_construction_table.py` | writes `data/construction_latency_criterion.csv` + `paper1/section5_table1_construction.tex` from a fresh Criterion run |
-
-Note on scope: the workspace also contains `paper2` (crate `btv-transparency`), an unrelated manuscript/artifact pair sharing this Cargo workspace. `cargo test --workspace` now passes there too (G3, Part F) but CI still names every job's targets explicitly rather than running `--workspace` — that choice predates this round and is unrelated to G3's fix. `cargo clippy --workspace --all-targets -- -D clippy::pedantic` is a separate, still-open gap: roughly 40 pedantic findings exist outside `btv-core` (G4, Part F), disclosed rather than fixed, and `README.md` now scopes the pedantic-clean claim to `btv-core` accordingly rather than implying it holds workspace-wide.
-
-**Not run: a full PDF compile.** This response was prepared in an environment without a LaTeX toolchain; the checks above are structural (balanced `\begin`/`\end` pairs and braces in every `paper1/*.tex` file, every `\ref`/`\label` pair resolved, every `\cite` key present in `refs.bib`) rather than a compiled-PDF check. We recommend a compile pass before final submission and will address any errors it surfaces.
-
-**Two implementations, reconciled.** `paper1/src/lib.rs` and `btv-core/src/lib.rs` diverged over four rounds — most visibly, the `paper1` copy never received the F2 signing fix, because a fix applied to one crate had no way to reach the other. `btv-core` is now canonical; `paper1/src/lib.rs` re-exports it (`pub use btv_core::*;`, commit `449cdfc`). All four worked examples (`paper1/examples/*.rs`) and the demo binary (`paper1/src/main.rs`) were verified to still run end-to-end against the unified implementation before this letter was written.
+Dear Editor-in-Chief and Reviewers,
+
+Thank you for the careful and constructive assessment of this manuscript. The
+revision preserves the original contribution while substantially narrowing
+claims that exceeded the evidence, extending the empirical evaluation,
+clarifying the trusted boundary and polyglot threat model, and improving the
+paper’s organization for the broad readership of *Computer*. The manuscript
+now distinguishes precisely between what the BTV type boundary establishes,
+what the reference implementation demonstrates, and what remains an
+architectural or empirical limitation.
+
+## Summary of the principal changes
+
+1. The central type law is stated consistently as
+   \((E \otimes C_{\mathrm{signed}}) \multimap V\): evidence and an
+   authority-signed compliance token are consumed to construct a verdict.
+2. The Constitutional Enclosure Theorem is limited to the authorized BTV
+   public API in Safe Rust. It does not claim that an entire polyglot system
+   cannot bypass BTV.
+3. Rust ownership is described as affine rather than strictly linear.
+   Encapsulation, ownership transfer, restricted visibility, and lint policy
+   reinforce the BTV boundary but do not make Rust globally linear.
+4. The legal discussion now accurately describes
+   [LGPD Article 20](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm)
+   as a right
+   to request review and receive clear information about criteria and
+   procedures. Human oversight is associated principally with
+   [EU AI Act Article 14](https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-14),
+   and explanation rights with Article 86.
+5. HMAC-based records are described as authenticated and tamper-evident under
+   the configured key-management model, not as providing independent
+   third-party non-repudiation.
+6. The empirical section now reports concurrent-load measurements, two
+   explicitly scoped status-quo baselines, failure behavior, durable
+   persistence, and estimated percentiles, while stating the remaining
+   hardware and duration limitations.
+7. A polyglot/PyO3 threat-model sketch is included in the main text. It names
+   the downstream enforcement assumption and the limits of the Rust boundary.
+8. Definitions and explanations were expanded so that governance,
+   compliance, and systems readers can follow the argument without prior
+   familiarity with Rust, affine ownership, FFI, or cryptographic primitives.
+
+## Response to the Editor-in-Chief
+
+### E1. Quantitative crossover claim and inaccessible supporting manuscript
+
+**Response.** We removed the numerical crossover threshold and all dependence
+on an unpublished companion manuscript. The revised paper makes only a
+qualitative economic observation: compile-time enforcement may reduce some
+recurring audit and incident-response costs, while cryptography, persistence,
+key management, and operational controls still impose real costs. This
+observation is explicitly presented as a design trade-off rather than as a
+validated economic law. The manuscript is now self-contained on this point.
+
+### E2. Variance under load, baselines, and reproducibility
+
+**Response.** Section 5 was substantially expanded. It now reports five-trial
+concurrent-load measurements at one, two, and four threads; trial-to-trial
+coefficient of variation; P² estimated p50 and p99; two status-quo baselines;
+and in-memory versus durable SQLite persistence. The failure experiment shows
+that the fire-and-forget baselines can report success while every record is
+lost, whereas the durable BTV path returns a verdict only after persistence
+succeeds.
+
+The revised text also states the limits directly. The internally consistent
+current collection was produced on one cloud-hosted x86-64 virtual machine.
+The 90-second-per-configuration run on dedicated hardware and a second
+platform using the current code remain open. ARM64/QEMU is used only for
+compile-and-test compatibility and is not presented as ARM performance
+evidence. Percentiles are identified as online P² estimates, not exact order
+statistics, and no claim of linear scaling, universal speed superiority, or
+production-ready storage performance is made.
+
+The construction measurements are also disambiguated. The full public path
+includes authority-signed token issuance and verification. The smaller
+prebuilt-token binding row creates tokens outside the timed region and
+measures only their binding into a verdict; it is not a second estimate of
+the end-to-end path.
+
+### E3. Polyglot and FFI threat model
+
+**Response.** The main text now includes the PyO3 boundary and its explicit
+assumptions. Python supplies raw context to Rust; token construction,
+authority validation, verdict construction, and persistence occur in the
+protected component. A compromised orchestrator can still bypass the gateway
+unless the downstream decision effector accepts only a valid sealed BTV
+record. Enforcing that routing rule is an infrastructure obligation outside
+the Rust type theorem. This distinction is now part of the theorem statement,
+proof assumptions, discussion, and conclusion rather than being deferred to
+future work.
+
+## Response to Reviewer 1
+
+We thank Reviewer 1 for recognizing the originality and relevance of the
+proposal and for identifying that the theoretical claims were stronger than
+the supporting evidence, the evaluation was prototype-level, the conclusions
+required further validation, and the presentation needed to be more
+accessible to *Computer*’s broad audience.
+
+The theoretical result is now bounded to an external Safe Rust caller using
+the authorized BTV API. The proof no longer treats affine Rust as strictly
+linear or claims system-wide impossibility of bypass. The abstract,
+introduction, theorem, discussion, and conclusion use the same scoped claim.
+The evaluation now includes contention, variance, persistence, failure
+behavior, and baseline comparisons, while retaining explicit limitations
+about duration, storage, and hardware breadth. We also reorganized and
+expanded the explanatory material, defined specialized terms on first use,
+corrected the legal characterization, and separated type-level guarantees
+from operational assumptions. These changes are intended to make both the
+contribution and its limits clear to governance, legal, and systems readers.
+
+## Response to Reviewer 2
+
+### R2.1. Linear logic versus Rust’s ownership model
+
+**Response.** The manuscript now states that Rust ownership is affine: a value
+may be used zero or one time. `#[must_use]` and
+`#![deny(unused_must_use)]` are guardrails at the crate boundary, not proof
+that Rust is globally strictly linear. Explicit dropping, `mem::forget`,
+panic, abort, and unsafe or foreign-code behavior are addressed as limits.
+
+### R2.2. Formal assumptions and proof scope
+
+**Response.** The formal section now defines the protected set as
+unevidenced BTV verdicts obtainable through the public API and names the
+assumptions: Safe Rust at the component boundary, private fields, restricted
+token consumption, authority-validated compliance tokens, and routing through
+the authorized constructor. The result is an API-enclosure argument supported
+by compile-fail and runtime tests; it is not presented as a mechanized proof
+of a complete distributed system.
+
+### R2.3. Trusted computing base, persistence, and external storage
+
+**Response.** The trusted computing base is explicit: compiler and standard
+library, cryptographic dependencies, key management, and the configured
+`LogSink`. The paper distinguishes in-memory construction from fail-secure
+durable issuance and explains that durability is a property of the selected
+storage backend. The SQLite reference sink is append-only and rejects
+conflicting replays, but the paper does not generalize its latency or
+availability to production storage systems.
+
+### R2.4. Unsafe code, distributed execution, and adversarial counterexamples
+
+**Response.** The core crate forbids unsafe code, while unsafe transitive
+dependencies remain within the trusted computing base and require supply-chain
+review. Counterexamples now cover token discarding, forged compliance
+metadata, sink failure, replay conflict, interpreter compromise, and bypass of
+the FFI gateway. Distributed orchestration remains outside the type theorem
+unless downstream enforcement makes the gateway mandatory.
+
+### R2.5. Evaluation breadth and sensitivity
+
+**Response.** The revised evaluation varies payload size, thread count,
+persistence posture, and baseline semantics. It reports variation and tail
+behavior, corrects a prior durable-mode benchmark defect, and states that
+container-overlay `fsync` measurements are a lower bound for bare-metal
+storage cost. The remaining long-run and second-current-platform work is
+identified rather than claimed as complete.
+
+### R2.6. Strength of security and governance claims
+
+**Response.** Claims of universal silent-decision elimination were replaced
+with the narrower prevention of unevidenced BTV verdict construction within
+the defined boundary. HMAC is described as providing integrity and
+authenticity under the configured key-management model. Independent
+non-repudiation would require asymmetric signatures, signer identity, key
+policy, and third-party verification, which the prototype does not provide.
+The CAL discussion is retained only as a conceptual design observation.
+
+### R2.7. Related work
+
+**Response.** The related-work section now engages the four requested
+foundations: Ahmed, Dreyer, and Rossberg; DeLine and Fähndrich’s Vault work;
+Pierce; and Walker. Girard and Wadler remain as additional background. The
+Vault reference uses the
+[ACM SIGPLAN Notices record](https://doi.org/10.1145/381694.378811),
+DOI `10.1145/381694.378811`.
+
+## Final scope statement
+
+The revised manuscript claims that, within a Safe Rust component that
+preserves BTV encapsulation and routes consequential decision emission through
+the authorized BTV interface, an external caller cannot construct a BTV
+`Verdict` without the required evidence and compliance tokens. It does not
+claim that this local theorem proves complete governance, semantic truth of
+the evidence, universal system routing, third-party non-repudiation, or
+production-scale performance.
+
+We appreciate the Editor’s and Reviewers’ guidance. Their comments resulted
+in a more precise, transparent, and useful manuscript.
+
+Sincerely,
+
+Daniel Lau Pereira Soares

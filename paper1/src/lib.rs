@@ -11,7 +11,7 @@
 //! `btv-core/tests/test_proof_clauses.rs` and the `#[cfg(test)]` module of
 //! `btv-core/src/lib.rs`).
 //!
-//! Core law: `V \multimap (E \otimes C_signed)` — a `Verdict` requires
+//! Core law: `(E \otimes C_signed) \multimap V` — a `Verdict` requires
 //! consuming one `EvidenceToken` and one authority-signed `ComplianceToken`.
 
 pub use btv_core::*;

@@ -43,7 +43,7 @@ fn main() {
     // --- BTV: create evidence from the FULL decision context ---
     let token = EvidenceToken::new(context.as_bytes());
 
-    // --- BTV: compliance metadata per LGPD Art. 18§2 ---
+    // --- BTV: compliance metadata supporting LGPD Art. 20 review ---
     // `ComplianceToken::new` is `pub(crate)`: tokens are issued through a
     // `ComplianceAuthority`, which validates the jurisdiction allowlist.
     let authority = ComplianceAuthority::new_from_env();
@@ -55,7 +55,7 @@ fn main() {
     let explanation = format!(
         "Credit score {:.4} is below the required threshold of {:.2}. \
          Basis: debt-to-income ratio {:.2}, credit history {} months. \
-         You may contest this decision within 30 days per LGPD Art. 18§2.",
+         You may request review under LGPD Art. 20; this deployment accepts requests within 30 days.",
         score,
         threshold,
         debt / income,

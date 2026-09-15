@@ -130,24 +130,23 @@
 }
 
 % --- Axis 2: Linear types applied to protocols (R2 references, OS-12) ---
-% DOI note (OS-12): the reviewer's letter listed DOIs from memory; each was
-% verified against CrossRef before citation and two were corrected:
-%   Vault   -> 10.1145/378795.378811 (the letter's 378795.378821 resolves to
-%              Berger/Zorn/McKinley, "Composing High-Performance Memory
-%              Allocators", PLDI 2001)
+% DOI note (OS-12): the reviewer's requested Vault reference is cited through
+% its ACM SIGPLAN Notices record, DOI 10.1145/381694.378811. ACM also indexes
+% the PLDI proceedings version as 10.1145/378795.378811.
 %   Walker  -> 10.7551/mitpress/1104.003.0003 (the letter's ...0013 resolves
 %              to the ATTAPL module-systems chapter)
 %   Ahmed   -> 10.1145/1480881.1480925 (the letter's 1480915 resolves to
 %              "Equality Saturation", Tate et al., POPL 2009)
 
-@inproceedings{deline2001vault,
+@article{deline2001vault,
   author    = {Robert DeLine and Manuel F{\"a}hndrich},
   title     = {Enforcing High-Level Protocols in Low-Level Software},
-  booktitle = {Proceedings of the ACM SIGPLAN 2001 Conference on Programming
-               Language Design and Implementation (PLDI)},
+  journal   = {ACM SIGPLAN Notices},
+  volume    = {36},
+  number    = {5},
   pages     = {59--69},
   year      = {2001},
-  doi       = {10.1145/378795.378811},
+  doi       = {10.1145/381694.378811},
 }
 
 @incollection{walker2005substructural,

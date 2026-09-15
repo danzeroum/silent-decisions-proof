@@ -38,8 +38,9 @@
 \section{Empirical Validation}
 \label{sec:benchmarks}
 
-The Constitutional Enclosure Theorem guarantees that silent decisions are
-compile-time errors.  Does that guarantee impose a runtime cost?  We answer
+The Constitutional Enclosure Theorem guarantees that an external Safe Rust
+caller cannot construct a BTV \texttt{Verdict} through the public API without
+the required tokens.  Does that guarantee impose a runtime cost?  We answer
 across payload sizes, thread counts, and two persistence postures, in the
 direction the measurements point---which is not the flattering one.
 
@@ -104,6 +105,12 @@ needs a sink built for concurrent append.  The type-level guarantee is
 indifferent to that choice; the latency budget is not.
 
 \input{section5_tables_generated}
+
+\paragraph{Why the construction rows differ.}
+Table~\ref{tab:construction} times the full public path, including token
+issuance and verification.  Table~\ref{tab:fivemode}'s smaller
+``prebuilt-token binding'' row creates tokens outside the timed region and
+measures only their binding.  It is not a second end-to-end estimate.
 
 \paragraph{What accountability costs against the status quo.}
 Table~\ref{tab:fivemode} is the comparison an architect actually faces.

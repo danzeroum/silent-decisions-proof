@@ -6,12 +6,12 @@
 //!
 //! ## Type Invariants
 //!
-//! - `V ⊸ (E ⊗ C_signed)` — a [`Verdict`] requires consuming one
+//! - `(E ⊗ C_signed) ⊸ V` — a [`Verdict`] requires consuming one
 //!   [`EvidenceToken`] and one [`ComplianceToken`] whose authority
 //!   signature verifies (OS-02). Tokens are issued only by a
 //!   [`ComplianceAuthority`] holding the recognized signing key
 //!   (`BTV_AUTHORITY_KEY`, HSM/KMS-injected in production).
-//! - `V_esc ⊸ (O ⊗ 1)` — an [`EscalatedVerdict`] requires consuming one
+//! - `O ⊸ V_esc` — an [`EscalatedVerdict`] requires consuming one
 //!   [`OperatorToken`].
 //!
 //! ## Trusted Computing Base (TCB)
@@ -30,8 +30,9 @@
 //!
 //! ## What this crate does NOT guarantee
 //!
-//! - End-to-end non-repudiation across processes (requires durable
-//!   persistence and channel integrity — see [`LogSink`] docs).
+//! - Third-party-verifiable non-repudiation across processes (which would
+//!   require asymmetric signatures, signer identity, a key policy, durable
+//!   persistence, and independent verification — see [`LogSink`] docs).
 //! - That the consumed `EvidenceToken` corresponds to the *actual* decision
 //!   context (only that *some* context was hashed and consumed).
 //! - That `unsafe` in transitive dependencies is sound.
@@ -423,7 +424,7 @@ impl LogSink for SqliteLogSink {
     /// which let ANY caller silently rewrite `decision`, `explanation`, and
     /// `hmac_hex` of an already-persisted verdict by re-presenting the same
     /// `evidence_id` — mutation, not idempotency, fatal to the
-    /// non-repudiation claim. This implementation never rewrites:
+    /// append-only integrity claim. This implementation never rewrites:
     ///
     /// 1. `INSERT` plain — a duplicate `evidence_id` fails at the key.
     /// 2. On conflict, the existing row is read back and compared
@@ -825,9 +826,9 @@ impl Decision {
 // Verdict — Protection 1: private fields, single construction path
 // ============================================================================
 
-/// A materialized AI decision with non-repudiable evidence and compliance binding.
+/// A materialized AI decision with HMAC-authenticated evidence and compliance binding.
 ///
-/// ## Type Invariant  V ⊸ (E ⊗ C)
+/// ## Type Invariant  (E ⊗ C) ⊸ V
 ///
 /// A `Verdict` can only be constructed by consuming **both** an
 /// [`EvidenceToken`] and a [`ComplianceToken`]. All fields are private;
@@ -842,7 +843,7 @@ pub struct Verdict {
 }
 
 impl Verdict {
-    /// The sole in-memory constructor. Enforces `V ⊸ (E ⊗ C_signed)`.
+    /// The sole in-memory constructor. Enforces `(E ⊗ C_signed) ⊸ V`.
     ///
     /// Moves `token` and `compliance` by value, consuming both linearly.
     /// Verifies the compliance token's authority signature (OS-02): a
@@ -1141,7 +1142,7 @@ pub struct EscalatedVerdict {
 }
 
 impl EscalatedVerdict {
-    /// The sole constructor. Enforces `V_esc ⊸ (O ⊗ 1)`.
+    /// The sole constructor. Enforces `O ⊸ V_esc`.
     #[must_use]
     pub fn new(
         operator: OperatorToken,

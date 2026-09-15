@@ -210,18 +210,26 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
+            pandoc \
             texlive-latex-base texlive-latex-recommended texlive-publishers \
             texlive-fonts-recommended texlive-fonts-extra texlive-science
 
       - name: Compile and enforce typographic gates
-        run: bash scripts/build_manuscript.sh
+        run: |
+          python3 scripts/count_words.py
+          bash scripts/build_manuscript.sh
 
-      - name: Upload submission PDF
+      - name: Compile concise response letter
+        run: bash scripts/build_response_letter.sh
+
+      - name: Upload submission PDFs
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: manuscript-pdf
-          path: paper1/main.pdf
+          name: submission-pdfs
+          path: |
+            paper1/main.pdf
+            docs/COMSI-2026-04-0112_summary-of-changes.pdf
 
   tco-reproducibility:
     name: TCO Reproducibility

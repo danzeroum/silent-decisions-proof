@@ -4,8 +4,8 @@
 //! `evidence_id_hex` as PRIMARY KEY, so any caller could silently rewrite
 //! `decision`, `explanation`, and `hmac_hex` of an already-persisted
 //! verdict by re-presenting the same `evidence_id`. That is mutation, not
-//! idempotency, and it falsefied the non-repudiation claim (LGPD Art. 18
-//! §2 / AI Act Art. 12 audit-log evidentiary value).
+//! idempotency, and it falsified the append-only integrity claim relevant
+//! to LGPD Art. 20 and AI Act Art. 12 audit-log evidentiary value.
 //!
 //! Gates executed here:
 //! 1. `append_same_id_different_payload_is_rejected` — write, re-write with

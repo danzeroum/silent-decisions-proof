@@ -21,12 +21,11 @@ duplication (\emph{contraction}) and no silent discard
 (\emph{weakening}).  This discipline maps directly onto regulatory
 accountability obligations.
 
-Under LGPD Art.~18\S2 and EU AI Act Art.~86, an AI system that
-issues a consequential decision \emph{consumes} a regulatory
-obligation: it must produce a corresponding explanation and preserve
-an auditable evidence trail.  If the obligation could be duplicated,
+To support review and explanation under LGPD Art.~20 and EU AI Act
+Arts.~14 and~86, BTV models two accountability artifacts as resources.
+If an evidence resource could be duplicated,
 the same evidence could be recycled across multiple decisions,
-undermining non-repudiability.  If the obligation could be silently
+undermining causal uniqueness.  If the obligation could be silently
 discarded, decisions could escape accountability entirely---the
 precise failure mode we call a \emph{silent decision}.
 
@@ -39,7 +38,7 @@ We model two regulatory obligations as first-class linear types:
     \texttt{EvidenceToken::new(\&[u8])} binds the token irrevocably to
     a specific context; the hash is computed at construction and cannot
     be altered afterwards.  The type does not implement \texttt{Clone}
-    or \texttt{Copy}, enforcing the ``used exactly once'' discipline at
+    or \texttt{Copy}, enforcing an ``at most once'' discipline at
     the type-system level.
 
   \item[\texttt{ComplianceToken}]  A linear resource that encodes the
@@ -50,10 +49,11 @@ We model two regulatory obligations as first-class linear types:
     bound to exactly one verdict.
 \end{description}
 
-The non-repudiability guarantee follows directly: because an
-\texttt{EvidenceToken} cannot be cloned, the same evidence cannot be
-presented for two different decisions.  Because it cannot be silently
-dropped, a decision that lacks evidence cannot be compiled.
+The structural guarantee is narrower than non-repudiation: because an
+\texttt{EvidenceToken} cannot be cloned through the public API, one token
+cannot be consumed by two verdict constructions.  Tokens can still be
+dropped because Rust ownership is affine; what remains mandatory is that
+every successful BTV \texttt{Verdict} construction receives both tokens.
 
 This distinction between the crate's linear discipline and Rust's own
 ownership model is precise enough to need its own name; we return to
@@ -65,14 +65,14 @@ it as ``affine versus linear'' below (Section~\ref{sec:affine-linear}).
 
 The central type law of this paper is:
 \[
-  V \multimap (E \otimes C)
+  (E \otimes C) \multimap V
 \]
 where $V$ denotes \texttt{Verdict}, $E$ denotes \texttt{EvidenceToken},
 $C$ denotes \texttt{ComplianceToken}, $\multimap$ is the linear
 function type (``linear implication''), and $\otimes$ is the
 multiplicative conjunction (``tensor product'') of linear logic.
 
-Reading right-to-left: to produce a $V$, one must simultaneously
+Reading left-to-right: to produce a $V$, one must jointly
 consume exactly one $E$ \emph{and} exactly one $C$.  There is no
 partial construction; either both resources are provided and a
 verdict is produced, or the program does not type-check.
@@ -107,8 +107,8 @@ terms~\cite{walker2005substructural,pierce2002tapl}, Rust ownership is
 dropped. \texttt{\#[must\_use]} on \texttt{EvidenceToken} and
 \texttt{ComplianceToken}, plus a crate-level
 \texttt{\#![deny(unused\_must\_use)]} (Protection~C,
-Table~\ref{tab:protections}), escalates the drop warning to a hard
-error, recovering linear behavior \emph{at this crate's API surface}.
+Table~\ref{tab:protections}), escalates an ignored-return warning to a hard
+error, but does not turn Rust into a strictly linear language.
 Three escape hatches remain, documented rather than hidden:
 \texttt{std::mem::forget(token)} still compiles and leaks the token;
 a \texttt{panic!} after construction but before consumption drops it
@@ -118,10 +118,9 @@ evidence, a fail-secure outcome, not a silent decision
 (Definition~\ref{def:silent}) --- but they mark the exact boundary of
 the "exactly once" guarantee.
 
-This atomicity property is stronger than a runtime assertion.  An
-\texttt{assert(evidence != null)} can be removed by a compiler
-optimisation, disabled under load, or bypassed by a code path that
-was never tested.  The linear type law is enforced by the type
+This construction property is stronger than a call-site runtime assertion.
+Such an assertion executes only after the call site is reached and can be
+omitted from an untested path.  The ownership constraint is enforced by the type
 checker; it applies to every compilation, every code path, and every
 version of the program.
 
@@ -169,7 +168,7 @@ promotes the warning to a hard error.
 
 Together, these three protections form a \emph{closed perimeter}: the
 only well-typed path to a \texttt{Verdict} in any external crate is
-through \texttt{Verdict::new}, which enforces the $V \multimap (E \otimes C)$
+through \texttt{Verdict::new}, which enforces the $(E \otimes C) \multimap V$
 law.
 
 \paragraph{Scope of the Theorem.}
@@ -182,7 +181,8 @@ holds within the following boundaries:
   \item \textbf{Out of scope:} Code using the \texttt{unsafe}
     keyword.  \texttt{unsafe} permits raw pointer manipulation and
     can bypass visibility rules.  Deployments should enforce a
-    zero-\texttt{unsafe} policy via \texttt{cargo geiger}.
+    no-\texttt{unsafe} policy in first-party crates and audit dependencies;
+    \texttt{cargo geiger} inventories unsafe usage but does not prove soundness.
   \item \textbf{Out of scope:} Semantic truthfulness of the evidence.
     The theorem guarantees that \emph{some} context was hashed, not
     that the context is the correct or complete input.  Policy-level
@@ -204,8 +204,8 @@ holds within the following boundaries:
 \end{itemize}
 
 The boundary conditions above are not weaknesses of the approach;
-they reflect a deliberate separation of concerns.  The type system
-enforces \emph{structural} accountability---that a decision cannot
-exist without evidence.  \emph{Substantive} accountability---that
+they reflect a deliberate separation of concerns.  The public API
+enforces a \emph{structural} property---that a BTV \texttt{Verdict} cannot
+be constructed without the required resources.  \emph{Substantive} accountability---that
 the evidence is accurate and the policy is correct---is the province
 of audit, certification, and human review.

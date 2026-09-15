@@ -62,12 +62,11 @@ testing.
 Moreover, both mechanisms operate \emph{after} the decision logic
 has executed.
 They do not prevent the materialization of a verdict that lacks
-non-repudiable evidence; they attempt to record its absence, if they
+integrity-authenticated evidence; they attempt to record its absence, if they
 run at all.
 This architectural decoupling separates the act of deciding from the
-act of proving---a separation incompatible with the obligations of
-LGPD Art.~18\S2 and EU AI Act Art.~86, which require that evidence
-\emph{accompany} a decision, not merely follow it.
+act of preserving evidence needed to support review, explanation, and
+oversight under LGPD Art.~20 and EU AI Act Arts.~14 and~86.
 
 A stronger form of runtime guarantee is offered by transactional
 databases: an ACID transaction wrapping both the decision record and
@@ -115,10 +114,10 @@ Prior work has therefore established that non-functional obligations
 of this family can be carried by the type system.
 This paper does not claim otherwise.  Our claim C1 is deliberately
 narrower: we \emph{instantiate} that established discipline over
-\emph{regulatory} obligations---the requirement that a decision act
-with legal consequences cannot exist without a causally-bound,
-non-repudiable evidence chain, as demanded by LGPD Art.~18\S2 and EU
-AI Act Art.~86---and we scope the resulting guarantee to the Safe Rust
+\emph{regulatory-support} artifacts---requiring a BTV verdict to consume
+causally bound evidence and an authority-issued compliance token---and
+relate that mechanism to LGPD Art.~20 and EU AI Act Arts.~14 and~86.
+We scope the resulting guarantee to the Safe Rust
 type perimeter (Section~\ref{sec:encapsulation}), with the escape
 hatches of Section~3.1 stated explicitly.
 Bound-To-Verdict extends the linear-type discipline from resource

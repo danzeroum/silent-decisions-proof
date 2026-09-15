@@ -24,7 +24,7 @@ The Python orchestrator **cannot**:
    `ComplianceAuthority::issue_token()`, which validates the jurisdiction
    allowlist before a `Verdict` can exist.
 3. **Reuse an `EvidenceToken`.** The token is consumed inside Rust before
-   Python ever sees a result; linear consumption (`V ⊸ (E ⊗ C)`) is
+   Python ever sees a result; affine consumption (`(E ⊗ C) ⊸ V`) is
    enforced at the Rust type level.
 4. **Silently drop a verdict in flight.** `SealedVerdict` supports
    `with`-style context management (`__enter__`/`__exit__`) for
@@ -57,8 +57,8 @@ outside the scope of this crate.
   change from 3.7).
 - **Not published to PyPI**; consume via `maturin develop` / `maturin
   build` from this repository.
-- **Out of scope** (documented, deliberate): end-to-end non-repudiation
-  across process boundaries; protection against a compromised Python
+- **Out of scope** (documented, deliberate): third-party-verifiable
+  non-repudiation across process boundaries; protection against a compromised Python
   interpreter (a malicious extension could call `btv-core` directly via
   FFI); durability of the `LogSink` beyond what the configured backend
   provides. The signing key is proof-of-concept unless `BTV_AUTHORITY_KEY`

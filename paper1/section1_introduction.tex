@@ -13,20 +13,22 @@
 Deployed AI systems now issue consequential decisions in milliseconds:
 a credit application is rejected; a social-benefit disbursement is blocked.
 Regulatory frameworks acknowledge this reality.
-Brazil's Lei Geral de Proteção de Dados (LGPD), Article~18, \S2,
-grants affected individuals the right to demand human review and explanation
-of any automated decision~\cite{brazil2018lgpd}.
-The European Union AI Act, Article~86, extends that obligation to high-risk
-AI systems across the bloc~\cite{eu2024aiact}.
-Yet both instruments share a structural gap: they mandate that explanations
-and contestability rights \emph{accompany} a decision,
-but they cannot prevent a decision from existing \emph{without} them.
+Brazil's Lei Geral de Proteção de Dados (LGPD), Article~20,
+grants data subjects the right to request review of decisions based solely
+on automated processing that affect their interests; on request, controllers
+must provide clear and adequate information about the criteria and procedures,
+subject to protection of trade and industrial secrets~\cite{brazil2018lgpd}.
+The European Union AI Act requires human-oversight capabilities for high-risk
+systems (Article~14) and, in defined cases, a right to explanation
+(Article~86)~\cite{eu2024aiact}.
+Neither instrument, by itself, prevents software from emitting a consequential
+decision before the required evidence or review support exists.
 A system may emit a denial, log it asynchronously, and silently drop the log.
 No law is formally broken in that instant; the violation surfaces only later,
 if at all.
 We call this phenomenon a \emph{silent decision}:
 an AI-generated act with legal consequences for an individual
-that carries no non-repudiable evidence chain.
+that carries no integrity-authenticated evidence record.
 Silent decisions are not a failure of intent---they are a failure of type.
 
 The conventional response is instrumentation.
@@ -56,10 +58,12 @@ that \emph{consumes} its premise, and $\otimes$ (tensor product) denotes the
 \emph{joint} consumption of two resources---not their independent conjunction.
 We exploit this semantics to encode the accountability invariant directly
 in the type system.
-Define the type law $V \multimap (E \otimes C)$:
-a Verdict~($V$) can only be produced by linearly consuming an
-\texttt{EvidenceToken}~($E$) and a \texttt{ComplianceToken}~($C$) together.
-In our Rust implementation, \texttt{EvidenceToken} is a \texttt{\#[must\_use]}
+We use the type law $(E \otimes C) \multimap V$:
+an \texttt{EvidenceToken}~($E$) and a \texttt{ComplianceToken}~($C$)
+are jointly consumed to produce a Verdict~($V$).
+Rust's ownership model is affine rather than strictly linear; Section~3
+states the resulting limits explicitly.  In our implementation,
+\texttt{EvidenceToken} is a \texttt{\#[must\_use]}
 struct with no \texttt{Clone} or \texttt{Copy} derivation;
 \texttt{Verdict::new()} takes both tokens by value, consuming them atomically.
 Because \texttt{Blake3Hash}---the only evidence artifact---has no public
@@ -75,9 +79,9 @@ This paper makes three contributions.
     Building on linear resource discipline established for protocols
     and resources (Girard~\cite{girard1987linear}, Vault, typestate,
     session types; Section~\ref{sec:linear_related}), we instantiate it
-    over AI accountability obligations---LGPD Art.~18\S2 and EU AI Act
-    Art.~86: the core invariant
-    $V \multimap (E \otimes C_{\text{signed}})$ is a compile-time type
+    over AI accountability obligations---LGPD Art.~20 and EU AI Act
+    Arts.~14 and~86: the core invariant
+    $(E \otimes C_{\text{signed}}) \multimap V$ is a compile-time type
     constraint in Rust, verified on the companion
     repository~\cite{soares2026a, soares2026b}.
 
@@ -85,7 +89,7 @@ This paper makes three contributions.
     We prove that, under the \emph{BTV}\footnote{BTV (\textit{Bound-To-Verdict}):
     a reference kernel implementing atomic accountability via linear types.
     Evidence and compliance tokens are structurally \emph{bound to} the
-    verdict --- the name is the type law $V \multimap (E \otimes C)$ in English.}
+    verdict---the name is the type law $(E \otimes C) \multimap V$ in English.}
     type invariant, every materialized
     \texttt{Verdict} consumed \emph{exactly one} causally-prior
     \texttt{EvidenceToken}: a BLAKE3 digest of the decision context
@@ -94,9 +98,9 @@ This paper makes three contributions.
     prevents forgery; both guarantees are static.
 
   \item \textbf{The Constitutional Enclosure Theorem (C3).}
-    We state and prove that in any system satisfying the BTV type invariant,
-    the set of materialized silent decisions is empty.
-    The proof proceeds by contradiction via the Rust type system and is
+    We state and prove that external Safe Rust callers cannot construct a
+    BTV \texttt{Verdict} through the public API without both required tokens.
+    The proof analyzes the crate's public construction paths and is
     machine-checkable: \texttt{cargo test} on the companion repository
     verifies all seventeen clauses in seconds.\
 \end{enumerate}

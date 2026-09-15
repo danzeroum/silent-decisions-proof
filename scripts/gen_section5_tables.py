@@ -62,7 +62,7 @@ FIVE_MODE = "data/sweep_raw_20260915T024430Z_g5fix.csv"
 MODE_LABELS = {
     "full_pipeline": "BTV, in-memory sink",
     "full_pipeline_durable": "BTV, durable SQLite",
-    "verdict_only": "BTV, construction only",
+    "verdict_only": "BTV, prebuilt binding",
     "status_quo_async_log": "Status quo, full context",
     "status_quo_digest_log": "Status quo, digest only",
 }
@@ -161,8 +161,9 @@ def main() -> int:
     w("issued), closing a prior round's silent idempotent-replay defect")
     w("(COMSI-2026-04-0112 Round 2, G5). Provenance:")
     w("\\texttt{data/sweep\\_raw\\_20260915T024430Z\\_g5fix.csv}. Rows:")
-    w("BTV in-memory sink; BTV with durable on-disk SQLite; BTV verdict")
-    w("construction alone; status quo logging a digest plus metadata; status")
+    w("BTV in-memory sink; BTV with durable on-disk SQLite; BTV binding with")
+    w("tokens built outside the timed region; status quo digest plus metadata;")
+    w("status")
     w("quo logging the full context as JSON, fire-and-forget.}")
     w("\\label{tab:fivemode}")
     w("\\small")

@@ -79,7 +79,7 @@ fn triage_patient(p: &Patient) -> Verdict {
         "Triage level: {:?} (severity {:.2}). Vitals: HR {} bpm, BP {}, SpO2 {}%, \
          pain {}/10. Chief complaint: {}. \
          This assessment may be reviewed by the attending physician. \
-         Patient or legal guardian may request full explanation per LGPD Art. 18§2.",
+         Patient or legal guardian may request review and information under LGPD Art. 20.",
         level, severity, p.heart_rate, p.systolic_bp, p.spo2, p.pain_scale, p.chief_complaint
     );
 
@@ -147,6 +147,6 @@ fn main() {
     }
 
     println!("  Note: all three decisions — including PRIORITIZE — carry");
-    println!("  non-repudiable evidence. The BTV invariant applies equally");
+    println!("  integrity-authenticated evidence. The BTV invariant applies equally");
     println!("  to Allow and Deny outcomes.");
 }
