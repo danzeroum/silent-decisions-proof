@@ -51,9 +51,10 @@ four threads.  These are container-storage measurements from one current
 x86-64 host, not production-scale or cross-architecture performance claims.
 
 If accountability can be expressed as a type invariant,
-its correctness becomes a property that compilers can check, proof
-assistants can verify, and regulators can audit through
-\texttt{cargo test} rather than manual review.
+its construction-time correctness becomes a property that compilers
+can check and proof assistants can verify, giving auditors
+machine-checked evidence that complements rather than replaces manual
+review, deployment controls, and legal assessment.
 BTV therefore prevents a class of unevidenced verdict constructions
 inside a defined type perimeter.  It does not prove that every
 consequential action in a polyglot system is routed through that perimeter.

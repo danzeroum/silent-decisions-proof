@@ -78,8 +78,9 @@ verdict is produced, or the program does not type-check
 \caption{The core type law $(E \otimes C) \multimap V$: an
   \texttt{EvidenceToken} and a \texttt{ComplianceToken} are jointly
   consumed ($\otimes$) to construct a \texttt{Verdict};
-  compiler-enforced barriers block cloning, forging, and silent
-  discarding of tokens.}
+  compiler-enforced barriers block cloning and unauthorized
+  construction, and diagnose an ignored token-producing expression at
+  the API boundary.}
 \label{fig:linear_type_law}
 \end{figure}
 
@@ -153,7 +154,7 @@ dropping an \texttt{EvidenceToken} without consuming it.}
 \hline
 A & Struct literal & Private fields & \texttt{E0451} \\
 B & External \texttt{consume()} & \texttt{pub(crate)} & \texttt{E0624} \\
-C & Silent token drop & \texttt{\#[must\_use]} & \texttt{unused\_must\_use} \\
+C & Ignored return value & \texttt{\#[must\_use]} & \texttt{unused\_must\_use} \\
 \hline
 \end{tabular}
 \end{table}

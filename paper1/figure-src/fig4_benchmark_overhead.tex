@@ -1,9 +1,13 @@
 % fig4_benchmark_overhead.tex — Figure 5 (column width)
-% BTV governance overhead vs. typical AI inference latency, log scale.
+% BTV vs. status-quo logging latency across implementation and
+% persistence postures, log scale.
 % Regenerated 2026-09-15 (COMSI-2026-04-0112 R1) with the committed
 % G5-corrected collection: data/sweep_raw_20260915T024430Z_g5fix.csv
-% (medians at 4 KiB, one thread). The LLM inference bar is an
-% order-of-magnitude reference, not a measurement.
+% (medians at 4 KiB, one thread).
+% R1 accuracy pass: dropped the uncited "LLM inference (ref.)" bar —
+% it was a round, unsourced order-of-magnitude placeholder, not a
+% measurement or a cited figure, and mixed with genuinely measured
+% rows on the same axis.
 \documentclass[border=2pt]{standalone}
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.18}
@@ -12,22 +16,21 @@
 \begin{axis}[
   xmode=log,
   log basis x=10,
-  xmin=1, xmax=3e6,
+  xmin=1, xmax=1e3,
   width=7.3cm,
-  height=6.4cm,
+  height=5.4cm,
   bar width=7pt,
   y=6.5mm,
   ytick=data,
   symbolic y coords={
-    {LLM inference (ref.)},
     {BTV, durable SQLite},
     {Status quo, full context},
     {BTV, in-memory},
     {BTV, prebuilt binding},
     {Status quo, digest only}},
   yticklabel style={font=\scriptsize, text width=3.35cm, align=right},
-  xtick={1,10,100,1000,10000,100000,1000000},
-  xticklabels={1,10,100,{1k},{10k},{100k},{1M}},
+  xtick={1,10,100,1000},
+  xticklabels={1,10,100,{1k}},
   xticklabel style={font=\scriptsize},
   xlabel={median latency per decision ($\mu$s, log scale)},
   xlabel style={font=\scriptsize},
@@ -43,8 +46,7 @@
                (4.69,{BTV, prebuilt binding})
                (7.82,{BTV, in-memory})
                (23.61,{Status quo, full context})
-               (261.44,{BTV, durable SQLite})
-               (100000,{LLM inference (ref.)})};
+               (261.44,{BTV, durable SQLite})};
 \end{axis}
 \end{tikzpicture}
 \end{document}
