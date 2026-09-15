@@ -6,6 +6,18 @@
 # of which matched each other, and none of which matched the toolchain any
 # of those numbers were actually produced with. rustc --version and every
 # doc/report reference now derive from this one file.
+#
+# `targets` must list aarch64-unknown-linux-gnu: once this file exists,
+# rustup auto-activates the pinned toolchain identity (1.94.1-x86_64-*)
+# for any cargo invocation, INSTEAD OF whatever toolchain a CI step's
+# `targets:` input added the aarch64 target to (ci.yml's ARM64 job asks
+# dtolnay/rust-toolchain for `stable` + the target, but this file then
+# overrides which toolchain actually runs). Without this line the ARM64
+# CI job fails with E0463 "can't find crate for `core`" on the very
+# first dependency, because the active 1.94.1 toolchain has no aarch64
+# target installed at all — caught by CI immediately after this file
+# was first added (PR #5, check run 104200199141).
 [toolchain]
 channel = "1.94.1"
 components = ["rustfmt", "clippy"]
+targets = ["aarch64-unknown-linux-gnu"]
