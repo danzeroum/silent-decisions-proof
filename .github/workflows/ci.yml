@@ -20,9 +20,10 @@ jobs:
           submodules: false
 
       - name: 'Install Rust toolchain (pinned; single source: rust-toolchain.toml, OS-09)'
+        # Components come from rust-toolchain.toml itself; declaring them
+        # here too raced with the file-driven install ('bin/cargo-fmt'
+        # conflict) and intermittently broke the job.
         uses: dtolnay/rust-toolchain@1.98.1
-        with:
-          components: rustfmt, clippy
 
       - name: Install cargo-audit
         run: cargo install cargo-audit --locked || true
