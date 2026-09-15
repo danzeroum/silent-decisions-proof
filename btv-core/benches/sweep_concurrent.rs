@@ -808,9 +808,7 @@ fn main() {
     let actual_rows = durable_sink
         .count_rows()
         .expect("row count query must succeed");
-    eprintln!(
-        "durability sanity gate: expected_rows={expected_rows} actual_rows={actual_rows}"
-    );
+    eprintln!("durability sanity gate: expected_rows={expected_rows} actual_rows={actual_rows}");
     assert_eq!(
         actual_rows, expected_rows as i64,
         "DURABILITY GATE FAILED: {actual_rows} rows in the sink but {expected_rows} durable \
