@@ -128,9 +128,33 @@ def main() -> int:
     if not m or int(m.group(1)) != forget_count:
         return fail("mem::forget count mismatch vs source")
 
+    # --- 6. README's inventory annotation ------------------------------------
+    #
+    # COMSI-2026-04-0112 Round 3: the README's file-tree comment claimed
+    # "113 deps, 63 with unsafe" long after the workspace unification made
+    # the real figures 232 and 139 — a documentation number that had drifted
+    # from the evidence file it describes, which is precisely the defect
+    # class this verifier exists to close. The tcb_summary check above never
+    # saw it because the README is not the summary. It is now covered.
+    readme = REPO_ROOT / "README.md"
+    if readme.exists():
+        geiger_rows = list(
+            csv.DictReader((REPORTS / "cargo_geiger_unsafe_inventory.csv").open())
+        )
+        n_deps = len(geiger_rows)
+        n_unsafe = sum(1 for r in geiger_rows if int(r["total"]) > 0)
+        m = re.search(r"(\d+) deps, (\d+) with unsafe", readme.read_text())
+        if not m:
+            return fail("README no longer carries the geiger inventory annotation")
+        if (int(m.group(1)), int(m.group(2))) != (n_deps, n_unsafe):
+            return fail(
+                f"README says {m.group(1)} deps / {m.group(2)} with unsafe; "
+                f"cargo_geiger_unsafe_inventory.csv says {n_deps} / {n_unsafe}"
+            )
+
     print(
-        "VERIFY-REPORTS: OK — every figure in reports/tcb_summary.md "
-        "re-derives from the committed raw evidence."
+        "VERIFY-REPORTS: OK — every figure in reports/tcb_summary.md and the "
+        "README's inventory annotation re-derives from the committed raw evidence."
     )
     return 0
 

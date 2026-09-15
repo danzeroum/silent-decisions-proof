@@ -35,9 +35,9 @@ artifact-v2/
 ├── reports/
 │   ├── tcb_summary.md               # Test 2: TCB + unsafe audit + cargo audit + clippy
 │   ├── cargo_audit_raw.txt          # Test 2: cargo audit raw output
-│   ├── cargo_geiger_unsafe_inventory.csv  # Test 2: 113 deps, 63 with unsafe
+│   ├── cargo_geiger_unsafe_inventory.csv  # Test 2: 232 deps, 139 with unsafe
 │   ├── cargo_geiger_unsafe_inventory.md
-│   ├── clippy_pedantic_raw.txt      # Test 2: clippy output (49 warnings, 0 errors)
+│   ├── clippy_pedantic_raw.txt      # Test 2: clippy raw capture (0 errors)
 │   ├── benchmark_baseline.md        # Test 4: comparative table
 │   ├── benchmark_baseline.csv
 │   ├── failure_behavior.md          # Test 5: fail-secure analysis
