@@ -1,50 +1,112 @@
 # TCO model parameters for the BTV compliance crossover analysis.
-# Values are documented in paper4/section3_tco_model.tex and
-# paper4/section5_crossover.tex. Edit this file to recompute N*.
 #
-# All monetary values in USD.
+# OS-04 (COMSI-2026-04-0112, closes F4) — DERIVATION, NOT DECLARATION:
+#
+# The previous version of this file declared `rho_usd_per_decision` as an
+# INPUT. That produced the 10.8x contradiction the audit found: for GDPR
+# the formula rho = P_enf x E[fine] / N_bar yields 0.108, while the file
+# declared 0.01 — and the headline N* = 500,000 followed from the declared
+# value. `rho_usd_per_decision` no longer exists as an input; it is
+# COMPUTED by scripts/compute_crossover.py from the three primitive
+# parameters below. CI asserts internal consistency (rho recomputed ==
+# rho used), never the value of N*.
+#
+# E[fine] provenance (per regime), verified against data/enforcement_cases.csv:
+#   - GDPR:      corpus median = $14.25M  (10 cases; mean $51.41M; bootstrap CI
+#                in reports/tco_summary.md). The old input used the Art. 83(4)
+#                statutory cap of EUR 10M ~= $10.8M — a ceiling, not an
+#                expectation. Corpus median is the robust central estimate;
+#                the corpus is skewed (TikTok €368M outlier), so the median
+#                is preferred over the mean and both are reported.
+#   - SEC:       corpus median = $35M  (5 cases; mean $65M). The old input
+#                claimed "average 2021-2024 = $125M", which the corpus itself
+#                contradicts (see audit F4c); the corpus-derived value wins.
+#   - BR-LGPD:   corpus median = $0.1M  (5 cases; mean $0.316M). Derived
+#                rho = 0.005 x 0.1M / 0.5M = 0.001 — this RECONCILES the
+#                former contradiction between this file (0.005) and the
+#                per-case rho column in data/enforcement_cases.csv (0.001).
+#   - EU-AI-ACT: NO corpus cases exist. The value below is NOT corpus-derived;
+#                it is a documented statutory-turnover assumption (3% of the
+#                $100M mid-market turnover band of Art. 99(4)(d)). Flagged as
+#                `fine_source: assumption` and excluded from corpus statistics.
+#
+# All monetary values in USD. Verify cited list prices at the URLs before
+# relying on them; values recorded 2026-09-15.
 
-# Fixed annual cost of full-stack BTV accountability infrastructure.
-# Components (paper4/section3_tco_model.tex):
-#   - HSM-backed key management (shared): $1,500/yr
-#   - SIEM integration (Buffer + parsing): $1,000/yr
-#   - Storage (WORM, 7-year retention): $1,500/yr
-#   - Audit pipeline maintenance: $1,000/yr
-# Total: $5,000/yr
-c_fixed_usd_per_year: 5000
+# ---------------------------------------------------------------------------
+# Fixed annual cost of BTV accountability infrastructure, priced from public
+# list prices (OS-04 step 4). The previous single-line "$5,000/yr for HSM +
+# SIEM + WORM + maintenance" had no citation and was implausible (a single
+# dedicated cloud HSM instance alone costs more). Two scenarios:
+# ---------------------------------------------------------------------------
+c_fixed_usd_per_year: 2700        # BASE scenario (components below)
+c_fixed_usd_per_year_dedicated_hsm: 15100  # STRICT scenario (adds dedicated HSM)
 
-# Per-regime rho (expected penalty per decision, USD).
-# rho = P_enf * E[fine] / N_controller
-# Computed in paper4/section5_crossover.tex.
+# Component breakdown for c_fixed_usd_per_year (BASE, shared/multi-tenant KMS):
+#   - Key management, 2 HMAC KMS keys @ $1/key-month (AWS KMS pricing,
+#     https://aws.amazon.com/kms/pricing/): $24/yr
+#   - Log pipeline host (t3.small on-demand us-east-1, $0.0208/h, ~$182/yr,
+#     https://aws.amazon.com/ec2/pricing/on-demand/) + 20 GB gp3 volume
+#     (~$19/yr): ~$250/yr (SIEM-class parsing/ingest, self-managed)
+#   - WORM retention, S3 Object Lock (Compliance mode; no surcharge for the
+#     lock itself, https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html;
+#     ~3.5 GB steady-state at 0.5 GB/yr over 7 years): ~$5/yr
+#   - Audit-pipeline maintenance, 0.02 FTE x $120k/yr fully-loaded
+#     engineering cost (assumption, documented): $2,400/yr
+#   Total: $2,679 -> rounded $2,700/yr
+# STRICT scenario adds one dedicated AWS CloudHSM instance at the public
+# list price of $1.42/h ~= $12,443/yr (https://aws.amazon.com/cloudhsm/pricing/):
+#   $2,700 + $12,443 = $15,143 -> rounded $15,100/yr
+
+# Variable cost per decision (OS-04 step 4: the previous model assumed zero
+# marginal cost, which GUARANTEES a crossover by construction). Components:
+#   - WORM log PUT: $0.005 per 1,000 S3 Standard PUT requests = $5.0e-6
+#     (https://aws.amazon.com/s3/pricing/)
+#   - 7-year retention of the ~500 B record: ~$9.7e-7/decision
+#   - (If key material is delegated to KMS instead of in-process HMAC:
+#     +$0.03 per 10,000 KMS requests = $3.0e-6; NOT included in the base
+#     c_variable — BTV computes the HMAC in-process with an injected key.)
+# Total base: $6.0e-6 per decision.
+c_variable_usd_per_decision: 0.000006
+
 regimes:
   GDPR:
     enforcement_prob_per_year: 0.01
-    expected_fine_usd: 10_800_000   # €10M ≈ $10.8M
+    expected_fine_usd: 14_250_000
+    fine_source: corpus_median       # data/enforcement_cases.csv, 10 cases
     avg_controller_decisions_per_year: 1_000_000
-    rho_usd_per_decision: 0.01      # rounded; exact = 0.108 * 10^-1
   EU_AI_ACT:
     enforcement_prob_per_year: 0.02
-    expected_fine_usd: 3_000_000    # 3% of $100M mid-market turnover
+    expected_fine_usd: 3_000_000
+    fine_source: assumption          # Art. 99(4)(d) turnover band; no corpus cases
     avg_controller_decisions_per_year: 3_000_000
-    rho_usd_per_decision: 0.02
   SEC:
     enforcement_prob_per_year: 0.05
-    expected_fine_usd: 125_000_000  # average 2021-2024
+    expected_fine_usd: 35_000_000
+    fine_source: corpus_median       # data/enforcement_cases.csv, 5 cases
     avg_controller_decisions_per_year: 6_000_000
-    rho_usd_per_decision: 1.04
   BR_LGPD:
     enforcement_prob_per_year: 0.005
-    expected_fine_usd: 500_000      # ANPD median 2023
+    expected_fine_usd: 100_000
+    fine_source: corpus_median       # data/enforcement_cases.csv, 5 cases
     avg_controller_decisions_per_year: 500_000
-    rho_usd_per_decision: 0.005
 
-# Compliance credit delta (paper4/section6_compliance_credit.tex).
-# A documented BTV framework reduces the effective fine by factor (1-delta).
-# For AI Act Art. 99 mitigated penalty: delta = 0.50 (50% reduction).
+# Compliance credit delta (paper4/section6_compliance_credit.tex — SEE THE
+# SUPERSEDED NOTE at the top of that file; the artifact model is canonical).
+#
+# OS-04 step 3 — CORRECTED CREDIT ARITHMETIC:
+# The previous implementation computed N*_credit = C_fixed / (rho x (1-delta)),
+# i.e. it divided by the REDUCED penalty rate. That INCREASES the crossover —
+# under that formula the credit makes BTV LESS attractive, which is backwards.
+# If the credit is obtained BY ADOPTING BTV, the avoided cost per decision is
+# the credit itself: savings = rho x delta per decision, and
+#     N*_credit = C_fixed / (rho x delta - c_variable)
+# (with the full-avoidance scenario N*_full = C_fixed / (rho - c_variable)).
+# A regime with delta = 0 has no credit-only crossover (reported as null).
 compliance_credit:
-  EU_AI_ACT_delta: 0.50
-  GDPR_delta: 0.10     # Art. 83(2) mitigating measures
-  SEC_delta: 0.0       # no formal mitigation framework
+  EU_AI_ACT_delta: 0.50   # Art. 99 mitigation for documented frameworks
+  GDPR_delta: 0.10        # Art. 83(2) mitigating measures
+  SEC_delta: 0.0          # no formal mitigation framework
   BR_LGPD_delta: 0.0
 
 # Sensitivity analysis ranges (for appendix_b_pgfplots.tex).
@@ -55,3 +117,10 @@ sensitivity:
   c_fixed_min: 1000
   c_fixed_max: 50000
   c_fixed_steps: 50
+
+# Bootstrap configuration for corpus fine statistics (deterministic seed so
+# the CI reproducibility job is deterministic).
+bootstrap:
+  resamples: 10000
+  seed: 20260914
+  confidence: 0.95

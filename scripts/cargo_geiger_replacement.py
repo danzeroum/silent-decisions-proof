@@ -16,10 +16,14 @@ import csv
 from pathlib import Path
 
 def find_cargo_lock(root: Path) -> Path:
-    for p in [root / "Cargo.lock", root / "btv-core" / "Cargo.lock"]:
-        if p.exists():
-            return p
-    raise FileNotFoundError("Cargo.lock not found")
+    """The unified workspace (PR #4) keeps a single Cargo.lock at the
+    repository root; the per-crate lockfiles that predate the workspace are
+    inert (Cargo never reads them) and were removed. This function now
+    resolves the root lock only."""
+    lock = root / "Cargo.lock"
+    if lock.exists():
+        return lock
+    raise FileNotFoundError("Cargo.lock not found at the workspace root")
 
 def parse_cargo_lock(lockfile: Path) -> list[dict]:
     """Parse Cargo.lock and return list of {name, version, source}."""
@@ -86,13 +90,21 @@ def main():
     print(f"# {len(pkgs)} packages in Cargo.lock", file=sys.stderr)
 
     rows = []
+    # Map workspace-local packages (no `source` field in Cargo.lock) to
+    # their actual directories: the root lock lists btv-core, btv-python,
+    # paper1 (silent-decisions-proof) and paper2 (btv-transparency).
+    local_dirs = {
+        "btv-core": repo_root / "btv-core",
+        "btv-python": repo_root / "btv-python",
+        "silent-decisions-proof": repo_root / "paper1",
+        "btv-transparency": repo_root / "paper2",
+    }
     for pkg in pkgs:
         if pkg["source"] == "local":
-            # btv-core itself
-            crate_dir = repo_root / "btv-core"
-            if not crate_dir.exists():
+            crate_dir = local_dirs.get(pkg["name"])
+            if crate_dir is None or not crate_dir.exists():
                 continue
-            location = "LOCAL (btv-core)"
+            location = f"LOCAL ({crate_dir.name})"
         else:
             crate_dir = crate_src_path(pkg["name"], pkg["version"])
             if crate_dir is None:

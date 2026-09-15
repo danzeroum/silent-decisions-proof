@@ -15,7 +15,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use ed25519_dalek::{SigningKey, Signer, VerifyingKey};
+use ed25519_dalek::{Signer, SigningKey, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::sync::{Arc, Mutex};
@@ -114,10 +114,7 @@ struct ProofResponse {
     hash_hex: String,
 }
 
-async fn handle_proof(
-    State(log): State<SharedLog>,
-    Path(index): Path<u64>,
-) -> impl IntoResponse {
+async fn handle_proof(State(log): State<SharedLog>, Path(index): Path<u64>) -> impl IntoResponse {
     let guard = log.lock().unwrap();
     match guard.entries.get(index as usize) {
         Some(entry) => {
@@ -129,8 +126,9 @@ async fn handle_proof(
         }
         None => (
             StatusCode::NOT_FOUND,
-            Json(serde_json::json!({"error": "index not found"}))
-        ).into_response(),
+            Json(serde_json::json!({"error": "index not found"})),
+        )
+            .into_response(),
     }
 }
 
@@ -179,7 +177,7 @@ mod tests {
 
     #[test]
     fn submit_signature_verifies_with_client_message() {
-        use ed25519_dalek::{Verifier, Signature};
+        use ed25519_dalek::{Signature, Verifier};
         let sk = SigningKey::generate(&mut OsRng);
         let vk = sk.verifying_key();
         let mut log = LogState::new(sk);
@@ -187,7 +185,10 @@ mod tests {
         // Verify using the same message format as lib.rs::index_message
         let msg = index.to_le_bytes();
         let sig = Signature::from_bytes(&sig_bytes);
-        assert!(vk.verify(&msg, &sig).is_ok(), "server signature must verify with index-only message");
+        assert!(
+            vk.verify(&msg, &sig).is_ok(),
+            "server signature must verify with index-only message"
+        );
     }
 }
 

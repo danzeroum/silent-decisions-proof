@@ -36,14 +36,11 @@ Consequently, evidence of compliance in these systems manifests as
 asynchronous audit logs: records written after the decision logic has
 executed, stored in a separate artifact, and subject to omission or
 alteration if the logging pipeline fails.
-Infrastructure PaC frameworks do not address the problem we target,
-because they assume a world where the object of governance is a
-configuration artifact rather than a transient decision act with
-immediate legal consequences for a natural person.
-In PaC, accountability is a post-hoc observable state---a property
-that may or may not be present at audit time, leaving the system
-structurally vulnerable to the silent-decision failure mode we
-identify in Section~\ref{sec:intro}.
+Infrastructure PaC frameworks therefore govern configuration
+artifacts, not transient decision acts with immediate legal
+consequences for a natural person; accountability remains a post-hoc
+observable state, structurally vulnerable to the silent-decision
+failure mode of Section~\ref{sec:intro}.
 
 % ----------------------------------------------------------------
 \subsection{Runtime Assertions and Audit Logging}
@@ -68,10 +65,9 @@ They do not prevent the materialization of a verdict that lacks
 non-repudiable evidence; they attempt to record its absence, if they
 run at all.
 This architectural decoupling separates the act of deciding from the
-act of proving---a separation that is incompatible with the
-structural accountability obligations imposed by LGPD Art.~18\S2 and
-EU AI Act Art.~86, which require that evidence \emph{accompany} a
-decision, not merely follow it.
+act of proving---a separation incompatible with the obligations of
+LGPD Art.~18\S2 and EU AI Act Art.~86, which require that evidence
+\emph{accompany} a decision, not merely follow it.
 
 A stronger form of runtime guarantee is offered by transactional
 databases: an ACID transaction wrapping both the decision record and
@@ -103,15 +99,28 @@ This paradigm has proven highly effective in enforcing memory safety
 and preventing data races; it underpins the ownership and borrowing
 model of the Rust programming language~\cite{jung2017rustbelt}.
 
-However, prior applications of linear types focus exclusively on
-\emph{resource} correctness---ensuring that memory is freed exactly
-once, that file handles are not leaked, that channels are not
-reused after a session ends.
-To the best of our knowledge, no prior work has applied linear
-resource types to enforce \emph{legal} correctness: the requirement
-that a decision act cannot exist without a causally-bound,
-non-repudiable evidence chain.
-Bound-To-Verdict bridges this gap, extending the linear-type
-discipline from resource management to regulatory accountability,
-and demonstrating that the same compile-time guarantees that prevent
-memory unsafety can be applied to prevent accountability unsafety.
+However, prior applications of linear and substructural types focus
+predominantly on \emph{resource} correctness: ensuring that memory is
+freed exactly once, that file handles are not leaked, or that a
+communication protocol is followed in order.  Vault enforces
+high-level resource-management protocols in low-level code via
+linear typestates~\cite{deline2001vault}; typestate systems make
+state-dependent protocol obligations explicit at the type
+level~\cite{pierce2002tapl}; session types impose
+communication protocols on channels; and the substructural design
+space of affine versus linear versus relevant systems is surveyed by
+Walker~\cite{walker2005substructural}, with state-dependent
+disciplines studied by Ahmed et al.~\cite{ahmed2009state}.
+Prior work has therefore established that non-functional obligations
+of this family can be carried by the type system.
+This paper does not claim otherwise.  Our claim C1 is deliberately
+narrower: we \emph{instantiate} that established discipline over
+\emph{regulatory} obligations---the requirement that a decision act
+with legal consequences cannot exist without a causally-bound,
+non-repudiable evidence chain, as demanded by LGPD Art.~18\S2 and EU
+AI Act Art.~86---and we scope the resulting guarantee to the Safe Rust
+type perimeter (Section~\ref{sec:encapsulation}), with the escape
+hatches of Section~3.1 stated explicitly.
+Bound-To-Verdict extends the linear-type discipline from resource
+management to regulatory accountability, not from nothing to
+regulatory accountability.

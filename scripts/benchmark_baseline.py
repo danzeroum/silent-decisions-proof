@@ -50,18 +50,21 @@ def bench_btv_pyo3(n: int = N_SAMPLES) -> list[float]:
     cfg = TestingLogConfig()
     latencies = []
     # warmup
-    for _ in range(50):
+    # Unique context per decision (OS-03): the log is append-only, so
+    # replaying the same evidence_id with a different explanation is a
+    # rejected conflict — production evidence is unique, so is this bench.
+    for i in range(50):
         with issue_verdict(
-            raw_context=RAW_CONTEXT, decision="deny",
+            raw_context=RAW_CONTEXT + f',"i":"w{i}"'.encode(), decision="deny",
             jurisdiction="BR-LGPD", policy_version="1.0.0",
             explanation="warmup", contestability_hours=720,
             log_config=cfg,
         ):
             pass
-    for _ in range(n):
+    for i in range(n):
         t0 = time.perf_counter_ns()
         with issue_verdict(
-            raw_context=RAW_CONTEXT, decision="deny",
+            raw_context=RAW_CONTEXT + f',"i":{i}'.encode(), decision="deny",
             jurisdiction="BR-LGPD", policy_version="1.0.0",
             explanation="bench", contestability_hours=720,
             log_config=cfg,
@@ -186,11 +189,15 @@ def percentile(data: list[float], p: float) -> float:
 
 def stats(data: list[float]) -> dict:
     return {
+        "latency_stat": "measured percentiles (perf_counter, single-threaded)",
         "p50_us": percentile(data, 0.50),
         "p95_us": percentile(data, 0.95),
         "p99_us": percentile(data, 0.99),
         "mean_us": statistics.fmean(data),
         "stdev_us": statistics.stdev(data) if len(data) > 1 else 0.0,
+        # OS-08: single-threaded loop, so this equals total_ops/wall_clock;
+        # labelled accordingly — under concurrency it would be the reciprocal
+        # of mean latency, NOT throughput.
         "throughput_ops_per_s": 1_000_000.0 / statistics.fmean(data) if data else 0.0,
         "n_samples": len(data),
     }
@@ -203,7 +210,8 @@ def main():
     print(f"Running {N_SAMPLES}-sample benchmarks on x86-64...", file=sys.stderr)
 
     # Read criterion results for BTV native (Rust)
-    criterion_dir = REPO_ROOT / "btv-core" / "target" / "criterion"
+    # Unified workspace: a single target/ sits at the repository ROOT.
+    criterion_dir = REPO_ROOT / "target" / "criterion"
     btv_native_stats = None
     if criterion_dir.exists():
         try:
@@ -211,10 +219,16 @@ def main():
             if est_path.exists():
                 with est_path.open() as f:
                     est = json.load(f)
+                # OS-08 (closes F8): Criterion's estimates.json provides a
+                # MEAN, not percentiles. The previous version copied the mean
+                # into p50/p95/p99 columns — fabricated percentils. The CSV
+                # now carries latency_stat="mean (Criterion)" and EMPTY
+                # percentile cells; the manuscript may only quote the mean.
                 btv_native_stats = {
-                    "p50_us": est["mean"]["point_estimate"] / 1000.0,
-                    "p95_us": est["mean"]["point_estimate"] / 1000.0,  # criterion gives mean only
-                    "p99_us": est["mean"]["point_estimate"] / 1000.0,
+                    "latency_stat": "mean (Criterion)",
+                    "p50_us": None,
+                    "p95_us": None,
+                    "p99_us": None,
                     "mean_us": est["mean"]["point_estimate"] / 1000.0,
                     "stdev_us": est["std_dev"]["point_estimate"] / 1000.0,
                     "throughput_ops_per_s": 1_000_000_000.0 / est["mean"]["point_estimate"],
@@ -230,10 +244,14 @@ def main():
             if est_path.exists():
                 with est_path.open() as f:
                     est = json.load(f)
+                # OS-08: same honesty rule as the native row above. Note
+                # this Criterion bench now measures a REAL on-disk sink
+                # (OS-07), not open_in_memory.
                 btv_sqlite_stats = {
-                    "p50_us": est["mean"]["point_estimate"] / 1000.0,
-                    "p95_us": est["mean"]["point_estimate"] / 1000.0,
-                    "p99_us": est["mean"]["point_estimate"] / 1000.0,
+                    "latency_stat": "mean (Criterion)",
+                    "p50_us": None,
+                    "p95_us": None,
+                    "p99_us": None,
                     "mean_us": est["mean"]["point_estimate"] / 1000.0,
                     "stdev_us": est["std_dev"]["point_estimate"] / 1000.0,
                     "throughput_ops_per_s": 1_000_000_000.0 / est["mean"]["point_estimate"],
@@ -269,12 +287,14 @@ def main():
     with csv_path.open("w", newline="") as f:
         w = csv.writer(f)
         w.writerow([
-            "implementation", "p50_us", "p95_us", "p99_us",
+            "implementation", "latency_stat", "p50_us", "p95_us", "p99_us",
             "mean_us", "stdev_us", "throughput_ops_per_s", "n_samples",
         ])
         for name, s in all_stats:
-            w.writerow([name, f"{s['p50_us']:.3f}", f"{s['p95_us']:.3f}",
-                        f"{s['p99_us']:.3f}", f"{s['mean_us']:.3f}",
+            def cell(v):
+                return "" if v is None else f"{v:.3f}"
+            w.writerow([name, s["latency_stat"], cell(s["p50_us"]), cell(s["p95_us"]),
+                        cell(s["p99_us"]), f"{s['mean_us']:.3f}",
                         f"{s['stdev_us']:.3f}", f"{s['throughput_ops_per_s']:.0f}",
                         s["n_samples"]])
 
@@ -289,9 +309,16 @@ def main():
         f.write("| Implementação | p50 (μs) | p95 (μs) | p99 (μs) | média (μs) | stdev (μs) | throughput (ops/s) |\n")
         f.write("|---|---:|---:|---:|---:|---:|---:|\n")
         for name, s in all_stats:
-            f.write(f"| {name} | {s['p50_us']:.2f} | {s['p95_us']:.2f} | "
-                    f"{s['p99_us']:.2f} | {s['mean_us']:.2f} | "
+            def cell_md(v):
+                return "—" if v is None else f"{v:.2f}"
+            f.write(f"| {name} | {cell_md(s['p50_us'])} | {cell_md(s['p95_us'])} | "
+                    f"{cell_md(s['p99_us'])} | {s['mean_us']:.2f} | "
                     f"{s['stdev_us']:.2f} | {s['throughput_ops_per_s']:.0f} |\n")
+        f.write("\n**OS-08 note:** linhas rotuladas \"mean (Criterion)\" NÃO têm percentis — "
+                "Criterion reporta a média no `estimates.json`; as células p50/p95/p99 "
+                "estão vazias no CSV em vez de conter a média copiada (o defect F8). "
+                "O throughput das linhas Python é o recíproco da média em laço "
+                "single-threaded (igual a ops/wall_clock neste desenho).\n")
         f.write("\n## Notas metodológicas\n\n")
         f.write("- **BTV-Rust-native** medido via `cargo bench` (criterion, 100 amostras, estimativa pontual da média). Não há percentis pois criterion reporta apenas a média no `estimates.json`.\n")
         f.write("- **BTV-PyO3** medido via `time.perf_counter_ns()` em loop Python, 5.000 amostras após warmup de 50 iterações.\n")
@@ -328,7 +355,7 @@ def main():
         f.write("    bar width=14pt,\n")
         f.write("    width=\\columnwidth,\n")
         f.write("    height=5cm,\n")
-        f.write("    ylabel={Latência p95 ($\\mu$s)},\n")
+        f.write("    ylabel={Latência média ($\\mu$s)},\n")
         f.write("    symbolic x coords={BTV-Rust, BTV-PyO3, BTV+SQLite, OTel-pós-hoc, SQLite-bare},\n")
         f.write("    xtick=data,\n")
         f.write("    x tick label style={rotate=30,anchor=east,font=\\small},\n")
@@ -345,12 +372,13 @@ def main():
             elif "native" in name: short = "BTV-Rust"
             elif "OpenTelemetry" in name: short = "OTel-pós-hoc"
             elif "bare" in name: short = "SQLite-bare"
-            f.write(f"    ({short}, {s['p95_us']:.2f})\n")
+            f.write(f"    ({short}, {s['mean_us']:.2f})\n")
         f.write("};\n")
         f.write("\\end{axis}\n")
         f.write("\\end{tikzpicture}\n")
-        f.write("\\caption{Latência p95 por implementação ($N=5{,}000$ para Python; $N=100$ para Rust/criterion). "
-                "BTV-Rust e BTV+SQLite sãoCriterion means (não p95); ver Tabela~\\ref{tab:bench-stats}.}\n")
+        f.write("\\caption{Latência MÉDIA por implementação ($N=5{,}000$ para Python; $N=100$ para Rust/Criterion). "
+                "Todas as barras plotam médias (Criterion fornece média, não percentis — OS-08/F8); "
+                "ver Tabela~\\ref{tab:bench-stats}.}\n")
         f.write("\\label{fig:bench-baseline}\n")
         f.write("\\end{figure}\n\n")
         f.write("\\begin{table}[t]\n")
@@ -360,12 +388,12 @@ def main():
         f.write("\\small\n")
         f.write("\\begin{tabular}{lrrrr}\n")
         f.write("\\toprule\n")
-        f.write("Implementação & p50 ($\\mu$s) & p95 ($\\mu$s) & p99 ($\\mu$s) & ops/s \\\\\n")
+        f.write("Implementação & média ($\\mu$s) & stdev ($\\mu$s) & ops/s & estatística de latência \\\\\n")
         f.write("\\midrule\n")
         for name, s in all_stats:
             short = name.split("(")[0].strip()
-            f.write(f"{short} & {s['p50_us']:.2f} & {s['p95_us']:.2f} & "
-                    f"{s['p99_us']:.2f} & {s['throughput_ops_per_s']:.0f} \\\\\n")
+            f.write(f"{short} & {s['mean_us']:.2f} & "
+                    f"{s['stdev_us']:.2f} & {s['throughput_ops_per_s']:.0f} & {s['latency_stat']} \\\\\n")
         f.write("\\bottomrule\n")
         f.write("\\end{tabular}\n")
         f.write("\\end{table}\n")

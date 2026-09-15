@@ -1,11 +1,21 @@
+# Provenance (OS-08): produced by scripts/collect_load_stats.sh
+# timestamp_utc: 20260914T223347Z
+# command: cargo test --features test-support --test test_load -- --nocapture (BTV_TEST_THREADS=2)
+# throughput_definition: total_ops / wall_clock (OS-08)
+# git_commit: c303f50739fe73909e67cd5abbdf65dbf6615276
+# host_triple: x86_64-unknown-linux-gnu
+# rustc: rustc 1.98.1 (48a229cea 2026-09-01)
+# kernel: Linux 5.10.134-013.15.kangaroo.al8.x86_64 x86_64
+Model name:                         Intel(R) Xeon(R) Processor
 metric,value
+arch,x86_64-unknown-linux-gnu
 threads,2
-ops_per_thread,1000
 total_ops,2000
-p50_us,14.478
-p95_us,19.708
-p99_us,28.765
-mean_us,15.733
-stdev_us,3.503
-throughput_ops_per_s,63562
-emulated,false
+p50_us,41.90
+p95_us,53.12
+p99_us,62.61
+mean_us,42.32
+stdev_us,8.22
+wall_ms,79.9
+throughput_ops_per_s,25023
+throughput_definition,total_ops_per_wall_clock

@@ -1,3 +1,15 @@
 target/
 paper1/target/
 paper2/target/
+
+# Raw sweep output from local runs of scripts/run_sweep.sh. Final CSVs cited
+# in the paper must be explicitly committed with descriptive names.
+/data/sweep_raw_*.csv
+
+# Round 3 (Task B2/B3) committed sweep datasets — explicitly re-included:
+# paper-cited raw data collected this round (sandbox + GitHub-hosted runner).
+# The generic pattern above still ignores LOCAL run output; these two files
+# are the committed evidence pair (CSV + environment fingerprint alongside).
+!data/sweep_raw_20260914T171258Z.csv
+!data/sweep_raw_20260914T164735Z_runnervmlun5p.csv
+!data/sweep_raw_20260914T231611Z_chunked5s.csv

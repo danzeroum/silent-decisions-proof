@@ -4,7 +4,7 @@
 //! Under EU AI Act, hiring is classified as high-risk AI (Annex III).
 //! Demonstrates: multi-field context, EU jurisdiction, appeal rights.
 
-use silent_decisions_proof::{ComplianceToken, Decision, EvidenceToken, Verdict};
+use silent_decisions_proof::{ComplianceAuthority, Decision, EvidenceToken, Verdict};
 
 struct Candidate {
     id: &'static str,
@@ -22,15 +22,18 @@ fn mock_screening_model(c: &Candidate) -> f64 {
 
 fn screen_candidate(c: &Candidate, cutoff: f64) -> Verdict {
     let score = mock_screening_model(c);
-    let decision = if score >= cutoff { Decision::Allow } else { Decision::Deny };
+    let decision = if score >= cutoff {
+        Decision::Allow
+    } else {
+        Decision::Deny
+    };
 
     let context = format!(
         "candidate_id:{} | name:{} | years_exp:{} | skill_match:{:.2} | \
          education:{:.2} | composite_score:{:.4} | cutoff:{:.2} | \
          model:cv-screener-v2.0 | risk_class:high | \
          timestamp:2026-03-24T09:15:00Z",
-        c.id, c.name, c.years_experience, c.skill_match_pct,
-        c.education_score, score, cutoff
+        c.id, c.name, c.years_experience, c.skill_match_pct, c.education_score, score, cutoff
     );
 
     let explanation = format!(
@@ -49,18 +52,44 @@ fn screen_candidate(c: &Candidate, cutoff: f64) -> Verdict {
 
     let token = EvidenceToken::new(context.as_bytes());
     // EU AI Act: 720 hours (30 days) appeal window for high-risk decisions
-    let compliance = ComplianceToken::new("EU-AIACT-2024/1689", "1.0.0", 720);
+    // ComplianceToken is issued through the recognized ComplianceAuthority
+    // (OS-02: tokens are signed with the BTV_AUTHORITY_KEY-resolved key and
+    // verified inside Verdict::new — a demo authority with a foreign key
+    // would be rejected).
+    let authority = ComplianceAuthority::new_from_env();
+    let compliance = authority
+        .issue_token("EU-AI-ACT", "1.0.0", 720)
+        .expect("EU-AI-ACT is in the default allowlist");
 
     Verdict::new(token, compliance, decision, explanation)
+        .expect("new_from_env authority holds the recognized key (OS-02)")
 }
 
 fn main() {
     println!("=== Worked Example 2: Hiring Screening under EU AI Act ===\n");
 
     let candidates = vec![
-        Candidate { id: "C-001", name: "Ana Garcia",        years_experience: 7,  skill_match_pct: 0.85, education_score: 0.90 },
-        Candidate { id: "C-002", name: "James Chen",        years_experience: 2,  skill_match_pct: 0.60, education_score: 0.70 },
-        Candidate { id: "C-003", name: "Fatima Al-Rashid",  years_experience: 12, skill_match_pct: 0.45, education_score: 0.95 },
+        Candidate {
+            id: "C-001",
+            name: "Ana Garcia",
+            years_experience: 7,
+            skill_match_pct: 0.85,
+            education_score: 0.90,
+        },
+        Candidate {
+            id: "C-002",
+            name: "James Chen",
+            years_experience: 2,
+            skill_match_pct: 0.60,
+            education_score: 0.70,
+        },
+        Candidate {
+            id: "C-003",
+            name: "Fatima Al-Rashid",
+            years_experience: 12,
+            skill_match_pct: 0.45,
+            education_score: 0.95,
+        },
     ];
 
     let cutoff = 0.65;
@@ -69,15 +98,25 @@ fn main() {
         let verdict = screen_candidate(c, cutoff);
         let status = match verdict.decision() {
             Decision::Allow => "ADVANCE",
-            Decision::Deny  => "REJECT",
+            Decision::Deny => "REJECT",
         };
-        println!("  {} ({}): {} — integrity {}",
-            c.name, c.id, status,
-            if verdict.verify_integrity() { "OK" } else { "FAIL" }
+        println!(
+            "  {} ({}): {} — integrity {}",
+            c.name,
+            c.id,
+            status,
+            if verdict.verify_integrity() {
+                "OK"
+            } else {
+                "FAIL"
+            }
         );
         println!("    Evidence:  {}", verdict.evidence_id().to_hex());
         println!("    Explain:   {}", verdict.explanation());
-        println!("    Jurisdiction: {} | Appeal: {} hours\n",
-            verdict.jurisdiction(), verdict.appeal_deadline_hours());
+        println!(
+            "    Jurisdiction: {} | Appeal: {} hours\n",
+            verdict.jurisdiction(),
+            verdict.appeal_deadline_hours()
+        );
     }
 }

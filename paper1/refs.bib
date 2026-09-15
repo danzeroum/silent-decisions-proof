@@ -26,16 +26,6 @@
   doi       = {10.1145/115865.115894},
 }
 
-@inproceedings{matsakis2014rust,
-  author    = {Nicholas D. Matsakis and Felix S. Klock},
-  title     = {The {Rust} Language},
-  booktitle = {Proceedings of the 2014 ACM SIGAda Annual Conference
-               on High Integrity Language Technology (HILT)},
-  pages     = {103--104},
-  year      = {2014},
-  doi       = {10.1145/2663171.2663188},
-}
-
 @article{jung2017rustbelt,
   author    = {Ralf Jung and Jacques-Henri Jourdan and Robbert Krebbers
                and Derek Dreyer},
@@ -50,56 +40,19 @@
   doi       = {10.1145/3158154},
 }
 
-% --- Axis 2: Algorithmic Accountability and Cryptography ---
-
-@article{kroll2016accountable,
-  author    = {Joshua A. Kroll and Joanna Huey and Solon Barocas
-               and Edward W. Felten and Joel R. Reidenberg
-               and David G. Robinson and Harlan Yu},
-  title     = {Accountable Algorithms},
-  journal   = {University of Pennsylvania Law Review},
-  volume    = {165},
-  pages     = {633--705},
-  year      = {2017},
-}
-
-@inproceedings{binns2018fairness,
-  author    = {Reuben Binns},
-  title     = {Fairness in Machine Learning: Lessons from Political
-               Philosophy},
-  booktitle = {Proceedings of the 1st Conference on Fairness,
-               Accountability and Transparency (FAT*)},
-  series    = {Proceedings of Machine Learning Research},
-  volume    = {81},
-  pages     = {149--159},
-  year      = {2018},
-}
-
 % --- Axis 3: Critical Systems and Distributed Design ---
 
-@article{avizienis2004dependable,
-  author    = {Algirdas Avizi{\={e}}nis and Jean-Claude Laprie
-               and Brian Randell and Carl Landwehr},
-  title     = {Basic Concepts and Taxonomy of Dependable and Secure
-               Computing},
-  journal   = {IEEE Transactions on Dependable and Secure Computing},
-  volume    = {1},
-  number    = {1},
-  pages     = {11--33},
-  year      = {2004},
-  doi       = {10.1109/TDSC.2004.2},
-}
-
-@article{brewer2012cap,
-  author    = {Eric Brewer},
-  title     = {{CAP} Twelve Years Later: How the ``Rules'' Have
-               Changed},
-  journal   = {IEEE Computer},
-  volume    = {45},
+@article{flp1985,
+  author    = {Michael J. Fischer and Nancy A. Lynch and
+               Michael S. Paterson},
+  title     = {Impossibility of Distributed Consensus with One Faulty
+               Process},
+  journal   = {Journal of the ACM},
+  volume    = {32},
   number    = {2},
-  pages     = {23--29},
-  year      = {2012},
-  doi       = {10.1109/MC.2012.37},
+  pages     = {374--382},
+  year      = {1985},
+  doi       = {10.1145/3149.214121},
 }
 
 % --- Axis 4: Regulatory Context ---
@@ -121,16 +74,6 @@
   year        = {2024},
   number      = {L 2024/1689},
   note        = {\url{https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=OJ:L_202401689}},
-}
-
-@techreport{nist2023aiRMF,
-  author      = {{National Institute of Standards and Technology (NIST)}},
-  title       = {Artificial Intelligence Risk Management Framework
-                 ({AI RMF} 1.0)},
-  institution = {NIST},
-  number      = {NIST AI 100-1},
-  year        = {2023},
-  doi         = {10.6028/NIST.AI.100-1},
 }
 
 @misc{opa2024,
@@ -158,7 +101,9 @@
                   Machine-Checked Proofs},
   year         = {2026},
   howpublished = {\url{https://github.com/danzeroum/silent-decisions-proof}},
-  note         = {[Online; accessed March 2026]},
+  note         = {[Online; accessed September 2026]. Artifact tag:
+                  \texttt{comsi-2026-04-0112-r1} (commit hash pinned at
+                  submission; OS-09/H6)},
 }
 
 @misc{soares2026b,
@@ -167,4 +112,55 @@
   year         = {2026},
   howpublished = {\url{https://github.com/danzeroum/BuildToValueGovernance}},
   note         = {[Online; accessed March 2026]},
+}
+
+% --- Axis 2: Linear types applied to protocols (R2 references, OS-12) ---
+% DOI note (OS-12): the reviewer's letter listed DOIs from memory; each was
+% verified against CrossRef before citation and two were corrected:
+%   Vault   -> 10.1145/378795.378811 (the letter's 378795.378821 resolves to
+%              Berger/Zorn/McKinley, "Composing High-Performance Memory
+%              Allocators", PLDI 2001)
+%   Walker  -> 10.7551/mitpress/1104.003.0003 (the letter's ...0013 resolves
+%              to the ATTAPL module-systems chapter)
+%   Ahmed   -> 10.1145/1480881.1480925 (the letter's 1480915 resolves to
+%              "Equality Saturation", Tate et al., POPL 2009)
+
+@inproceedings{deline2001vault,
+  author    = {Robert DeLine and Manuel F{\"a}hndrich},
+  title     = {Enforcing High-Level Protocols in Low-Level Software},
+  booktitle = {Proceedings of the ACM SIGPLAN 2001 Conference on Programming
+               Language Design and Implementation (PLDI)},
+  pages     = {59--69},
+  year      = {2001},
+  doi       = {10.1145/378795.378811},
+}
+
+@incollection{walker2005substructural,
+  author    = {David Walker},
+  title     = {Substructural Type Systems},
+  booktitle = {Advanced Topics in Types and Programming Languages},
+  editor    = {Benjamin C. Pierce},
+  chapter   = {3},
+  publisher = {MIT Press},
+  year      = {2005},
+  doi       = {10.7551/mitpress/1104.003.0003},
+}
+
+@inproceedings{ahmed2009state,
+  author    = {Amal Ahmed and Derek Dreyer and Andreas Rossberg},
+  title     = {State-Dependent Representation Independence},
+  booktitle = {Proceedings of the 36th Annual ACM SIGPLAN-SIGACT Symposium on
+               Principles of Programming Languages (POPL)},
+  pages     = {340--353},
+  year      = {2009},
+  doi       = {10.1145/1480881.1480925},
+}
+
+@book{pierce2002tapl,
+  author    = {Benjamin C. Pierce},
+  title     = {Types and Programming Languages},
+  publisher = {MIT Press},
+  year      = {2002},
+  isbn      = {978-0-262-16209-8},
+  note      = {[No CrossRef-registered DOI; cited by ISBN/publisher]},
 }

@@ -4,7 +4,7 @@
 //! evaluates it via a mock ML model, and produces a BTV Verdict.
 //! Demonstrates: real-world payload → EvidenceToken → Verdict → audit.
 
-use silent_decisions_proof::{ComplianceToken, Decision, EvidenceToken, Verdict};
+use silent_decisions_proof::{ComplianceAuthority, Decision, EvidenceToken, Verdict};
 
 /// Mock ML model — returns a credit score between 0.0 and 1.0.
 fn mock_credit_model(income: f64, debt: f64, history_months: u32) -> f64 {
@@ -19,8 +19,8 @@ fn main() {
 
     // --- Incoming request (simulates API payload) ---
     let applicant = "maria.silva@example.com";
-    let income = 4500.00_f64;     // BRL/month
-    let debt = 3200.00_f64;       // BRL total outstanding
+    let income = 4500.00_f64; // BRL/month
+    let debt = 3200.00_f64; // BRL total outstanding
     let history_months = 18_u32;
     let threshold = 0.50_f64;
 
@@ -44,44 +44,70 @@ fn main() {
     let token = EvidenceToken::new(context.as_bytes());
 
     // --- BTV: compliance metadata per LGPD Art. 18§2 ---
-    let compliance = ComplianceToken::new("BR-LGPD", "1.0.0", 720); // 30 days
+    // `ComplianceToken::new` is `pub(crate)`: tokens are issued through a
+    // `ComplianceAuthority`, which validates the jurisdiction allowlist.
+    let authority = ComplianceAuthority::new_from_env();
+    let compliance = authority
+        .issue_token("BR-LGPD", "1.0.0", 720) // 30 days
+        .expect("BR-LGPD is in the default allowlist");
 
     // --- BTV: construct the Verdict (consumes both tokens atomically) ---
     let explanation = format!(
         "Credit score {:.4} is below the required threshold of {:.2}. \
          Basis: debt-to-income ratio {:.2}, credit history {} months. \
          You may contest this decision within 30 days per LGPD Art. 18§2.",
-        score, threshold, debt / income, history_months
+        score,
+        threshold,
+        debt / income,
+        history_months
     );
 
-    let verdict = Verdict::new(token, compliance, decision_outcome, explanation);
+    let verdict = Verdict::new(token, compliance, decision_outcome, explanation)
+        .expect("new_from_env authority holds the recognized key (OS-02)");
 
     // --- Output: what an auditor or the applicant would see ---
     println!("  Applicant:    {}", applicant);
     println!("  Score:        {:.4}", score);
     println!("  Threshold:    {:.2}", threshold);
-    println!("  Decision:     {:?}", match verdict.decision() {
-        Decision::Allow => "APPROVED",
-        Decision::Deny  => "DENIED",
-    });
+    println!(
+        "  Decision:     {:?}",
+        match verdict.decision() {
+            Decision::Allow => "APPROVED",
+            Decision::Deny => "DENIED",
+        }
+    );
     println!("  Evidence ID:  {}", verdict.evidence_id().to_hex());
     println!("  Explanation:  {}", verdict.explanation());
     println!("  Jurisdiction: {}", verdict.jurisdiction());
     println!("  Appeal window: {} hours", verdict.appeal_deadline_hours());
-    println!("  Integrity:    {}\n", if verdict.verify_integrity() { "PASS" } else { "FAIL" });
+    println!(
+        "  Integrity:    {}\n",
+        if verdict.verify_integrity() {
+            "PASS"
+        } else {
+            "FAIL"
+        }
+    );
 
     // --- The context hash is deterministic: same input → same evidence ---
     // An auditor can re-hash the stored context and verify it matches evidence_id.
     let rehash = EvidenceToken::new(context.as_bytes());
+    let authority = ComplianceAuthority::new_from_env();
     let rehash_verdict = Verdict::new(
         rehash,
-        ComplianceToken::new("BR-LGPD", "1.0.0", 720),
+        authority
+            .issue_token("BR-LGPD", "1.0.0", 720)
+            .expect("BR-LGPD is in the default allowlist"),
         Decision::Deny,
         verdict.explanation().to_string(),
-    );
+    )
+    .expect("new_from_env authority holds the recognized key (OS-02)");
     println!("  Reproducibility check:");
     println!("    Original evidence:  {}", verdict.evidence_id().to_hex());
-    println!("    Re-hashed evidence: {}", rehash_verdict.evidence_id().to_hex());
+    println!(
+        "    Re-hashed evidence: {}",
+        rehash_verdict.evidence_id().to_hex()
+    );
     assert_eq!(
         verdict.evidence_id().to_hex(),
         rehash_verdict.evidence_id().to_hex(),

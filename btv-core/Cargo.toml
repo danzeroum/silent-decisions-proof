@@ -5,10 +5,27 @@ edition = "2021"
 description = "BTV Framework — Bill of Materials for Trustworthy Verdicts (artifact-v2)"
 license = "MIT"
 repository = "https://github.com/danzeroum/silent-decisions-proof"
+# benches/sweep_concurrent.rs is a [[bin]] target (see below); without this,
+# cargo auto-discovers it as a SECOND bench target and warns about the file
+# being present in multiple build targets. The only real bench
+# (verdict_construction) is declared explicitly below.
+autobenches = false
 
 [features]
 default = []
 test-support = []
+# Opt-in feature that compiles the sweep_concurrent benchmark binary
+# (benches/sweep_concurrent.rs). CI's `cargo build --workspace` /
+# `cargo test --workspace` never enable it, so the multi-hour sweep
+# harness is compiled only on demand:
+#   cargo run --release --features sweep-bench --bin sweep_concurrent
+#
+# Round 3 (Task B1) added dep:serde_json: the StatusQuoAsyncLog baseline
+# mode serializes a realistic JSON decision record. serde_json is ALREADY
+# resolved in the root Cargo.lock (transitive via criterion 0.5), so this
+# declaration adds ZERO packages to the dependency graph — the
+# reports/cargo_geiger_unsafe_inventory.{csv,md} counts are unaffected.
+sweep-bench = ["dep:rayon", "dep:serde_json"]
 
 [dependencies]
 blake3 = { version = "1", default-features = false, features = ["std", "no_neon"] }
@@ -19,13 +36,92 @@ subtle = "2"
 serde = { version = "1", features = ["derive"] }
 rusqlite = { version = "0.32", features = ["bundled"] }
 thiserror = "1"
+# serde_json is consumed by two DISTINCT target classes, exactly like
+# rayon above (see the rayon block for the E0433 rationale):
+#
+#   1. [dependencies] (OPTIONAL) — feeds only the opt-in sweep_concurrent
+#      benchmark binary's StatusQuoAsyncLog baseline mode behind the
+#      `sweep-bench` feature. Plain `cargo build --workspace --release`
+#      never compiles it.
+#
+#   2. [dev-dependencies] (REQUIRED) — feeds the fail-open vs. fail-secure
+#      contrast integration test tests/test_status_quo_contrast.rs, which
+#      CI runs via `cargo test --features test-support --test
+#      test_status_quo_contrast` with NO sweep-bench feature. Without this
+#      declaration the test would stop compiling or would have to be
+#      feature-gated, silently shrinking CI coverage.
+#
+# Already in Cargo.lock via criterion (dev-dep) — the unified lock's
+# package set (232) and the unsafe-TCB inventory are unchanged.
+serde_json = { version = "1", optional = true }
+# rayon is consumed by two DISTINCT target classes and is declared twice
+# on purpose:
+#
+#   1. [dependencies] (OPTIONAL) — feeds only the opt-in sweep_concurrent
+#      benchmark binary behind the `sweep-bench` feature. Keeping it
+#      optional means plain `cargo build --workspace --release` never
+#      compiles rayon at all (cargo does not expose [dev-dependencies] to
+#      [[bin]] targets — E0433 — so the binary must draw it from here).
+#
+#   2. [dev-dependencies] (REQUIRED) — feeds the pre-existing integration
+#      test tests/test_load.rs ("Usa `rayon` para disparar `issue_verdict`
+#      de múltiplas threads"), which CI runs via
+#      `cargo test --features test-support --test test_load` with NO
+#      sweep-bench feature. Without this declaration the test would stop
+#      compiling — a regression — or would have to be feature-gated, which
+#      would silently shrink CI coverage.
+#
+# Cargo unifies the two declarations: dev targets always see rayon;
+# release builds see it only when `--features sweep-bench` is requested.
+# Either way rayon stays resolved in the root Cargo.lock (optional
+# dependencies are always resolved), so the reports/ unsafe-TCB inventory
+# is unchanged.
+rayon = { version = "1", optional = true }
 
 [dev-dependencies]
 trybuild = "1"
 criterion = { version = "0.5", features = ["html_reports"] }
+# Independent re-hash for the fail-secure contrast test
+# (tests/test_status_quo_contrast.rs): Blake3Hash::of is deliberately
+# pub(crate) — one of the crate's protections — so the test re-computes
+# the digest with the same algorithm to assert the verdict's evidence_id
+# matches an independent hash of the same context. Same version/features
+# as the [dependencies] entry: already resolved in the root lock, zero
+# new packages.
+blake3 = { version = "1", default-features = false, features = ["std", "no_neon"] }
+# See the serde_json block in [dependencies] above: required here
+# (non-optional) so that tests/test_status_quo_contrast.rs (Round 3, Task B1
+# — the fail-open vs. fail-secure contrast the editorial letter's E2 baseline
+# comparison implicitly requires) compiles under plain
+# `cargo test --workspace` and under CI's feature-less invocation, with no
+# connection to the sweep-bench feature gate. Mirrors the rayon dual
+# declaration pattern.
+serde_json = "1"
+# See the rayon block in [dependencies] above: required here (non-optional)
+# so that tests/test_load.rs compiles under plain `cargo test --workspace`
+# and under CI's `cargo test --features test-support --test test_load`,
+# with no connection to the sweep-bench feature gate.
 rayon = "1"
 
 [[bench]]
 name = "verdict_construction"
 harness = false
 required-features = ["test-support"]
+
+# Concurrency sweep harness — declared as a [[bin]] target (NOT [[bench]])
+# so that:
+#   1. `cargo bench --workspace` does not execute this multi-hour sweep —
+#      bench targets run by default under `cargo bench`, and the Task 3
+#      verification requires Criterion-only execution.
+#   2. `cargo run --release --features sweep-bench --bin sweep_concurrent`
+#      works verbatim, as documented in the file header and in
+#      scripts/run_sweep.sh.
+# The explicit [[bench]] above disables bench auto-discovery, so this file
+# under benches/ is not picked up as a second bench target.
+# `required-features` keeps the binary out of default builds entirely:
+# cargo build/test/clippy/bench --workspace skip it unless sweep-bench is
+# explicitly requested (CI never requests it).
+[[bin]]
+name = "sweep_concurrent"
+path = "benches/sweep_concurrent.rs"
+required-features = ["sweep-bench"]

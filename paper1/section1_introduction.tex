@@ -8,10 +8,10 @@
 % ─────────────────────────────────────────────────────────────────────────────
 
 \section{Introduction}
+\label{sec:intro}
 
 Deployed AI systems now issue consequential decisions in milliseconds:
-a credit application is rejected, a job candidate is ranked out of contention,
-a social-benefit disbursement is blocked.
+a credit application is rejected; a social-benefit disbursement is blocked.
 Regulatory frameworks acknowledge this reality.
 Brazil's Lei Geral de Proteção de Dados (LGPD), Article~18, \S2,
 grants affected individuals the right to demand human review and explanation
@@ -66,17 +66,19 @@ Because \texttt{Blake3Hash}---the only evidence artifact---has no public
 constructor, it cannot be forged: the sole path to a \texttt{Blake3Hash}
 is through \texttt{EvidenceToken::consume()}.
 A~silent decision is therefore not an illegal act that slips past a guard;
-it is a \emph{type error, not a runtime omission}:
+it is a \emph{type error}:
 the compiler rejects it before a single byte of evidence is ever dropped.
 
 This paper makes three contributions.
 \begin{enumerate}
   \item \textbf{Linear Resource Types for AI Accountability (C1).}
-    We present the first formal encoding of AI accountability obligations---
-    specifically LGPD Art.~18\S2 and EU AI Act Art.~86---as linear resources
-    in the sense of Girard~\cite{girard1987linear}.
-    The core invariant $V \multimap (E \otimes C)$ is expressed as a
-    compile-time type constraint in Rust and verified on the companion
+    Building on linear resource discipline established for protocols
+    and resources (Girard~\cite{girard1987linear}, Vault, typestate,
+    session types; Section~\ref{sec:linear_related}), we instantiate it
+    over AI accountability obligations---LGPD Art.~18\S2 and EU AI Act
+    Art.~86: the core invariant
+    $V \multimap (E \otimes C_{\text{signed}})$ is a compile-time type
+    constraint in Rust, verified on the companion
     repository~\cite{soares2026a, soares2026b}.
 
   \item \textbf{Decision-Evidence Causal Binding (C2).}
@@ -96,12 +98,12 @@ This paper makes three contributions.
     the set of materialized silent decisions is empty.
     The proof proceeds by contradiction via the Rust type system and is
     machine-checkable: \texttt{cargo test} on the companion repository
-    verifies all seven clauses in under four seconds.\
+    verifies all seventeen clauses in seconds.\
 \end{enumerate}
 
 \noindent
-Section~2 reviews the necessary background on Linear Logic and Rust ownership.
-Section~3 defines the BTV type system formally.
-Section~4 states and proves the Constitutional Enclosure Theorem.
-Section~5 describes the implementation and benchmarks.
-Section~6 discusses related work and limitations.
+Section~2 situates the work against Policy-as-Code, audit logging, and
+linear-type approaches.
+Sections~3--5 develop the type system, state and prove the Constitutional
+Enclosure Theorem, and report the implementation and benchmarks.
+Section~6 discusses limitations and design trade-offs.

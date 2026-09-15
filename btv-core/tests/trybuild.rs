@@ -19,4 +19,8 @@ fn compile_fail_suite() {
     t.compile_fail("tests/ui/escalated_token_reuse.rs");
     t.compile_fail("tests/ui/escalated_consume_external.rs");
     t.compile_fail("tests/ui/escalated_operator_token_drop.rs");
+    // OS-06 gate: tokens moved into a failed `issue_verdict` cannot be
+    // reused by the caller — retry is a compile error (E0382), which is
+    // the linearity guarantee `mem::forget` never provided.
+    t.compile_fail("tests/ui/token_reuse_after_fail_secure.rs");
 }

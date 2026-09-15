@@ -76,14 +76,12 @@ pub struct DeliveryToken {
 impl DeliveryToken {
     /// Atomically seals a Verdict and its InclusionReceipt.
     /// Verifies the Ed25519 signature before consuming the receipt.
-    pub fn seal(
-        verdict: &impl Serialize,
-        receipt: InclusionReceipt,
-    ) -> Result<Self, SealError> {
-        let verdict_bytes =
-            serde_json::to_vec(verdict).map_err(SealError::Serialization)?;
+    pub fn seal(verdict: &impl Serialize, receipt: InclusionReceipt) -> Result<Self, SealError> {
+        let verdict_bytes = serde_json::to_vec(verdict).map_err(SealError::Serialization)?;
         let msg = index_message(receipt.log_index);
-        receipt.verify(&msg).map_err(|_| SealError::InvalidSignature)?;
+        receipt
+            .verify(&msg)
+            .map_err(|_| SealError::InvalidSignature)?;
         let (log_index, sig, _key) = receipt.consume();
         Ok(Self {
             verdict_bytes,
@@ -163,11 +161,10 @@ impl LogClient {
             .send_json(body)
             .map_err(|e| LogClientError::Network(e.to_string()))?
             .into_json()
-            .map_err(|e| LogClientError::Network(format!("invalid JSON: {e}")))?
-        ;
+            .map_err(|e| LogClientError::Network(format!("invalid JSON: {e}")))?;
 
-        let sig_bytes = decode_hex(&resp.signature_hex)
-            .map_err(|_| LogClientError::InvalidSignature)?;
+        let sig_bytes =
+            decode_hex(&resp.signature_hex).map_err(|_| LogClientError::InvalidSignature)?;
         let sig_arr: [u8; 64] = sig_bytes
             .try_into()
             .map_err(|_| LogClientError::InvalidSignature)?;
@@ -179,7 +176,11 @@ impl LogClient {
             .verify(&msg, &signature)
             .map_err(|_| LogClientError::InvalidSignature)?;
 
-        Ok(InclusionReceipt::new(resp.index, signature, self.verifying_key))
+        Ok(InclusionReceipt::new(
+            resp.index,
+            signature,
+            self.verifying_key,
+        ))
     }
 }
 
@@ -249,7 +250,10 @@ mod tests {
     fn seal_and_deliver_roundtrip() {
         let sk = SigningKey::generate(&mut OsRng);
         let receipt = make_receipt(0, &sk);
-        let verdict = TestVerdict { id: 1, outcome: "Deny" };
+        let verdict = TestVerdict {
+            id: 1,
+            outcome: "Deny",
+        };
         let token = DeliveryToken::seal(&verdict, receipt).unwrap();
         let payload = token.deliver();
         assert_eq!(payload.log_index, 0);
@@ -266,7 +270,10 @@ mod tests {
         let msg = index_message(0);
         let sig = other_sk.sign(&msg);
         let receipt = InclusionReceipt::new(0, sig, sk.verifying_key());
-        let verdict = TestVerdict { id: 2, outcome: "Allow" };
+        let verdict = TestVerdict {
+            id: 2,
+            outcome: "Allow",
+        };
         assert!(matches!(
             DeliveryToken::seal(&verdict, receipt),
             Err(SealError::InvalidSignature)

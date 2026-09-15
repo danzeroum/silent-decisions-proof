@@ -7,8 +7,8 @@
 //   LogClient pointing to a dead port → submit_and_await returns Err
 //   → no DeliveryToken can be produced
 
-use btv_transparency::{DeliveryToken, LogClient, LogClientError};
 use btv_transparency::log_server::{build_router, LogState};
+use btv_transparency::{DeliveryToken, LogClient, LogClientError};
 use ed25519_dalek::SigningKey;
 use rand::rngs::OsRng;
 use serde::Serialize;
@@ -35,8 +35,8 @@ fn end_to_end_pipeline() {
 
     // Create the runtime and bind the listener inside it
     let rt = tokio::runtime::Runtime::new().unwrap();
-    let listener = rt
-        .block_on(async { tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap() });
+    let listener =
+        rt.block_on(async { tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap() });
     let addr = listener.local_addr().unwrap();
 
     // Serve in the background within this runtime
@@ -46,7 +46,10 @@ fn end_to_end_pipeline() {
 
     // ureq is synchronous/blocking — run it in a separate OS thread so it
     // doesn't block the tokio executor threads (which are needed by the server).
-    let verdict = TestVerdict { id: 42, outcome: "Allow" };
+    let verdict = TestVerdict {
+        id: 42,
+        outcome: "Allow",
+    };
     let verdict_bytes = serde_json::to_vec(&verdict).unwrap();
     let verdict_hash: [u8; 32] = {
         use sha2::{Digest, Sha256};
@@ -61,9 +64,12 @@ fn end_to_end_pipeline() {
     .unwrap()
     .expect("submit to local btv-log must succeed");
 
-    let verdict = TestVerdict { id: 42, outcome: "Allow" }; // re-create (moved)
-    let token = DeliveryToken::seal(&verdict, receipt)
-        .expect("seal must succeed with a valid receipt");
+    let verdict = TestVerdict {
+        id: 42,
+        outcome: "Allow",
+    }; // re-create (moved)
+    let token =
+        DeliveryToken::seal(&verdict, receipt).expect("seal must succeed with a valid receipt");
     let payload = token.deliver();
 
     assert_eq!(payload.log_index, 0);
@@ -76,7 +82,6 @@ fn end_to_end_pipeline() {
 /// and the type system prevents constructing a DeliveryToken from that Err.
 #[test]
 fn log_unavailable_fails_secure() {
-
     // Bind to port 0 to get a free OS port, then drop the listener immediately.
     // The port will be unreachable (connection refused) since no server binds to it.
     let free_addr = {

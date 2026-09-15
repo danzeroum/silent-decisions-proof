@@ -1,0 +1,17 @@
+# Sweep trigger marker (Round 3, Task B3)
+
+The presence of this file in a commit pushed to
+`review/bench-workspace-ffi` triggers the "Sweep Dispatch (manual)"
+workflow (see .github/workflows/sweep-dispatch.yml) — the reduced
+concurrency sweep (BTV_SWEEP_TARGET_WALL_SECS=10, 3 modes) on a
+GitHub-hosted ubuntu-latest runner, as the second REAL execution
+environment for the E2 multi-hardware evidence.
+
+Why a marker: workflow_dispatch API calls 404 while this workflow file
+exists only on a non-default branch (GitHub registers dispatchable
+workflows from the default branch). The push path filter on this file
+provides an equivalent manual trigger that works on feature branches.
+
+After the workflow lands on the default branch, prefer workflow_dispatch
+and remove the push trigger from the workflow file (this marker then
+becomes inert documentation).

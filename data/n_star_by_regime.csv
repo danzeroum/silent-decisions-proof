@@ -1,5 +1,5 @@
-regime,rho_usd_per_decision,delta_credit,n_star_no_credit,n_star_with_credit,enforcement_prob,expected_fine_usd,avg_controller_decisions
-GDPR,0.01,0.1,500000.0,555555.5555555555,0.01,10800000,1000000
-EU_AI_ACT,0.02,0.5,250000.0,500000.0,0.02,3000000,3000000
-SEC,1.04,0.0,4807.692307692308,4807.692307692308,0.05,125000000,6000000
-BR_LGPD,0.005,0.0,1000000.0,1000000.0,0.005,500000,500000
+regime,fine_source,p_enf,expected_fine_usd,n_bar,rho_derived_usd_per_decision,delta_credit,n_star_full_avoidance,n_star_full_avoidance_dedicated_hsm,n_star_credit_only,corpus_n
+GDPR,corpus_median,0.01,14250000,1000000,0.1425,0.1,18948.17,105969.37,189473.68,10
+EU_AI_ACT,assumption,0.02,3000000,3000000,0.02,0.5,135040.51,755226.57,270000.00,0
+SEC,corpus_median,0.05,35000000,6000000,0.2916666666666667,0.0,9257.33,51772.49,,5
+BR_LGPD,corpus_median,0.005,100000,500000,0.001,0.0,2716297.79,15191146.88,,0
