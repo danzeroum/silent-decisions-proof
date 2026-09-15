@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic)]
 //! Deliberate evidence generator for `reports/load_stats*.csv` — OS-08 gate
 //! (COMSI-2026-04-0112, closes F9).
 //!
