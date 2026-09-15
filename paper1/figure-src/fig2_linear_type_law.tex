@@ -34,11 +34,13 @@
 \draw[arr] (law) -- (V);
 
 % ── three rejected bypass attempts, as a compact side column ────────────
-\node[reject, right=14mm of E] (r1) {Clone $\rightarrow$ rejected};
+\node[reject, right=14mm of C, anchor=west] (r1) {Clone $\rightarrow$ rejected};
 \node[reject, below=3mm of r1] (r2) {Forge $\rightarrow$ rejected};
 \node[reject, below=3mm of r2] (r3) {Bypass constructor\\ $\rightarrow$ rejected};
 \node[draw=black!45, rounded corners=3pt, inner sep=5pt,
-  fit=(r1)(r2)(r3), label={[font=\scriptsize\bfseries, anchor=south]south:only \texttt{Verdict::new} is well-typed}] (box) {};
+  fit=(r1)(r2)(r3)] (box) {};
+\node[font=\scriptsize\bfseries, align=center, text width=32mm,
+  below=4mm of box.south] {only \texttt{Verdict::new} is well-typed};
 
 \end{tikzpicture}
 \end{document}

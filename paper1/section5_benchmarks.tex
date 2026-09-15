@@ -109,12 +109,12 @@ indifferent to that choice; the latency budget is not.
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{figures/fig4_benchmark_overhead.pdf}
-\caption{Measured median latency of the BTV and status-quo logging
-  paths at 4~KiB, one thread (logarithmic scale). The rows compare
-  distinct implementation and persistence postures, not a single
-  end-to-end number; type-level enforcement adds no runtime branch,
-  and the measured costs are those of hashing, token verification,
-  sealing, encoding, and---where enabled---durable persistence.}
+\caption{Measured latency at 4~KiB and one thread (logarithmic scale;
+  medians across five trials). The rows compare distinct implementation
+  and persistence postures, not a single end-to-end number: durable
+  persistence, not the type boundary alone, dominates the measured
+  latency, whose cost is that of hashing, token verification, sealing,
+  and encoding.}
 \label{fig:benchmark_overhead}
 \end{figure}
 

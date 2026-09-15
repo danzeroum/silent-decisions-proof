@@ -34,13 +34,13 @@ Silent decisions are not a failure of intent---they are a failure of type.
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{figures/fig0_executive_summary.pdf}
-\caption{The silent-decision problem and the BTV response. Top: a
-  consequential decision is emitted and its audit record, written
-  asynchronously, may be lost. Middle: LGPD Art.~20 and EU AI Act
-  Arts.~14 and~86 require review and explanation but do not by
-  themselves prevent unevidenced decisions. Bottom: BTV makes evidence
-  and an authority-signed compliance token preconditions of verdict
-  construction.}
+\caption{The silent-decision problem as a structural analog of a
+  classic memory-safety bug. \textbf{A:} in C, a use-after-free is a
+  runtime invariant violation discovered only much later.
+  \textbf{B:} in a consequential AI decision, evidence separated from
+  the decision it justifies can be silently lost the same way.
+  \textbf{C:} BTV closes the analogous gap at compile time---without
+  the required tokens, a BTV \texttt{Verdict} cannot be constructed.}
 \label{fig:executive_summary}
 \end{figure*}
 

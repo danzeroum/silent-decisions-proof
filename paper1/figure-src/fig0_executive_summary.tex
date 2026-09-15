@@ -12,7 +12,7 @@
 \begin{document}
 \begin{tikzpicture}[
   font=\footnotesize,
-  step/.style={draw, rounded corners=2pt, align=center, inner sep=5pt,
+  flowbox/.style={draw, rounded corners=2pt, align=center, inner sep=5pt,
     minimum width=40mm, minimum height=11mm, fill=black!04},
   final/.style={draw, rounded corners=2pt, align=center, inner sep=5pt,
     minimum width=40mm, minimum height=11mm, fill=black!12},
@@ -32,22 +32,22 @@
 \node[hdr] (hC) at (\colC,0) {C. BTV construction boundary};
 
 % ── Panel A ──────────────────────────────────────────────────────────────
-\node[step, below=6mm of hA] (a1) {\texttt{free(ptr)}\\ dangling pointer};
-\node[step, below=9mm of a1] (a2) {\texttt{use(ptr)}\\ undefined behavior};
+\node[flowbox, below=6mm of hA] (a1) {\texttt{free(ptr)}\\ dangling pointer};
+\node[flowbox, below=9mm of a1] (a2) {\texttt{use(ptr)}\\ undefined behavior};
 \node[final, below=9mm of a2] (a3) {crash discovered\\ years later};
 \draw[arr] (a1) -- (a2);
 \draw[arr] (a2) -- (a3);
 
 % ── Panel B ──────────────────────────────────────────────────────────────
-\node[step, below=6mm of hB] (b1) {decision emitted\\ in milliseconds};
-\node[step, below=9mm of b1] (b2) {audit record\\ written asynchronously};
+\node[flowbox, below=6mm of hB] (b1) {decision emitted\\ in milliseconds};
+\node[flowbox, below=9mm of b1] (b2) {audit record\\ written asynchronously};
 \node[final, below=9mm of b2] (b3) {record may be\\ lost before review};
 \draw[arr] (b1) -- (b2);
 \draw[arr] (b2) -- (b3);
 
 % ── Panel C ──────────────────────────────────────────────────────────────
-\node[step, below=6mm of hC] (c1) {EvidenceToken +\\ ComplianceToken};
-\node[step, below=9mm of c1] (c2) {\texttt{Verdict::new(e, c)}\\ consumes both};
+\node[flowbox, below=6mm of hC] (c1) {EvidenceToken +\\ ComplianceToken};
+\node[flowbox, below=9mm of c1] (c2) {\texttt{Verdict::new(e, c)}\\ consumes both};
 \node[final, below=9mm of c2] (c3) {without the required\\ tokens, a BTV \texttt{Verdict}\\ cannot be constructed};
 \draw[arr] (c1) -- (c2);
 \draw[arr] (c2) -- (c3);
