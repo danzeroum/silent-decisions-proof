@@ -4,10 +4,11 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 source_file="$repo_root/docs/RESPONSE-LETTER.md"
-output_file="$repo_root/docs/COMSI-2026-04-0112_summary-of-changes.pdf"
+output_file="$repo_root/dist/COMSI-2026-04-0112_author-response.pdf"
 
 command -v pandoc >/dev/null
 command -v pdflatex >/dev/null
+mkdir -p "$repo_root/dist"
 
 pandoc "$source_file" \
   --from=markdown \
