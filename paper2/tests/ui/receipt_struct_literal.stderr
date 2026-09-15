@@ -7,7 +7,6 @@ warning: unreachable expression
    |                        ^^^^^^^ unreachable expression
    |
    = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
-   = note: this warning originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0451]: fields `log_index`, `signed_tree_head` and `verifying_key` of struct `InclusionReceipt` are private
   --> tests/ui/receipt_struct_literal.rs:10:9

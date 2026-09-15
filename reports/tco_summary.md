@@ -13,7 +13,7 @@
 | GDPR | 10 | $14.25M | [$8.80M, $28.75M] | $51.41M | [$12.00M, $123.45M] |
 | EU_AI_ACT | 0 | — (no corpus cases; `fine_source: assumption`) | — | — | — |
 | SEC | 5 | $35.00M | [$6.00M, $200.00M] | $65.00M | [$17.00M, $134.20M] |
-| BR_LGPD | 0 | — (no corpus cases; `fine_source: assumption`) | — | — | — |
+| BR_LGPD | 5 | $0.10M | [$0.05M, $1.20M] | $0.32M | [$0.07M, $0.76M] |
 
 > **Selection bias, documented:** the corpus is a set of 20 NOTABLE
 > enforcement actions, not a random sample of controllers; E[fine]

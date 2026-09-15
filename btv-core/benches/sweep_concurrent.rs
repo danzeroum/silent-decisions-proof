@@ -112,6 +112,7 @@ use btv_core::{
 };
 use rayon::prelude::*;
 use std::hint::black_box;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const PAYLOAD_SIZES: &[usize] = &[64, 512, 4096];
@@ -405,6 +406,21 @@ struct ModeOps<'a> {
     compliance_new: &'a (dyn Fn() -> ComplianceToken + Sync),
     verdict_new: &'a (dyn Fn(EvidenceToken, ComplianceToken) -> Verdict + Sync),
     durable_sink: Option<&'a dyn LogSink>,
+    /// Global counter of durable-mode operations issued so far, across
+    /// calibration AND every (payload, thread-count, trial, thread) call
+    /// for the whole run (COMSI-2026-04-0112 Round 2, G5). `run_thread`'s
+    /// own `iter` is local to a single call — it restarts at 0 for every
+    /// trial and every thread — so seeding the durable payload from `iter`
+    /// alone let every trial after the first, and every thread after the
+    /// first within a trial, replay the SAME sequence of `evidence_id`s
+    /// as an earlier call. OS-03's append-only idempotency then read that
+    /// replay as "already logged, identical, Ok(())" and skipped the
+    /// INSERT — no error, no signal, just a `Verdict` returned without a
+    /// commit or an fsync behind it. This counter's `fetch_add` return
+    /// value is globally unique for the process's lifetime, independent
+    /// of trial/thread/thread-count, so every durable call always logs a
+    /// distinct row.
+    durable_nonce: Option<&'a AtomicU64>,
 }
 
 fn run_thread(
@@ -432,7 +448,21 @@ fn run_thread(
 
     for iter in 0..(warmup + iters) {
         let observing = iter >= warmup;
-        payload[0..8].copy_from_slice(&(iter as u64).to_le_bytes());
+        // Durable mode's payload MUST be seeded from the global nonce, not
+        // the call-local `iter`, or every trial/thread after the first
+        // replays evidence_ids OS-03's append-only sink already has and
+        // silently no-ops the write (see `ModeOps::durable_nonce`). Other
+        // modes don't touch the durable sink, so `iter` (this call's own
+        // 0..warmup+iters counter — still distinct per timed operation,
+        // still defeats constant-folding) is unchanged for them.
+        let nonce = match mode {
+            Mode::FullPipelineDurable => ops
+                .durable_nonce
+                .expect("durable_nonce present for FullPipelineDurable")
+                .fetch_add(1, Ordering::Relaxed),
+            _ => iter as u64,
+        };
+        payload[0..8].copy_from_slice(&nonce.to_le_bytes());
         let elapsed_ns = match mode {
             Mode::FullPipeline => {
                 let start = Instant::now();
@@ -597,7 +627,19 @@ fn sweep(thread_counts: &[usize], ops: &ModeOps<'_>) {
             }
             let calibrate_op = |buf: &mut [u8]| -> Duration {
                 cal_iter += 1;
-                buf[0..8].copy_from_slice(&cal_iter.to_le_bytes());
+                // Same nonce requirement as run_thread's loop: calibration
+                // for FullPipelineDurable issues real durable writes too,
+                // sharing the one sink across the whole program run, so it
+                // must draw from the same global counter or its first ~2000
+                // samples silently collide with trial 0's first ~2000.
+                let nonce = match mode {
+                    Mode::FullPipelineDurable => ops
+                        .durable_nonce
+                        .expect("durable_nonce present for FullPipelineDurable")
+                        .fetch_add(1, Ordering::Relaxed),
+                    _ => cal_iter,
+                };
+                buf[0..8].copy_from_slice(&nonce.to_le_bytes());
                 match mode {
                     Mode::FullPipeline => {
                         let start = Instant::now();
@@ -734,6 +776,7 @@ fn main() {
     ));
     let durable_sink = SqliteLogSink::open(durable_path.to_str().expect("utf-8 temp path"))
         .expect("durable sqlite sink");
+    let durable_nonce = AtomicU64::new(0);
 
     let ops = ModeOps {
         evidence_new: &|ctx: &[u8]| EvidenceToken::new(ctx),
@@ -747,9 +790,36 @@ fn main() {
                 .expect("recognized-authority tokens verify by construction")
         },
         durable_sink: Some(&durable_sink),
+        durable_nonce: Some(&durable_nonce),
     };
 
     sweep(&thread_counts, &ops);
+
+    // Sanity gate (COMSI-2026-04-0112 Round 2, G5): every durable-mode
+    // operation this run issued (calibration and trial loop alike) drew a
+    // fresh value from `durable_nonce`, so its final count IS the number
+    // of `issue_verdict` calls against `durable_sink`. If OS-03's
+    // append-only sink ever took the idempotent-replay path instead of a
+    // real INSERT — the exact failure mode this gate exists to catch —
+    // the row count falls short of that number. This is what "durable"
+    // means for this benchmark: not that a call returned `Ok(())`, but
+    // that a row exists for it.
+    let expected_rows = durable_nonce.load(Ordering::Relaxed);
+    let actual_rows = durable_sink
+        .count_rows()
+        .expect("row count query must succeed");
+    eprintln!(
+        "durability sanity gate: expected_rows={expected_rows} actual_rows={actual_rows}"
+    );
+    assert_eq!(
+        actual_rows, expected_rows as i64,
+        "DURABILITY GATE FAILED: {actual_rows} rows in the sink but {expected_rows} durable \
+         operations were issued — some calls returned Ok(()) via OS-03's idempotent-replay \
+         path instead of a real INSERT, meaning the measured latency includes fast no-op \
+         replays rather than only real durable writes. Do not trust this run's \
+         full_pipeline_durable numbers; find the collision (duplicate evidence_id) and fix \
+         the nonce before recollecting."
+    );
 
     drop(durable_sink);
     let _ = std::fs::remove_file(&durable_path);

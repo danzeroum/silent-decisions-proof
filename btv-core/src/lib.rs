@@ -382,6 +382,27 @@ impl SqliteLogSink {
         })
     }
 
+    /// Total rows currently persisted (COMSI-2026-04-0112 Round 2, G5): a
+    /// durability measurement that does not verify this against its own
+    /// expected write count cannot tell a real `INSERT` from an idempotent
+    /// no-op replay of an already-persisted `evidence_id` — the append-only
+    /// contract (OS-03) makes the two indistinguishable from the caller's
+    /// `Ok(())` alone.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`BtvError::Backend`] if the count query fails.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the connection mutex is poisoned (a prior panic while
+    /// holding the lock), matching every other method on this type.
+    pub fn count_rows(&self) -> Result<i64, BtvError> {
+        let conn = self.conn.lock().expect("conn mutex poisoned");
+        conn.query_row("SELECT COUNT(*) FROM verdicts", [], |row| row.get(0))
+            .map_err(|e| BtvError::Backend(format!("sqlite count: {e}")))
+    }
+
     /// Simulate a partition.
     pub fn fail(&self) {
         self.available

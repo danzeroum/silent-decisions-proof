@@ -14,8 +14,8 @@ case_id,regime,representative_case,jurisdiction,year,t1_evidence,t2_destruction,
 13,SEC,Morgan Stanley (off-channel),US-SEC,2022,0,1,0,35.0,0.05,6000000,1.04
 14,SEC,Deutsche Bank (off-channel),US-SEC,2023,0,1,0,19.0,0.05,6000000,1.04
 15,SEC,Robinhood (algo disclosure),US-SEC,2022,1,0,1,65.0,0.05,6000000,1.04
-16,BR,Serasa Experian (ANPD),BR-LGPD,2023,1,0,1,0.1,0.005,500000,0.001
-17,BR,Clear Sale (ANPD),BR-LGPD,2023,1,0,1,0.05,0.005,500000,0.001
-18,BR,Banco Inter (CVM notice),BR-LGPD,2022,0,1,0,1.2,0.005,500000,0.001
-19,BR,iFood (ANPD),BR-LGPD,2023,1,0,1,0.08,0.005,500000,0.001
-20,BR,Mercado Livre (ANPD),BR-LGPD,2022,1,1,1,0.15,0.005,500000,0.001
+16,BR_LGPD,Serasa Experian (ANPD),BR-LGPD,2023,1,0,1,0.1,0.005,500000,0.001
+17,BR_LGPD,Clear Sale (ANPD),BR-LGPD,2023,1,0,1,0.05,0.005,500000,0.001
+18,BR_LGPD,Banco Inter (CVM notice),BR-LGPD,2022,0,1,0,1.2,0.005,500000,0.001
+19,BR_LGPD,iFood (ANPD),BR-LGPD,2023,1,0,1,0.08,0.005,500000,0.001
+20,BR_LGPD,Mercado Livre (ANPD),BR-LGPD,2022,1,1,1,0.15,0.005,500000,0.001
