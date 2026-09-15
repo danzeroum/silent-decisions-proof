@@ -50,8 +50,8 @@ The structural guarantee is narrower than non-repudiation: because an
 cannot be consumed by two verdict constructions.  Tokens can still be
 dropped because Rust ownership is affine; what remains mandatory is that
 every successful BTV \texttt{Verdict} construction receives both tokens.
-We return to the affine-versus-linear distinction below
-(Section~\ref{sec:affine-linear}).
+We return to the affine-versus-linear discussion in
+Section~\ref{sec:binding}.
 
 % ----------------------------------------------------------------
 \subsection{The Atomic Binding Operator}
@@ -79,8 +79,9 @@ verdict is produced, or the program does not type-check
   \texttt{EvidenceToken} and a \texttt{ComplianceToken} are jointly
   consumed ($\otimes$) to construct a \texttt{Verdict}. Three bypass
   attempts are rejected by the compiler; \texttt{Verdict::new} is the
-  only well-typed path. (Section~\ref{sec:affine-linear} discusses the
-  affine-ownership nuance this figure omits for clarity.)}
+  only well-typed path. (The affine-versus-linear discussion in
+  Section~\ref{sec:binding} covers the ownership nuance this figure
+  omits for clarity.)}
 \label{fig:linear_type_law}
 \end{figure}
 
@@ -104,8 +105,7 @@ The HMAC integrity seal computed inside \texttt{new} binds
 \texttt{evidence\_id}, \texttt{decision}, and \texttt{explanation}
 into a tamper-evident record, making post-hoc alteration detectable.
 
-\paragraph{Affine, not strictly linear.}
-\label{sec:affine-linear}
+\paragraph*{Affine, not strictly linear.}
 Precision matters: in substructural-type-theory
 terms~\cite{walker2005substructural,pierce2002tapl}, Rust ownership is
 \emph{affine} (used zero or one times) rather than strictly
@@ -175,7 +175,7 @@ only well-typed path to a \texttt{Verdict} in any external crate is
 through \texttt{Verdict::new}, which enforces the $(E \otimes C) \multimap V$
 law.
 
-\paragraph{Scope of the Theorem.}
+\paragraph*{Scope of the Theorem.}
 The Constitutional Enclosure Theorem (Section~\ref{sec:theorem})
 holds within the following boundaries:
 
