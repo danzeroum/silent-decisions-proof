@@ -1,55 +1,44 @@
 % fig2_linear_type_law.tex — Figure 3 (column width)
-% The core type law (E ⊗ C) ⊸ V with the CORRECT direction
-% (regenerated 2026-09-15; the April figure inverted the implication).
-% E and C converge to V; three compiler-enforced barriers annotated.
+% Redesign 2026-09-15 (COMSI-2026-04-0112, design/ieee-figure-redesign):
+% simplified to the token-flow + three rejected bypass attempts, dropping
+% the earlier "three barriers" annotation layer (must_use nuance is fully
+% covered by the adjacent prose in Sec. 3's "Affine, not strictly linear"
+% paragraph, so this figure no longer restates it and cannot overclaim it).
+% Formula direction is the corrected (E ⊗ C) ⊸ V throughout.
 \documentclass[border=2pt]{standalone}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.misc}
+\usetikzlibrary{arrows.meta,positioning,fit,calc}
 \usepackage{amssymb}
 \usepackage{cmll}
 \begin{document}
 \begin{tikzpicture}[
   font=\footnotesize,
   tok/.style={draw, rounded corners=2pt, align=center, inner sep=4pt,
-    minimum width=21mm, minimum height=12mm, fill=black!04},
+    minimum width=24mm, minimum height=11mm, fill=black!04},
   vnode/.style={draw, rounded corners=2pt, align=center, inner sep=4pt,
-    minimum width=17mm, minimum height=12mm, fill=black!12},
-  tens/.style={draw, circle, inner sep=1.5pt, fill=black!12, font=\small},
+    minimum width=24mm, minimum height=11mm, fill=black!12},
+  reject/.style={draw, rounded corners=1pt, align=center, inner sep=3pt,
+    font=\scriptsize, fill=black!04, minimum width=24mm},
   arr/.style={-{Stealth[length=5pt]}, semithick},
-  note/.style={align=center, font=\scriptsize, text=black!75},
-  barrier/.style={draw, align=left, font=\scriptsize, inner sep=3pt,
-    rounded corners=1pt, fill=black!06}
+  note/.style={align=center, font=\scriptsize, text=black!75}
 ]
 
-% ── The law, stated ───────────────────────────────────────────────────────
-\node[font=\small] (law) at (0,0)
+% ── E and C, joined into the formula ─────────────────────────────────────
+\node[tok] (E) at (0,0) {\textbf{EvidenceToken} $E$};
+\node[tok, right=8mm of E] (C) {\textbf{ComplianceToken} $C$};
+\node[font=\small, below=9mm of $(E.south)!0.5!(C.south)$] (law)
   {$(E \otimes C) \multimap V$};
+\draw[semithick] (E.south) -- ++(0,-4mm) -| (law.north);
+\draw[semithick] (C.south) -- ++(0,-4mm) -| (law.north);
+\node[vnode, below=9mm of law] (V) {\textbf{Sealed Verdict} $V$};
+\draw[arr] (law) -- (V);
 
-% ── E and C converge, are joined by ⊗, and produce V ─────────────────────
-\node[tok, below left=13mm and 10mm of law.south] (E)
-  {\textbf{EvidenceToken} $E$\\ BLAKE3 of context};
-\node[tok, below right=13mm and 10mm of law.south] (C)
-  {\textbf{ComplianceToken} $C$\\ authority-signed};
-\node[tens, below=8mm of law] (tensor) {$\otimes$};
-\draw[semithick] (E.south) |- ($(tensor.west)+(-3mm,0)$) -- (tensor.west);
-\draw[semithick] (C.south) |- ($(tensor.east)+(3mm,0)$) -- (tensor.east);
-\node[vnode, below=10mm of tensor] (V) {\textbf{Verdict} $V$};
-\draw[arr] (tensor) -- (V);
-
-% ── Three compiler-enforced barriers ─────────────────────────────────────
-\node[barrier, below left=6mm and 2mm of E.south west, anchor=north west] (bar1)
-  {Barrier 1 --- \emph{no cloning}\\ no \texttt{Clone}/\texttt{Copy}: one token\\
-   cannot bind two verdicts};
-\node[barrier, below=8mm of V.south, anchor=north] (bar2)
-  {Barrier 2 --- \emph{no forging}\\ private fields and\\
-   \texttt{pub(crate)} constructors};
-\node[barrier, below left=6mm and 2mm of C.south east, anchor=north east] (bar3)
-  {Barrier 3 --- \emph{no silent drop}\\ \texttt{\#[must\_use]} + crate-level\\
-   \texttt{deny(unused\_must\_use)}};
-
-\draw[semithick, dotted] (bar1.north) -- (E.south west);
-\draw[semithick, dotted] (bar3.north) -- (C.south east);
-\draw[semithick, dotted] (bar2.north) -- (V.south);
+% ── three rejected bypass attempts, as a compact side column ────────────
+\node[reject, right=14mm of E] (r1) {Clone $\rightarrow$ rejected};
+\node[reject, below=3mm of r1] (r2) {Forge $\rightarrow$ rejected};
+\node[reject, below=3mm of r2] (r3) {Bypass constructor\\ $\rightarrow$ rejected};
+\node[draw=black!45, rounded corners=3pt, inner sep=5pt,
+  fit=(r1)(r2)(r3), label={[font=\scriptsize\bfseries, anchor=south]south:only \texttt{Verdict::new} is well-typed}] (box) {};
 
 \end{tikzpicture}
 \end{document}

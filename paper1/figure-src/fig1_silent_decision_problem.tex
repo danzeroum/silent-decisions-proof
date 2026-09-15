@@ -37,5 +37,9 @@
 \node[note, below=1mm of cons] {atomic, at compile time};
 \node[panel, fit=(tokE)(tokC)(cons)(verd), label={[font=\scriptsize\bfseries, anchor=north west]north west:B. BTV: compile-time guarantee}] (p2) {};
 
+% ── synthesis line ───────────────────────────────────────────────────────
+\node[note, below=6mm of p2.south, text width=68mm, align=center]
+  {Post-hoc evidence is separable; BTV requires it at the protected construction boundary.};
+
 \end{tikzpicture}
 \end{document}

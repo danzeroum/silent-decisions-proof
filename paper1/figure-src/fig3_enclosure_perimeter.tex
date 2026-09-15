@@ -43,13 +43,17 @@
   node[midway, above, note] {\texttt{E0624}};
 \node[draw=black!60, cross out, semithick, inner sep=1.6pt] at (perim.east) {};
 
-% ── Attack vector C (from the north-east): token drop ────────────────────
+% ── Guardrail C (from the north-east): ignored token-producing expr. ─────
+% Not a hard rejection like Cases A/B — matches the proof text's own
+% "Guardrail C" framing: the diagnostic catches the plain-ignore case,
+% while let _ = expr/drop/mem::forget remain possible (closure instead
+% comes from the encapsulation axiom, per the adjacent proof).
 \node[att, above right=14mm and 2mm of perim.north east, anchor=south] (a3)
-  {Case C: token\\ silently dropped};
+  {Guardrail C: ignored\\ token-producing expr.};
 \draw[blk] (a3.south) -- ($(perim.north east)+(-6mm,0)$)
-  node[midway, right, note] {\texttt{unused\_must\_use}};
-\node[draw=black!60, cross out, semithick, inner sep=1.6pt]
-  at ($(perim.north east)+(-6mm,0)$) {};
+  node[midway, right, note] {\texttt{unused\_must\_use}\\ (diagnostic)};
+\node[draw=black!60, semithick, inner sep=1.6pt]
+  at ($(perim.north east)+(-6mm,0)$) {\scriptsize !};
 
 % ── The only authorized entry ─────────────────────────────────────────────
 \node[att, below=14mm of perim.south, fill=black!12] (gate)

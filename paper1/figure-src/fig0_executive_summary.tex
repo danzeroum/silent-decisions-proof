@@ -1,70 +1,61 @@
-% fig0_executive_summary.tex — Figure 1 (full-width figure*)
-% Monochrome executive summary: silent decision -> regulatory gap -> BTV law.
-% Regenerated 2026-09-15 (COMSI-2026-04-0112 R1): LGPD Art. 20, moderated
-% claim wording, corrected type law direction.
-% v2: collision fixes (VLM visual inspection round): stacked regulators in
-% band 2 with parallel arrows, label clearances in band 1.
+% fig0_executive_summary.tex — Figure 1 (figure*, full double-column width)
+% Redesign 2026-09-15 (COMSI-2026-04-0112, design/ieee-figure-redesign):
+% three-panel structural analogy, replacing the earlier three-band diagram.
+% Inspired by the author's original fig1_silent_decision_analog.pdf layout
+% (three columns, three stacked steps, one synthesis line) — recomposed with
+% only the corrected claims: BTV's punchline is scoped to "cannot be
+% constructed" within the type perimeter, never an unscoped "impossible."
 \documentclass[border=2pt]{standalone}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.misc}
+\usetikzlibrary{arrows.meta,positioning,fit,calc}
 \usepackage{amssymb}
-\usepackage{cmll}
 \begin{document}
 \begin{tikzpicture}[
   font=\footnotesize,
-  box/.style={draw, rounded corners=2pt, align=center, inner sep=4pt,
-    minimum height=16pt, fill=black!04},
-  law/.style={draw, rounded corners=2pt, align=center, inner sep=4pt,
-    fill=black!12, font=\small},
-  reg/.style={draw, rounded corners=2pt, align=center, inner sep=3pt,
-    minimum height=15pt, fill=black!04},
+  step/.style={draw, rounded corners=2pt, align=center, inner sep=5pt,
+    minimum width=40mm, minimum height=11mm, fill=black!04},
+  final/.style={draw, rounded corners=2pt, align=center, inner sep=5pt,
+    minimum width=40mm, minimum height=11mm, fill=black!12},
+  hdr/.style={font=\small\bfseries, align=center},
   arr/.style={-{Stealth[length=5pt]}, semithick},
-  lost/.style={-{Stealth[length=5pt]}, semithick, dashed},
-  note/.style={align=center, font=\scriptsize, text=black!70},
-  band/.style={draw=black!35, rounded corners=3pt, inner sep=6pt}
+  note/.style={align=center, font=\scriptsize, text=black!70}
 ]
 
-% ── Band 1: the silent decision ─────────────────────────────────────────
-\node[box] (ai) {\textbf{AI system}\\ consequential decision};
-\node[box, right=18mm of ai] (deny) {\textbf{``Deny''} emitted\\ in milliseconds};
-\node[box, right=20mm of deny] (log) {\textbf{Audit log}\\ asynchronous write};
-\draw[arr] (ai) -- (deny);
-\draw[lost] (deny) -- (log)
-  node[midway, below=1pt, note] {later, if at all};
-\node[draw=black!60, cross out, semithick, below=2.5mm of log, inner sep=2.5pt] (x) {};
-\node[note, below=1.5pt of x] (lostlbl) {record may be\\silently dropped};
-\node[band, fit=(ai)(deny)(log)(x)(lostlbl), label={[font=\scriptsize\bfseries, anchor=north west]north west:1. The silent decision}] (b1) {};
+% ── column x-positions ────────────────────────────────────────────────────
+\def\colA{0}
+\def\colB{48mm}
+\def\colC{96mm}
 
-% ── Band 2: the regulatory gap (stacked regulators, parallel arrows) ────
-\node[reg, below=9mm of b1.south west, anchor=north west] (lgpd)
-  {\textbf{LGPD Art.~20}\\ review of solely\\automated decisions};
-\node[reg, below=4mm of lgpd] (euact)
-  {\textbf{EU AI Act Arts.~14,~86}\\ human oversight;\\right to explanation};
-\node[reg, below=4mm of euact] (nist)
-  {\textbf{NIST AI RMF}\\ manage \& govern\\functions};
-\node[box, anchor=west] (gap) at ($(lgpd.east)+(42mm,0)$)
-  {Require explanations \emph{after} the fact;\\ they do not by themselves prevent\\
-   an unevidenced decision from being emitted};
-\draw[arr] (lgpd.east) -- (gap.west |- lgpd);
-\draw[arr] (euact.east) -- (gap.west |- euact);
-\draw[arr] (nist.east) -- (gap.west |- nist);
-\node[band, fit=(lgpd)(euact)(nist)(gap), label={[font=\scriptsize\bfseries, anchor=north west]north west:2. The regulatory gap}] (b2) {};
+% ── headers ──────────────────────────────────────────────────────────────
+\node[hdr] (hA) at (\colA,0) {A. Memory safety in C};
+\node[hdr] (hB) at (\colB,0) {B. Silent decision in AI};
+\node[hdr] (hC) at (\colC,0) {C. BTV construction boundary};
 
-% ── Band 3: the BTV response ────────────────────────────────────────────
-\node[box, below=9mm of b2.south west, anchor=north west, minimum width=20mm] (ev)
-  {\textbf{EvidenceToken} $E$\\ BLAKE3 of context};
-\node[box, right=4mm of ev, minimum width=20mm] (ct)
-  {\textbf{ComplianceToken} $C$\\ authority-signed};
-\node[law, right=8mm of ct, minimum width=30mm] (vnew)
-  {$\otimes$ \texttt{Verdict::new}\\ consumes both};
-\node[law, right=8mm of vnew, minimum width=22mm] (vv)
-  {\textbf{Verdict} $V$\\ exists only with\\ both tokens};
-\draw[arr] (ev) -- (vnew);
-\draw[arr] (ct) -- (vnew);
-\draw[arr] (vnew) -- (vv);
-\node[note, below=2mm of vnew] (lawnote)
-  {$(E \otimes C_{\mathrm{signed}}) \multimap V$};
-\node[band, fit=(ev)(ct)(vnew)(vv)(lawnote), label={[font=\scriptsize\bfseries, anchor=north west]north west:3. The BTV response: no evidence, no verdict}] (b3) {};
+% ── Panel A ──────────────────────────────────────────────────────────────
+\node[step, below=6mm of hA] (a1) {\texttt{free(ptr)}\\ dangling pointer};
+\node[step, below=9mm of a1] (a2) {\texttt{use(ptr)}\\ undefined behavior};
+\node[final, below=9mm of a2] (a3) {crash discovered\\ years later};
+\draw[arr] (a1) -- (a2);
+\draw[arr] (a2) -- (a3);
+
+% ── Panel B ──────────────────────────────────────────────────────────────
+\node[step, below=6mm of hB] (b1) {decision emitted\\ in milliseconds};
+\node[step, below=9mm of b1] (b2) {audit record\\ written asynchronously};
+\node[final, below=9mm of b2] (b3) {record may be\\ lost before review};
+\draw[arr] (b1) -- (b2);
+\draw[arr] (b2) -- (b3);
+
+% ── Panel C ──────────────────────────────────────────────────────────────
+\node[step, below=6mm of hC] (c1) {EvidenceToken +\\ ComplianceToken};
+\node[step, below=9mm of c1] (c2) {\texttt{Verdict::new(e, c)}\\ consumes both};
+\node[final, below=9mm of c2] (c3) {without the required\\ tokens, a BTV \texttt{Verdict}\\ cannot be constructed};
+\draw[arr] (c1) -- (c2);
+\draw[arr] (c2) -- (c3);
+
+% ── synthesis line ───────────────────────────────────────────────────────
+\node[note, below=8mm of a3, anchor=north west, text width=136mm, align=center]
+  at ($(a3.south)!0.5!(c3.south)+(0,-8mm)$)
+  {The same architectural pattern: the obligation is separated from the act it must constrain.};
 
 \end{tikzpicture}
 \end{document}
