@@ -8,14 +8,22 @@ is emitted here from the CSVs below, and the caption cites the exact file;
 the gate is "every numeric cell of §5 traces to a row of a committed CSV".
 
 Inputs (committed):
-  - data/sweep_raw_20260914T164735Z_runnervmlun5p.csv   (AMD EPYC 9V74, 4 vCPU, 10 s target)
-  - data/sweep_raw_20260914T171258Z.csv                 (Intel Xeon, 2 vCPU, 1 s target)
   - data/sweep_raw_20260915T024430Z_g5fix.csv           (Intel Xeon, 4 vCPU, 5 s target, 5 modes —
+    THE ONLY dataset §5 quotes. Every table below comes from this one file, so the three tables
+    are mutually consistent by construction: Table 1's Criterion figure for Verdict::new, Table 2's
+    full-pipeline row and Table 3's five-mode contrast all describe the same code on the same host.
     COMSI-2026-04-0112 Round 2 G5: recollected after fixing sweep_concurrent.rs's durable-mode
     payload-nonce collision, which previously let OS-03's append-only idempotency absorb repeat
     trials/threads as no-op replays instead of real writes. Supersedes
     data/sweep_raw_20260914T231611Z_chunked5s.csv, whose durable-mode row measured that no-op
     path — see docs/RESPONSE-LETTER.md Part F, G5, for the full account.)
+
+Committed but NOT quoted by §5 (retained as provenance only):
+  - data/sweep_raw_20260914T164735Z_runnervmlun5p.csv   (AMD EPYC 9V74, 4 vCPU, 10 s target)
+  - data/sweep_raw_20260914T171258Z.csv                 (Intel Xeon, 2 vCPU, 1 s target)
+  Both predate OS-02's authority-signature verification inside Verdict::new, so their latency
+  figures measure strictly less work than the current code and are not comparable with the tables
+  below. A second-platform collection with the current code is due alongside the 90 s run.
 
 Outputs:
   - paper1/section5_tables_generated.tex (\\input{} by section5_benchmarks.tex)
@@ -25,9 +33,9 @@ configuration; CV% = stdev/mean of the trial medians' p50 values (the
 harness reports per-trial aggregates, so CV quantifies trial-to-trial
 stability, matching the EVIDENCE-MANIFEST practice).
 
-Epistemic footer: both platform runs are REDUCED-footprint VM snapshots
-(10 s and 1 s wall targets), NOT the 90 s dedicated-hardware headline
-collection the EVIDENCE-MANIFEST still lists as due; §5.1 must say so.
+Epistemic footer: the quoted collection is a REDUCED-footprint VM snapshot
+(5 s wall target on containerized overlayfs), NOT the 90 s dedicated-hardware
+headline collection the EVIDENCE-MANIFEST still lists as due; §5.1 must say so.
 Percentiles are P² estimates (Jain & Chlamtac 1985), not order statistics.
 """
 
@@ -40,7 +48,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 OUT = REPO_ROOT / "paper1" / "section5_tables_generated.tex"
 
-PLATFORMS = [
+# Retained for provenance; deliberately NOT read by any table (see docstring).
+SUPERSEDED_PLATFORMS = [
     ("EPYC-9V74-4vCPU", "data/sweep_raw_20260914T164735Z_runnervmlun5p.csv"),
     ("Xeon-2vCPU", "data/sweep_raw_20260914T171258Z.csv"),
 ]
@@ -78,32 +87,46 @@ def main() -> int:
     out = []
     w = out.append
 
-    # ── Table 1: two platforms, full_pipeline, 4 KiB, thread scaling ────────
-    w("% ── Table: two-platform comparison (generated; do not edit) ──")
+    # ── Table 1: thread scaling, RAM-sink vs durable arm, 4 KiB ─────────────
+    #
+    # COMSI-2026-04-0112 Round 3 (editorial closure): this table used to
+    # compare two OLDER platform snapshots
+    # (sweep_raw_20260914T164735Z_runnervmlun5p.csv, EPYC 4 vCPU; and
+    # sweep_raw_20260914T171258Z.csv, Xeon 2 vCPU). Both were collected
+    # BEFORE OS-02 made Verdict::new verify the compliance token's
+    # authority signature, so their full-pipeline figures (1.72 us at 4 KiB)
+    # measure strictly less work than the current code and sit 4.5x BELOW
+    # Table~\ref{tab:construction}'s Criterion measurement of the same
+    # operation (7.65 us) in the same manuscript. Publishing a component
+    # that costs more than the pipeline containing it is a contradiction a
+    # reader hits without running anything. The thread-scaling story is
+    # therefore told from the headline collection, which is internally
+    # consistent with both other tables; the two older snapshots remain
+    # committed as provenance, and §5.1 states that a second-platform
+    # re-collection with the current code is due alongside the 90 s run.
+    fm = group(load(FIVE_MODE))
+    w("% ── Table: thread scaling, both persistence postures (generated; do not edit) ──")
     w("\\begin{table}[t]")
-    w("\\caption{Thread scaling of the BTV full pipeline at 4~KiB payloads,")
-    w("two virtualized platforms. Each cell is the MEDIAN across five trials")
-    w("of the per-trial aggregate; CV\\% is the trial-to-trial coefficient of")
-    w("variation of the mean latency. Percentiles are $P^2$ estimates")
-    w("(Jain \\& Chlamtac 1985), not order statistics. Provenance:")
-    w("\\texttt{data/sweep\\_raw\\_20260914T164735Z\\_runnervmlun5p.csv} (EPYC,")
-    w("10\\,s target) and")
-    w("\\texttt{data/sweep\\_raw\\_20260914T171258Z.csv} (Xeon, 1\\,s target).}")
+    w("\\caption{Thread scaling at 4~KiB payloads, in-memory versus durable")
+    w("persistence. Each cell is the MEDIAN across five trials of the")
+    w("per-trial aggregate; CV\\% is the trial-to-trial coefficient of")
+    w("variation. Percentiles are $P^2$ estimates (Jain \\& Chlamtac 1985),")
+    w("not order statistics. Provenance:")
+    w("\\texttt{data/sweep\\_raw\\_20260915T024430Z\\_g5fix.csv}")
+    w("(Intel Xeon, 4~vCPU, 5\\,s target).}")
     w("\\label{tab:platforms}")
     w("\\begin{tabular}{lrrrrrr}")
     w("\\hline")
-    w(" & \\multicolumn{3}{c}{EPYC 9V74 (4 vCPU, 10\\,s target)} & "
-      "\\multicolumn{3}{c}{Xeon (2 vCPU, 1\\,s target)}\\\\")
+    w(" & \\multicolumn{3}{c}{In-memory sink} & "
+      "\\multicolumn{3}{c}{Durable SQLite (WAL, FULL)}\\\\")
     w("Threads & p50 (\\textmu s) & p99 (\\textmu s) & CV\\% & "
       "p50 (\\textmu s) & p99 (\\textmu s) & CV\\%\\\\")
     w("\\hline")
-    epyc = group(load(PLATFORMS[0][1]))
-    xeon = group(load(PLATFORMS[1][1]))
-    thread_counts = sorted({t for (_, _, t) in epyc} | {t for (_, _, t) in xeon})
+    thread_counts = sorted({t for (_, p, t) in fm if p == 4096})
     for t in thread_counts:
         cells = []
-        for g in (epyc, xeon):
-            rows = g.get(("full_pipeline", 4096, t))
+        for mode in ("full_pipeline", "full_pipeline_durable"):
+            rows = fm.get((mode, 4096, t))
             if not rows:
                 cells += ["--", "--", "--"]
                 continue
@@ -117,7 +140,6 @@ def main() -> int:
     w("")
 
     # ── Table 2: five-mode contrast (OS-07), 4 KiB, 1 thread ────────────────
-    fm = group(load(FIVE_MODE))
     w("% ── Table: five-mode contrast (generated; do not edit) ──")
     w("\\begin{table}[t]")
     w("\\caption{Five-mode accountability contrast at 4~KiB payloads, one")

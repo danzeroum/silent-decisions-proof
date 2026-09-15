@@ -1,22 +1,21 @@
-% ── Table: two-platform comparison (generated; do not edit) ──
+% ── Table: thread scaling, both persistence postures (generated; do not edit) ──
 \begin{table}[t]
-\caption{Thread scaling of the BTV full pipeline at 4~KiB payloads,
-two virtualized platforms. Each cell is the MEDIAN across five trials
-of the per-trial aggregate; CV\% is the trial-to-trial coefficient of
-variation of the mean latency. Percentiles are $P^2$ estimates
-(Jain \& Chlamtac 1985), not order statistics. Provenance:
-\texttt{data/sweep\_raw\_20260914T164735Z\_runnervmlun5p.csv} (EPYC,
-10\,s target) and
-\texttt{data/sweep\_raw\_20260914T171258Z.csv} (Xeon, 1\,s target).}
+\caption{Thread scaling at 4~KiB payloads, in-memory versus durable
+persistence. Each cell is the MEDIAN across five trials of the
+per-trial aggregate; CV\% is the trial-to-trial coefficient of
+variation. Percentiles are $P^2$ estimates (Jain \& Chlamtac 1985),
+not order statistics. Provenance:
+\texttt{data/sweep\_raw\_20260915T024430Z\_g5fix.csv}
+(Intel Xeon, 4~vCPU, 5\,s target).}
 \label{tab:platforms}
 \begin{tabular}{lrrrrrr}
 \hline
- & \multicolumn{3}{c}{EPYC 9V74 (4 vCPU, 10\,s target)} & \multicolumn{3}{c}{Xeon (2 vCPU, 1\,s target)}\\
+ & \multicolumn{3}{c}{In-memory sink} & \multicolumn{3}{c}{Durable SQLite (WAL, FULL)}\\
 Threads & p50 (\textmu s) & p99 (\textmu s) & CV\% & p50 (\textmu s) & p99 (\textmu s) & CV\%\\
 \hline
-1 & 1.72 & 1.85 & 0.0 & 1.27 & 1.43 & 0.1\\
-2 & 1.73 & 1.86 & 0.2 & 1.38 & 4.47 & 0.4\\
-4 & 2.30 & 2.44 & 0.2 & -- & -- & --\\
+1 & 7.82 & 25.87 & 0.1 & 261.44 & 511.55 & 7.8\\
+2 & 7.83 & 24.14 & 0.3 & 301.15 & 10929.66 & 2.0\\
+4 & 7.82 & 24.50 & 0.2 & 291.85 & 28000.83 & 8.8\\
 \hline
 \end{tabular}
 \end{table}

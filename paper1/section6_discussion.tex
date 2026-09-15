@@ -158,13 +158,11 @@ multi-step pipelines via the sidecar pattern (L3, L4) for
 retrieval-augmented and agentic architectures; (3)~mechanising the
 Constitutional Enclosure Theorem in a proof assistant (Lean~4 or Coq),
 elevating it from a machine-checked Rust proof to a fully mechanised
-one; (4)~investigating whether a formal CAL impossibility result holds
-under asynchronous network conditions (\S\ref{sec:cal}); (5)~unifying
-\texttt{Verdict} and \texttt{EscalatedVerdict} under
-\texttt{AccountableDecision} into a single composed invariant
-$(V_{\mathrm{auto}} \oplus V_{\mathrm{esc}}) \multimap R$ for mixed
-human-automated pipelines; and (6)~formally composing BTV's
-construction-time guarantee with tamper-evident persistence and
-privacy-preserving log redaction --- we conjecture these operate at
-distinct, non-overlapping-trust layers (construction-, delivery-, and
-audit-time), making composition plausible, but proving it is left open.
+one; (4)~testing whether a formal CAL impossibility result holds under
+asynchrony (\S\ref{sec:cal}); (5)~unifying \texttt{Verdict} and
+\texttt{EscalatedVerdict} under \texttt{AccountableDecision} into the
+composed invariant $(V_{\mathrm{auto}} \oplus V_{\mathrm{esc}})
+\multimap R$; and (6)~composing BTV's construction-time guarantee with
+tamper-evident persistence and privacy-preserving redaction, which we
+conjecture is tractable because the three operate at distinct layers
+with non-overlapping trust assumptions.
