@@ -18,10 +18,19 @@
 \usepackage{listings}
 \usepackage{xcolor}
 
-\definecolor{rustblue}{rgb}{0.13,0.29,0.53}
-\definecolor{rustgray}{rgb}{0.45,0.45,0.45}
-\definecolor{rustorange}{rgb}{0.80,0.40,0.00}
-\definecolor{rustbg}{rgb}{0.97,0.97,0.97}
+% MONOCHROME LISTINGS (COMSI-2026-04-0112 Round 3).
+% The editorial office's resubmission instruction is explicit: "Your main
+% manuscript file cannot include colored or highlighted text." Syntax
+% highlighting and a shaded listing background are colored text under any
+% reading of that rule, and this manuscript has already been returned to
+% draft once on a formatting requirement. Emphasis is now carried by weight
+% and shape (bold keywords, italic comments) rather than hue, which also
+% survives greyscale printing. Colors are retained as named greys only so
+% the listings style below reads the same as before.
+\definecolor{rustblue}{rgb}{0,0,0}
+\definecolor{rustgray}{rgb}{0.35,0.35,0.35}
+\definecolor{rustorange}{rgb}{0,0,0}
+\definecolor{rustbg}{rgb}{1,1,1}
 
 \lstdefinelanguage{Rust}{
   keywords={fn, pub, crate, struct, enum, impl, let, mut, use, mod,
@@ -32,7 +41,7 @@
   keywordstyle=\color{rustblue}\bfseries,
   comment=[l]{//},
   commentstyle=\color{rustgray}\itshape,
-  stringstyle=\color{rustorange},
+  stringstyle=\color{rustorange}\itshape,
   morestring=[b]",
   sensitive=true,
 }
@@ -42,7 +51,7 @@
   basicstyle=\ttfamily\scriptsize,
   backgroundcolor=\color{rustbg},
   frame=single,
-  rulecolor=\color{lightgray},
+  rulecolor=\color{black},
   breaklines=true,
   breakatwhitespace=true,
   numbers=left,
