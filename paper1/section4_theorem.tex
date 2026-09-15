@@ -128,7 +128,8 @@ within this API perimeter.
 
 \begin{proof}
 We analyze the public construction and extraction paths closed by the
-crate's encapsulation assumptions (Figure~\ref{fig:enclosure_perimeter}).
+crate's encapsulation assumptions (summarised in
+Table~\ref{tab:protections}).
 
 \medskip
 \noindent\textbf{Case~A: Struct-literal construction.}
@@ -175,16 +176,6 @@ can be obtained in $\Gamma_{\mathit{ext}}$ without passing through
 such term is a Materialized Verdict; therefore
 $\mathcal{S}_{P}=\varnothing$ within the stated perimeter.
 \end{proof}
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{figures/fig3_enclosure_perimeter.pdf}
-\caption{The Constitutional Enclosure perimeter: attack vectors A--C are
-  rejected by the compiler (\texttt{E0451}, \texttt{E0624},
-  \texttt{unused\_must\_use}); the only well-typed path to a
-  \texttt{Verdict} is \texttt{Verdict::new}.}
-\label{fig:enclosure_perimeter}
-\end{figure}
 
 % ----------------------------------------------------------------
 \subsection{Corollary: Fail-Secure by Construction}

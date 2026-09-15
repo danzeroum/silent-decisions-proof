@@ -44,8 +44,7 @@ Silent decisions are not a failure of intent---they are a failure of type.
 \label{fig:executive_summary}
 \end{figure*}
 
-The conventional response is instrumentation
-(Figure~\ref{fig:silent_decision_problem}).
+The conventional response is instrumentation.
 Policy engines such as Open Policy Agent~\cite{opa2024} and
 Kyverno govern cloud infrastructure---pods, secrets, network policies---issuing
 allow/deny verdicts over \emph{resources}, not over \emph{persons}.
@@ -59,15 +58,6 @@ discipline fails at scale.
 Rust's ownership model solved it by making the \emph{absence of a
 deallocation owner} a compile-time error; no existing framework makes the
 absence of evidence one.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{figures/fig1_silent_decision_problem.pdf}
-\caption{The status quo (top) versus the BTV guarantee (bottom): evidence
-  is either a separable, omissible artifact appended after the decision, or
-  a precondition consumed atomically by \texttt{Verdict::new}.}
-\label{fig:silent_decision_problem}
-\end{figure}
 
 Linear Logic~\cite{girard1987linear,wadler1991linear}
 treats propositions as \emph{resources}: used exactly once, neither
