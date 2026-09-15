@@ -19,7 +19,7 @@ jobs:
         with:
           submodules: false
 
-      - name: Install Rust toolchain (pinned — single source: rust-toolchain.toml, OS-09)
+      - name: 'Install Rust toolchain (pinned; single source: rust-toolchain.toml, OS-09)'
         uses: dtolnay/rust-toolchain@1.98.1
         with:
           components: rustfmt, clippy
