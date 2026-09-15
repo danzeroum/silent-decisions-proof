@@ -1,5 +1,5 @@
 % ── Table: thread scaling, both persistence postures (generated; do not edit) ──
-\begin{table}[t]
+\begin{table*}[t]
 \caption{Thread scaling at 4~KiB payloads, in-memory versus durable
 persistence. Each cell is the MEDIAN across five trials of the
 per-trial aggregate; CV\% is the trial-to-trial coefficient of
@@ -8,6 +8,7 @@ not order statistics. Provenance:
 \texttt{data/sweep\_raw\_20260915T024430Z\_g5fix.csv}
 (Intel Xeon, 4~vCPU, 5\,s target).}
 \label{tab:platforms}
+\small
 \begin{tabular}{lrrrrrr}
 \hline
  & \multicolumn{3}{c}{In-memory sink} & \multicolumn{3}{c}{Durable SQLite (WAL, FULL)}\\
@@ -18,10 +19,10 @@ Threads & p50 (\textmu s) & p99 (\textmu s) & CV\% & p50 (\textmu s) & p99 (\tex
 4 & 7.82 & 24.50 & 0.2 & 291.85 & 28000.83 & 8.8\\
 \hline
 \end{tabular}
-\end{table}
+\end{table*}
 
 % ── Table: five-mode contrast (generated; do not edit) ──
-\begin{table}[t]
+\begin{table*}[t]
 \caption{Five-mode accountability contrast at 4~KiB payloads, one
 thread (Xeon 4~vCPU, 5\,s target; reduced-footprint snapshot). Each
 cell is the median across five trials; percentiles are $P^2$
@@ -31,18 +32,22 @@ LOWER bound on bare-metal fsync cost. Every durable-mode operation
 issued a real row (end-of-run sanity gate: rows persisted == operations
 issued), closing a prior round's silent idempotent-replay defect
 (COMSI-2026-04-0112 Round 2, G5). Provenance:
-\texttt{data/sweep\_raw\_20260915T024430Z\_g5fix.csv}.}
+\texttt{data/sweep\_raw\_20260915T024430Z\_g5fix.csv}. Rows:
+BTV in-memory sink; BTV with durable on-disk SQLite; BTV verdict
+construction alone; status quo logging a digest plus metadata; status
+quo logging the full context as JSON, fire-and-forget.}
 \label{tab:fivemode}
+\small
 \begin{tabular}{lrrr}
 \hline
 Mode & p50 (\textmu s) & p99 (\textmu s) & throughput (k ops/s)\\
 \hline
-BTV full pipeline (RAM sink) & 7.82 & 25.87 & 113.9\\
-BTV full pipeline (durable SQLite, WAL+FULL) & 261.44 & 511.55 & 3.1\\
-BTV verdict construction only & 4.69 & 8.56 & 114.7\\
-Status quo: digest+metadata log & 1.68 & 2.28 & 507.6\\
-Status quo: full-context JSON, fire-and-forget & 23.61 & 46.04 & 38.4\\
+BTV, in-memory sink & 7.82 & 25.87 & 113.9\\
+BTV, durable SQLite & 261.44 & 511.55 & 3.1\\
+BTV, construction only & 4.69 & 8.56 & 114.7\\
+Status quo, digest only & 1.68 & 2.28 & 507.6\\
+Status quo, full context & 23.61 & 46.04 & 38.4\\
 \hline
 \end{tabular}
-\end{table}
+\end{table*}
 

@@ -55,12 +55,16 @@ SUPERSEDED_PLATFORMS = [
 ]
 FIVE_MODE = "data/sweep_raw_20260915T024430Z_g5fix.csv"
 
+# Labels are deliberately terse: IEEEtran's column measure is ~3.5 in, and
+# the descriptive forms these replace pushed the table 99.7 pt past the
+# column edge (COMSI-2026-04-0112 Round 3). The expansion lives in the
+# caption, where it costs nothing.
 MODE_LABELS = {
-    "full_pipeline": "BTV full pipeline (RAM sink)",
-    "full_pipeline_durable": "BTV full pipeline (durable SQLite, WAL+FULL)",
-    "verdict_only": "BTV verdict construction only",
-    "status_quo_async_log": "Status quo: full-context JSON, fire-and-forget",
-    "status_quo_digest_log": "Status quo: digest+metadata log",
+    "full_pipeline": "BTV, in-memory sink",
+    "full_pipeline_durable": "BTV, durable SQLite",
+    "verdict_only": "BTV, construction only",
+    "status_quo_async_log": "Status quo, full context",
+    "status_quo_digest_log": "Status quo, digest only",
 }
 
 
@@ -106,7 +110,9 @@ def main() -> int:
     # re-collection with the current code is due alongside the 90 s run.
     fm = group(load(FIVE_MODE))
     w("% ── Table: thread scaling, both persistence postures (generated; do not edit) ──")
-    w("\\begin{table}[t]")
+    # table* (spans both columns): seven data columns do not fit IEEEtran's
+    # ~3.5 in single-column measure even at \small — it overflowed by 44 pt.
+    w("\\begin{table*}[t]")
     w("\\caption{Thread scaling at 4~KiB payloads, in-memory versus durable")
     w("persistence. Each cell is the MEDIAN across five trials of the")
     w("per-trial aggregate; CV\\% is the trial-to-trial coefficient of")
@@ -115,6 +121,7 @@ def main() -> int:
     w("\\texttt{data/sweep\\_raw\\_20260915T024430Z\\_g5fix.csv}")
     w("(Intel Xeon, 4~vCPU, 5\\,s target).}")
     w("\\label{tab:platforms}")
+    w("\\small")
     w("\\begin{tabular}{lrrrrrr}")
     w("\\hline")
     w(" & \\multicolumn{3}{c}{In-memory sink} & "
@@ -136,12 +143,14 @@ def main() -> int:
         w(f"{t} & {cells[0]} & {cells[1]} & {cells[2]} & {cells[3]} & {cells[4]} & {cells[5]}\\\\")
     w("\\hline")
     w("\\end{tabular}")
-    w("\\end{table}")
+    w("\\end{table*}")
     w("")
 
     # ── Table 2: five-mode contrast (OS-07), 4 KiB, 1 thread ────────────────
     w("% ── Table: five-mode contrast (generated; do not edit) ──")
-    w("\\begin{table}[t]")
+    # table* for the same reason: the row labels plus three numeric columns
+    # overflowed the single-column measure by 38 pt at \small.
+    w("\\begin{table*}[t]")
     w("\\caption{Five-mode accountability contrast at 4~KiB payloads, one")
     w("thread (Xeon 4~vCPU, 5\\,s target; reduced-footprint snapshot). Each")
     w("cell is the median across five trials; percentiles are $P^2$")
@@ -151,8 +160,12 @@ def main() -> int:
     w("issued a real row (end-of-run sanity gate: rows persisted == operations")
     w("issued), closing a prior round's silent idempotent-replay defect")
     w("(COMSI-2026-04-0112 Round 2, G5). Provenance:")
-    w("\\texttt{data/sweep\\_raw\\_20260915T024430Z\\_g5fix.csv}.}")
+    w("\\texttt{data/sweep\\_raw\\_20260915T024430Z\\_g5fix.csv}. Rows:")
+    w("BTV in-memory sink; BTV with durable on-disk SQLite; BTV verdict")
+    w("construction alone; status quo logging a digest plus metadata; status")
+    w("quo logging the full context as JSON, fire-and-forget.}")
     w("\\label{tab:fivemode}")
+    w("\\small")
     w("\\begin{tabular}{lrrr}")
     w("\\hline")
     w("Mode & p50 (\\textmu s) & p99 (\\textmu s) & throughput (k ops/s)\\\\")
@@ -176,7 +189,7 @@ def main() -> int:
         w(f"{MODE_LABELS[mode]} & {p50/1e3:.2f} & {p99/1e3:.2f} & {thr/1e3:.1f}\\\\")
     w("\\hline")
     w("\\end{tabular}")
-    w("\\end{table}")
+    w("\\end{table*}")
     w("")
 
     # Contrast sentence numbers (also computed, not hand-written).

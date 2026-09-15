@@ -85,8 +85,8 @@ The following are ill-typed in $\Gamma_{\mathit{ext}}$:
 \begin{enumerate}
   \item Struct-literal construction of \texttt{Verdict}---all fields
     are private (compiler error \texttt{E0451}).
-  \item Direct invocation of \texttt{EvidenceToken::consume()}---the
-    method is \texttt{pub(crate)} (compiler error \texttt{E0624}).
+  \item Direct invocation of \texttt{EvidenceToken::consume()}:
+    the method is \texttt{pub(crate)} (compiler error \texttt{E0624}).
   \item Construction of \texttt{Blake3Hash} via its tuple-struct
     field---the field is private (compiler error \texttt{E0423}).
 \end{enumerate}

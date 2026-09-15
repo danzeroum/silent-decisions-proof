@@ -83,9 +83,9 @@ realisation of the $\otimes$-introduction rule
 
 \begin{verbatim}
 pub fn new(
-    evidence:   EvidenceToken,
+    evidence: EvidenceToken,
     compliance: ComplianceToken,
-    decision:   Decision,
+    decision: Decision,
     explanation: String,
 ) -> Verdict
 \end{verbatim}
@@ -135,19 +135,22 @@ means---for instance, by writing a struct literal or by directly
 assembling the hash value.  Three complementary protections close
 the encapsulation perimeter:
 
+% Four columns of identifiers overflowed IEEEtran's single-column measure by
+% 72 pt. \footnotesize, terser cells, and @{}-trimmed outer padding fit it.
 \begin{table}[t]
-\caption{The Three Protections of the Constitutional Enclosure}
+\caption{The three protections of the Constitutional Enclosure.  Attack
+vectors, left to right: constructing a \texttt{Verdict} by struct literal;
+calling \texttt{EvidenceToken::consume()} from outside the crate; and
+dropping an \texttt{EvidenceToken} without consuming it.}
 \label{tab:protections}
-\begin{tabular}{llll}
+\footnotesize
+\begin{tabular}{@{}llll@{}}
 \hline
-\textbf{ID} & \textbf{Attack Vector} & \textbf{Mechanism} & \textbf{Compiler Error} \\
+\textbf{ID} & \textbf{Attack vector} & \textbf{Mechanism} & \textbf{Error} \\
 \hline
-A & Struct-literal \texttt{Verdict \{ \ldots \}} &
-  All fields \texttt{private} & \texttt{E0451} \\
-B & External \texttt{consume()} call &
-  \texttt{pub(crate)} visibility & \texttt{E0624} \\
-C & Silent drop of \texttt{EvidenceToken} &
-  \texttt{\#[must\_use]} + deny & \texttt{unused\_must\_use} \\
+A & Struct literal & Private fields & \texttt{E0451} \\
+B & External \texttt{consume()} & \texttt{pub(crate)} & \texttt{E0624} \\
+C & Silent token drop & \texttt{\#[must\_use]} & \texttt{unused\_must\_use} \\
 \hline
 \end{tabular}
 \end{table}

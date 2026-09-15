@@ -67,6 +67,13 @@
 
 % --- Misc ---
 \usepackage{microtype}
+
+% Long monospace identifiers (EvidenceToken::new, impl AttestableContext,
+% ComplianceToken) cannot hyphenate, and in IEEE's narrow two-column measure
+% they pushed three paragraphs past the column edge. emergencystretch gives
+% TeX extra glue on its final pass — the conventional minimal remedy, and
+% preferable to \sloppy, which loosens every paragraph in the document.
+\emergencystretch=3em
 \usepackage{booktabs}   % for \toprule / \midrule / \bottomrule in tables
 
 % =============================================================================
