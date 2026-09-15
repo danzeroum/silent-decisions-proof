@@ -2,7 +2,7 @@
 
 **Manuscript ID:** COMSI-2026-04-0112
 
-**Title:** “Silent Decisions Are Type Errors: Enforcing AI Accountability via Linear Resource Types”
+**Title:** "Silent Decisions Are Type Errors: Enforcing AI Accountability via Linear Resource Types"
 
 **Author:** Daniel Lau Pereira Soares
 
@@ -12,7 +12,7 @@ Thank you for the careful and constructive assessment of this manuscript. The
 revision preserves the original contribution while substantially narrowing
 claims that exceeded the evidence, extending the empirical evaluation,
 clarifying the trusted boundary and polyglot threat model, and improving the
-paper’s organization for the broad readership of *Computer*. The manuscript
+paper's organization for the broad readership of *Computer*. The manuscript
 now distinguishes precisely between what the BTV type boundary establishes,
 what the reference implementation demonstrates, and what remains an
 architectural or empirical limitation.
@@ -20,7 +20,7 @@ architectural or empirical limitation.
 ## Summary of the principal changes
 
 1. The central type law is stated consistently as
-   \((E \otimes C_{\mathrm{signed}}) \multimap V\): evidence and an
+   $(E \otimes C_{\mathrm{signed}}) \multimap V$: evidence and an
    authority-signed compliance token are consumed to construct a verdict.
 2. The Constitutional Enclosure Theorem is limited to the authorized BTV
    public API in Safe Rust. It does not claim that an entire polyglot system
@@ -30,9 +30,8 @@ architectural or empirical limitation.
    reinforce the BTV boundary but do not make Rust globally linear.
 4. The legal discussion now accurately describes
    [LGPD Article 20](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm)
-   as a right
-   to request review and receive clear information about criteria and
-   procedures. Human oversight is associated principally with
+   as a right to request review and receive clear information about criteria
+   and procedures. Human oversight is associated principally with
    [EU AI Act Article 14](https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-14),
    and explanation rights with Article 86.
 5. HMAC-based records are described as authenticated and tamper-evident under
@@ -44,7 +43,10 @@ architectural or empirical limitation.
    hardware and duration limitations.
 7. A polyglot/PyO3 threat-model sketch is included in the main text. It names
    the downstream enforcement assumption and the limits of the Rust boundary.
-8. Definitions and explanations were expanded so that governance,
+8. Figures were redrawn to correct the type-law direction, update the LGPD
+   citation, and align benchmark values with the revised empirical
+   evaluation.
+9. Definitions and explanations were expanded so that governance,
    compliance, and systems readers can follow the argument without prior
    familiarity with Rust, affine ownership, FFI, or cryptographic primitives.
 
@@ -52,19 +54,23 @@ architectural or empirical limitation.
 
 ### E1. Quantitative crossover claim and inaccessible supporting manuscript
 
-**Response.** We removed the numerical crossover threshold and all dependence
-on an unpublished companion manuscript. The revised paper makes only a
-qualitative economic observation: compile-time enforcement may reduce some
-recurring audit and incident-response costs, while cryptography, persistence,
-key management, and operational controls still impose real costs. This
-observation is explicitly presented as a design trade-off rather than as a
-validated economic law. The manuscript is now self-contained on this point.
+**Response.** In response to the Editor's concern regarding the quantitative
+crossover claim and its supporting unpublished companion reference, the
+revision removes the universal N\* headline and does not rely on an
+inaccessible manuscript for a load-bearing quantitative conclusion. The
+revised Section 5 presents the economic observation qualitatively and in
+both directions: the durable BTV pipeline is slower than the status quo
+against which it is compared (11.1× against full-context logging at 4 KiB,
+155.5× against digest-only logging), and the paper states plainly what that
+cost buys---a decision record that provably exists. Every quantitative
+statement in the section traces to committed, timestamped measurement data,
+and the manuscript is self-contained on this point.
 
 ### E2. Variance under load, baselines, and reproducibility
 
 **Response.** Section 5 was substantially expanded. It now reports five-trial
 concurrent-load measurements at one, two, and four threads; trial-to-trial
-coefficient of variation; P² estimated p50 and p99; two status-quo baselines;
+coefficient of variation; P$^2$ estimated p50 and p99; two status-quo baselines;
 and in-memory versus durable SQLite persistence. The failure experiment shows
 that the fire-and-forget baselines can report success while every record is
 lost, whereas the durable BTV path returns a verdict only after persistence
@@ -103,7 +109,7 @@ We thank Reviewer 1 for recognizing the originality and relevance of the
 proposal and for identifying that the theoretical claims were stronger than
 the supporting evidence, the evaluation was prototype-level, the conclusions
 required further validation, and the presentation needed to be more
-accessible to *Computer*’s broad audience.
+accessible to *Computer*'s broad audience.
 
 The theoretical result is now bounded to an external Safe Rust caller using
 the authorized BTV API. The proof no longer treats affine Rust as strictly
@@ -119,10 +125,10 @@ contribution and its limits clear to governance, legal, and systems readers.
 
 ## Response to Reviewer 2
 
-### R2.1. Linear logic versus Rust’s ownership model
+### R2.1. Linear logic versus Rust's ownership model
 
 **Response.** The manuscript now states that Rust ownership is affine: a value
-may be used zero or one time. `#[must_use]` and
+may be used zero or one times. `#[must_use]` and
 `#![deny(unused_must_use)]` are guardrails at the crate boundary, not proof
 that Rust is globally strictly linear. Explicit dropping, `mem::forget`,
 panic, abort, and unsafe or foreign-code behavior are addressed as limits.
@@ -178,7 +184,7 @@ The CAL discussion is retained only as a conceptual design observation.
 ### R2.7. Related work
 
 **Response.** The related-work section now engages the four requested
-foundations: Ahmed, Dreyer, and Rossberg; DeLine and Fähndrich’s Vault work;
+foundations: Ahmed, Dreyer, and Rossberg; DeLine and Fähndrich's Vault work;
 Pierce; and Walker. Girard and Wadler remain as additional background. The
 Vault reference uses the
 [ACM SIGPLAN Notices record](https://doi.org/10.1145/381694.378811),
@@ -194,7 +200,7 @@ claim that this local theorem proves complete governance, semantic truth of
 the evidence, universal system routing, third-party non-repudiation, or
 production-scale performance.
 
-We appreciate the Editor’s and Reviewers’ guidance. Their comments resulted
+We appreciate the Editor's and Reviewers' guidance. Their comments resulted
 in a more precise, transparent, and useful manuscript.
 
 Sincerely,

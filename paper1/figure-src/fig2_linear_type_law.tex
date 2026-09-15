@@ -1,0 +1,55 @@
+% fig2_linear_type_law.tex — Figure 3 (column width)
+% The core type law (E ⊗ C) ⊸ V with the CORRECT direction
+% (regenerated 2026-09-15; the April figure inverted the implication).
+% E and C converge to V; three compiler-enforced barriers annotated.
+\documentclass[border=2pt]{standalone}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.misc}
+\usepackage{amssymb}
+\usepackage{cmll}
+\begin{document}
+\begin{tikzpicture}[
+  font=\footnotesize,
+  tok/.style={draw, rounded corners=2pt, align=center, inner sep=4pt,
+    minimum width=21mm, minimum height=12mm, fill=black!04},
+  vnode/.style={draw, rounded corners=2pt, align=center, inner sep=4pt,
+    minimum width=17mm, minimum height=12mm, fill=black!12},
+  tens/.style={draw, circle, inner sep=1.5pt, fill=black!12, font=\small},
+  arr/.style={-{Stealth[length=5pt]}, semithick},
+  note/.style={align=center, font=\scriptsize, text=black!75},
+  barrier/.style={draw, align=left, font=\scriptsize, inner sep=3pt,
+    rounded corners=1pt, fill=black!06}
+]
+
+% ── The law, stated ───────────────────────────────────────────────────────
+\node[font=\small] (law) at (0,0)
+  {$(E \otimes C) \multimap V$};
+
+% ── E and C converge, are joined by ⊗, and produce V ─────────────────────
+\node[tok, below left=13mm and 10mm of law.south] (E)
+  {\textbf{EvidenceToken} $E$\\ BLAKE3 of context};
+\node[tok, below right=13mm and 10mm of law.south] (C)
+  {\textbf{ComplianceToken} $C$\\ authority-signed};
+\node[tens, below=8mm of law] (tensor) {$\otimes$};
+\draw[semithick] (E.south) |- ($(tensor.west)+(-3mm,0)$) -- (tensor.west);
+\draw[semithick] (C.south) |- ($(tensor.east)+(3mm,0)$) -- (tensor.east);
+\node[vnode, below=10mm of tensor] (V) {\textbf{Verdict} $V$};
+\draw[arr] (tensor) -- (V);
+
+% ── Three compiler-enforced barriers ─────────────────────────────────────
+\node[barrier, below left=6mm and 2mm of E.south west, anchor=north west] (bar1)
+  {Barrier 1 --- \emph{no cloning}\\ no \texttt{Clone}/\texttt{Copy}: one token\\
+   cannot bind two verdicts};
+\node[barrier, below=8mm of V.south, anchor=north] (bar2)
+  {Barrier 2 --- \emph{no forging}\\ private fields and\\
+   \texttt{pub(crate)} constructors};
+\node[barrier, below left=6mm and 2mm of C.south east, anchor=north east] (bar3)
+  {Barrier 3 --- \emph{no silent drop}\\ \texttt{\#[must\_use]} + crate-level\\
+   \texttt{deny(unused\_must\_use)}};
+
+\draw[semithick, dotted] (bar1.north) -- (E.south west);
+\draw[semithick, dotted] (bar3.north) -- (C.south east);
+\draw[semithick, dotted] (bar2.north) -- (V.south);
+
+\end{tikzpicture}
+\end{document}

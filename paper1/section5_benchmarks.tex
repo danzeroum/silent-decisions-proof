@@ -106,6 +106,16 @@ indifferent to that choice; the latency budget is not.
 
 \input{section5_tables_generated}
 
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig4_benchmark_overhead.pdf}
+\caption{BTV governance overhead versus a typical LLM inference call
+  (logarithmic scale; medians at 4~KiB, one thread). The full
+  construction cycle is four orders of magnitude below the inference
+  reference; type-level enforcement adds no runtime branch.}
+\label{fig:benchmark_overhead}
+\end{figure}
+
 \paragraph{Why the construction rows differ.}
 Table~\ref{tab:construction} times the full public path, including token
 issuance and verification.  Table~\ref{tab:fivemode}'s smaller
@@ -113,7 +123,8 @@ issuance and verification.  Table~\ref{tab:fivemode}'s smaller
 measures only their binding.  It is not a second end-to-end estimate.
 
 \paragraph{What accountability costs against the status quo.}
-Table~\ref{tab:fivemode} is the comparison an architect actually faces.
+Table~\ref{tab:fivemode} and Figure~\ref{fig:benchmark_overhead} show
+the comparison an architect actually faces.
 Against a status quo that logs the complete decision context, the durable
 BTV pipeline is $11.1\times$ \emph{slower} at 4~KiB; against one that logs
 only a digest and metadata, $155.5\times$ \emph{slower}.  We report both
@@ -123,17 +134,16 @@ earlier revision of this section claimed $2.6\times$ \emph{faster} against
 the full-context baseline, a figure produced by a benchmark defect
 described below.
 
-The multiplier is real, and so is what the baseline buys with it.  The
-fire-and-forget arm is fast partly because it is permitted to lose the
-record: the artifact's contrast experiment
-(\texttt{tests/test\_status\_quo\_contrast.rs}) shows a dead logger and a
-backlogged logger each returning success for a thousand decisions while
-every record is discarded---no error surfaced, no trace left.  That is the
-silent decision of Section~\ref{sec:intro}, reproduced under laboratory
-conditions.  BTV's durable arm cannot reach that state: it returns a
-\texttt{Verdict} only after the row exists.  The comparison is therefore
-not like-for-like, and we decline to present it as though it were.  What
-the numbers price is not one logging strategy against another, but the
+The multiplier is real, and so is what the baseline buys with it.
+The fire-and-forget arm is fast partly because it is permitted to
+lose the record: the artifact's contrast experiment
+(\texttt{tests/test\_status\_quo\_contrast.rs}) shows dead and
+backlogged loggers each returning success for a thousand decisions
+while every record is discarded---the silent decision of
+Section~\ref{sec:intro} reproduced under laboratory conditions.
+BTV's durable arm returns a \texttt{Verdict} only after the row
+exists.  The comparison is therefore not like-for-like, and we decline
+to present it as though it were: what the numbers price is the
 difference between a record that exists and one that might.
 
 \paragraph{Correction of record.}
@@ -144,9 +154,8 @@ without a second write.  Four of every five trials measured that no-op.
 Every durable payload now draws from one process-wide atomic counter, and
 each run asserts that rows persisted equals operations issued---this
 collection passed exactly, 1{,}803{,}460 of 1{,}803{,}460.  We record the
-correction in the manuscript, not only the artifact, because a defect that
-makes the accountable path look cheaper than it is defeats this work's
-purpose as thoroughly as the failure mode it was built to prevent.
+correction in the manuscript because a defect that makes the accountable
+path look cheaper than it is defeats this work's purpose.
 
 % ----------------------------------------------------------------
 \subsection{Worked Examples}
@@ -154,7 +163,6 @@ purpose as thoroughly as the failure mode it was built to prevent.
 
 Three worked examples demonstrate BTV in semi-realistic scenarios: credit
 scoring under LGPD (30-day appeal window), hiring screening under EU AI Act
-Art.~86 (high-risk classification), and emergency triage (where \texttt{Allow}
-decisions also require evidence).  Each example constructs verdicts from
-domain-specific payloads and verifies integrity.  Source code is included in
-the companion repository (\texttt{examples/}).
+Art.~86, and emergency triage (where \texttt{Allow} decisions also require
+evidence); source code is in the companion repository
+(\texttt{examples/}).

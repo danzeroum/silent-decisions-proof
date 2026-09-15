@@ -10,14 +10,13 @@
 \section{Conclusion}
 \label{sec:conclusion}
 
-This paper began from a simple observation: regulatory frameworks
+Regulatory frameworks
 such as LGPD Art.~20 and EU AI Act Arts.~14 and~86 establish review,
 information, explanation, and oversight obligations, but do not by
 themselves prevent software from emitting a decision without supporting
 evidence.
-We called this failure mode a \emph{silent decision}, and argued
-that its root cause is not a failure of intent but a failure of
-type---a structural property of architectures that treat
+We called this failure mode a \emph{silent decision} and argued that
+its root cause is a failure of type: architectures treat
 accountability as a runtime audit obligation rather than a
 compile-time invariant.
 
@@ -36,11 +35,10 @@ at compile time.
 
 We proved the \emph{Constitutional Enclosure Theorem}: under the
 assumptions of Section~4.3, an external Safe Rust caller cannot obtain
-a BTV \texttt{Verdict} through the public API without the required
-tokens.  The construction paths are machine-checked
-(\texttt{cargo test}: seventeen clauses, seconds), with a scoped
-Fail-Secure Corollary: the protected path cannot issue a verdict
-without evidence.
+a \texttt{Verdict} through the public API without the required
+tokens; the construction paths are machine-checked
+(\texttt{cargo test}: seventeen clauses), with a scoped
+Fail-Secure Corollary.
 
 Empirical benchmarks on the reference implementation bound what the
 type-level enforcement itself costs: it adds no runtime branch.  The
@@ -52,12 +50,10 @@ reached a 261\,\textmu s median at one thread and a 28\,ms estimated p99 at
 four threads.  These are container-storage measurements from one current
 x86-64 host, not production-scale or cross-architecture performance claims.
 
-The implications extend beyond compliance engineering.
-If accountability can be expressed as a type invariant, then
-the correctness of governance becomes a property that compilers
-can check, proof assistants can verify, and regulators can audit
-through \texttt{cargo test} rather than through manual code
-review.
+If accountability can be expressed as a type invariant,
+its correctness becomes a property that compilers can check, proof
+assistants can verify, and regulators can audit through
+\texttt{cargo test} rather than manual review.
 BTV therefore prevents a class of unevidenced verdict constructions
 inside a defined type perimeter.  It does not prove that every
 consequential action in a polyglot system is routed through that perimeter.

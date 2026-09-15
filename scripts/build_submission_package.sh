@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
-# Build the single LaTeX archive requested as the Main Manuscript upload.
+# Build the single LaTeX source archive requested as the Main Manuscript
+# upload (R1: includes the five figure PDFs and their versioned TikZ sources).
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 source_dir="$repo_root/paper1"
-stage_dir="$repo_root/dist/main-latex"
-archive="$repo_root/dist/COMSI-2026-04-0112_main-latex.zip"
+stage_dir="$repo_root/release/main-latex"
+out_dir="$repo_root/release"
+archive="$out_dir/COMSI-2026-04-0112_source.zip"
 
 command -v zip >/dev/null
 command -v unzip >/dev/null
 
 rm -rf "$stage_dir"
-mkdir -p "$stage_dir"
+mkdir -p "$stage_dir/figures" "$stage_dir/figure-src"
 
 files=(
   main.tex
@@ -33,10 +35,20 @@ for file in "${files[@]}"; do
   cp "$source_dir/$file" "$stage_dir/$file"
 done
 
+# Figures: compiled PDFs (needed to compile the archive) + versioned sources
+for figpdf in "$source_dir"/figures/fig*.pdf; do
+  test -s "$figpdf"
+  cp "$figpdf" "$stage_dir/figures/$(basename "$figpdf")"
+done
+for figsrc in "$source_dir"/figure-src/fig*.tex; do
+  test -s "$figsrc"
+  cp "$figsrc" "$stage_dir/figure-src/$(basename "$figsrc")"
+done
+
 rm -f "$archive"
 (
   cd "$stage_dir"
-  zip -q "$archive" "${files[@]}"
+  zip -rq "$archive" "${files[@]}" figures figure-src
 )
 unzip -t "$archive" >/dev/null
 

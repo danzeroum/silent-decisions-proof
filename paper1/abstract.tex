@@ -9,22 +9,22 @@
 % ─────────────────────────────────────────────────────────────────────────────
 
 \begin{abstract}
-As autonomous AI agents make decisions with legal
-consequences---credit, employment, healthcare---regulatory frameworks
-such as Brazil's LGPD (Art.~20) and the EU AI Act (Arts.~14 and~86) demand
-auditable accountability.  Policy-as-Code tools treat accountability as
-an asynchronous runtime property, leaving decisions structurally able
-to exist without evidence: \emph{silent decisions}.
-We introduce \emph{Bound-To-Verdict} (BTV), which shifts AI
+As autonomous AI agents make consequential decisions---credit,
+employment, healthcare---regulatory frameworks such as Brazil's LGPD
+(Art.~20) and the EU AI Act (Arts.~14,~86) demand auditable
+accountability.  Policy-as-Code tools treat accountability as an
+asynchronous runtime property, leaving decisions able to exist
+without evidence: \emph{silent decisions}.
+We introduce \emph{Bound-To-Verdict} (BTV), shifting AI
 accountability from runtime audit obligation to compile-time type
-guarantee.  Drawing on linear logic, BTV encodes regulatory obligations
+guarantee.  BTV encodes regulatory obligations
 as linear resource types: a \texttt{Verdict} ($V$) cannot be constructed
-within Safe Rust boundaries without atomically consuming its
-\texttt{EvidenceToken} ($E$) and authority-signed
+within Safe Rust without atomically consuming an
+\texttt{EvidenceToken} ($E$) and an authority-signed
 \texttt{ComplianceToken} ($C$), formalised as $(E \otimes
 C_{\text{signed}}) \multimap V$.  We prove the \emph{Constitutional Enclosure
 Theorem}: under the assumptions of Section~4.3, the public Safe Rust API
-cannot construct a BTV \texttt{Verdict} without both tokens.  A reference implementation shows
-the type-level enforcement adds no runtime branch; the measured cost is
-that of the cryptographic primitives and of durable persistence.
+cannot construct a \texttt{Verdict} without both tokens.  A reference
+implementation shows the enforcement adds no runtime branch; the measured
+cost is that of the cryptographic primitives and durable persistence.
 \end{abstract}

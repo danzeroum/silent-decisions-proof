@@ -91,10 +91,7 @@ The following are ill-typed in $\Gamma_{\mathit{ext}}$:
   \item Construction of \texttt{Blake3Hash} via its tuple-struct
     field---the field is private (compiler error \texttt{E0423}).
 \end{enumerate}
-Together, these restrictions close the encapsulation perimeter: the
-only well-typed path to a \texttt{Verdict} in $\Gamma_{\mathit{ext}}$
-is through \texttt{Verdict::new}, which enforces
-Axiom~\ref{ax:intro}.
+Together, these restrictions close the encapsulation perimeter.
 \end{axiom}
 
 % ----------------------------------------------------------------
@@ -131,7 +128,7 @@ within this API perimeter.
 
 \begin{proof}
 We analyze the public construction and extraction paths closed by the
-crate's encapsulation assumptions.
+crate's encapsulation assumptions (Figure~\ref{fig:enclosure_perimeter}).
 
 \medskip
 \noindent\textbf{Case~A: Struct-literal construction.}
@@ -179,6 +176,16 @@ such term is a Materialized Verdict; therefore
 $\mathcal{S}_{P}=\varnothing$ within the stated perimeter.
 \end{proof}
 
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig3_enclosure_perimeter.pdf}
+\caption{The Constitutional Enclosure perimeter: attack vectors A--C are
+  rejected by the compiler (\texttt{E0451}, \texttt{E0624},
+  \texttt{unused\_must\_use}); the only well-typed path to a
+  \texttt{Verdict} is \texttt{Verdict::new}.}
+\label{fig:enclosure_perimeter}
+\end{figure}
+
 % ----------------------------------------------------------------
 \subsection{Corollary: Fail-Secure by Construction}
 \label{sec:corollary}
@@ -196,12 +203,9 @@ that lacks an evidence record.
 \end{corollary}
 
 \begin{proof}
-If the evidence-production path is absent or returns an error type
-(e.g., \texttt{Result<EvidenceToken, E>}), the only well-typed
-continuation that produces a \texttt{Verdict} requires unwrapping
-the result and handling the error branch explicitly.  The error
-branch cannot produce a \texttt{Verdict} without evidence; it must
-either propagate the error upward or halt.  By
+The only well-typed continuation that produces a \texttt{Verdict}
+requires unwrapping the result and handling the error branch
+explicitly; that branch must either propagate the error or halt.  By
 Theorem~\ref{thm:enclosure}, any attempt to construct a
 \texttt{Verdict} in the error branch without a valid
 \texttt{EvidenceToken} is ill-typed.
@@ -253,9 +257,9 @@ The four compile-fail tests
 \texttt{escalated\_token\_reuse.rs},
 \texttt{escalated\_operator\_token\_drop.rs}, and
 \texttt{escalated\_consume\_external.rs}
-exercise the corresponding encapsulation and ownership cases
-of Theorem~\ref{thm:enclosure}) that no \texttt{EscalatedVerdict}
-can be forged, duplicated, or silently dropped.
+exercise the corresponding encapsulation and ownership cases of
+Theorem~\ref{thm:enclosure}; no \texttt{EscalatedVerdict} can be
+forged, duplicated, or silently dropped.
 \end{proof}
 
 % ----------------------------------------------------------------
