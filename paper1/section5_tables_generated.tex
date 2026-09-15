@@ -24,22 +24,25 @@ Threads & p50 (\textmu s) & p99 (\textmu s) & CV\% & p50 (\textmu s) & p99 (\tex
 % ── Table: five-mode contrast (generated; do not edit) ──
 \begin{table}[t]
 \caption{Five-mode accountability contrast at 4~KiB payloads, one
-thread (Xeon 2~vCPU, 5\,s target; reduced-footprint snapshot). Each
+thread (Xeon 4~vCPU, 5\,s target; reduced-footprint snapshot). Each
 cell is the median across five trials; percentiles are $P^2$
 estimates. The durable arm uses a real on-disk SQLite log (WAL,
 \texttt{synchronous=FULL}); its container-storage numbers are a
-LOWER bound on bare-metal fsync cost. Provenance:
-\texttt{data/sweep\_raw\_20260914T231611Z\_chunked5s.csv}.}
+LOWER bound on bare-metal fsync cost. Every durable-mode operation
+issued a real row (end-of-run sanity gate: rows persisted == operations
+issued), closing a prior round's silent idempotent-replay defect
+(COMSI-2026-04-0112 Round 2, G5). Provenance:
+\texttt{data/sweep\_raw\_20260915T024430Z\_g5fix.csv}.}
 \label{tab:fivemode}
 \begin{tabular}{lrrr}
 \hline
 Mode & p50 (\textmu s) & p99 (\textmu s) & throughput (k ops/s)\\
 \hline
-BTV full pipeline (RAM sink) & 2.22 & 2.86 & 408.9\\
-BTV full pipeline (durable SQLite, WAL+FULL) & 10.22 & 24.26 & 87.0\\
-BTV verdict construction only & 0.96 & 1.22 & 407.7\\
-Status quo: digest+metadata log & 1.35 & 1.92 & 655.8\\
-Status quo: full-context JSON, fire-and-forget & 26.59 & 42.46 & 35.0\\
+BTV full pipeline (RAM sink) & 7.82 & 25.87 & 113.9\\
+BTV full pipeline (durable SQLite, WAL+FULL) & 261.44 & 511.55 & 3.1\\
+BTV verdict construction only & 4.69 & 8.56 & 114.7\\
+Status quo: digest+metadata log & 1.68 & 2.28 & 507.6\\
+Status quo: full-context JSON, fire-and-forget & 23.61 & 46.04 & 38.4\\
 \hline
 \end{tabular}
 \end{table}

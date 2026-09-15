@@ -10,7 +10,12 @@ the gate is "every numeric cell of §5 traces to a row of a committed CSV".
 Inputs (committed):
   - data/sweep_raw_20260914T164735Z_runnervmlun5p.csv   (AMD EPYC 9V74, 4 vCPU, 10 s target)
   - data/sweep_raw_20260914T171258Z.csv                 (Intel Xeon, 2 vCPU, 1 s target)
-  - data/sweep_raw_20260914T231611Z_chunked5s.csv       (Intel Xeon, 2 vCPU, 5 s target, 5 modes — OS-07)
+  - data/sweep_raw_20260915T024430Z_g5fix.csv           (Intel Xeon, 4 vCPU, 5 s target, 5 modes —
+    COMSI-2026-04-0112 Round 2 G5: recollected after fixing sweep_concurrent.rs's durable-mode
+    payload-nonce collision, which previously let OS-03's append-only idempotency absorb repeat
+    trials/threads as no-op replays instead of real writes. Supersedes
+    data/sweep_raw_20260914T231611Z_chunked5s.csv, whose durable-mode row measured that no-op
+    path — see docs/RESPONSE-LETTER.md Part F, G5, for the full account.)
 
 Outputs:
   - paper1/section5_tables_generated.tex (\\input{} by section5_benchmarks.tex)
@@ -39,7 +44,7 @@ PLATFORMS = [
     ("EPYC-9V74-4vCPU", "data/sweep_raw_20260914T164735Z_runnervmlun5p.csv"),
     ("Xeon-2vCPU", "data/sweep_raw_20260914T171258Z.csv"),
 ]
-FIVE_MODE = "data/sweep_raw_20260914T231611Z_chunked5s.csv"
+FIVE_MODE = "data/sweep_raw_20260915T024430Z_g5fix.csv"
 
 MODE_LABELS = {
     "full_pipeline": "BTV full pipeline (RAM sink)",
@@ -116,12 +121,15 @@ def main() -> int:
     w("% ── Table: five-mode contrast (generated; do not edit) ──")
     w("\\begin{table}[t]")
     w("\\caption{Five-mode accountability contrast at 4~KiB payloads, one")
-    w("thread (Xeon 2~vCPU, 5\\,s target; reduced-footprint snapshot). Each")
+    w("thread (Xeon 4~vCPU, 5\\,s target; reduced-footprint snapshot). Each")
     w("cell is the median across five trials; percentiles are $P^2$")
     w("estimates. The durable arm uses a real on-disk SQLite log (WAL,")
     w("\\texttt{synchronous=FULL}); its container-storage numbers are a")
-    w("LOWER bound on bare-metal fsync cost. Provenance:")
-    w("\\texttt{data/sweep\\_raw\\_20260914T231611Z\\_chunked5s.csv}.}")
+    w("LOWER bound on bare-metal fsync cost. Every durable-mode operation")
+    w("issued a real row (end-of-run sanity gate: rows persisted == operations")
+    w("issued), closing a prior round's silent idempotent-replay defect")
+    w("(COMSI-2026-04-0112 Round 2, G5). Provenance:")
+    w("\\texttt{data/sweep\\_raw\\_20260915T024430Z\\_g5fix.csv}.}")
     w("\\label{tab:fivemode}")
     w("\\begin{tabular}{lrrr}")
     w("\\hline")
@@ -149,23 +157,43 @@ def main() -> int:
     w("\\end{table}")
     w("")
 
-    # Contrast sentence numbers (also computed, not hand-written)
+    # Contrast sentence numbers (also computed, not hand-written).
+    #
+    # COMSI-2026-04-0112 Round 2 (G5): this used to hardcode "FASTER" for
+    # the async-log comparison and "SLOWER" for the digest-log one,
+    # because at the time the durable-mode data happened to come out that
+    # way. That data was wrong (a payload-nonce collision let OS-03's
+    # append-only idempotency absorb most durable "writes" as no-op
+    # replays), and once fixed the direction inverted — durable is now
+    # slower than BOTH baselines. Hardcoding the word instead of deriving
+    # it from the sign of the ratio is exactly how a wrong number ships
+    # with a description that still sounds right: fixed to report
+    # whichever direction the fresh ratio actually shows, for both
+    # comparisons, every time this script runs.
+    def describe_ratio(numerator_label: str, num: float, denom_label: str, denom: float) -> str:
+        ratio = num / denom
+        if ratio >= 1:
+            return f"{numerator_label} is {ratio:.1f}x SLOWER than {denom_label}"
+        return f"{numerator_label} is {1 / ratio:.1f}x FASTER than {denom_label}"
+
+    durable_vs_async = None
+    durable_vs_digest = None
     if "full_pipeline_durable" in values and "status_quo_async_log" in values:
-        faster = values["status_quo_async_log"][0] / values["full_pipeline_durable"][0]
-    else:
-        faster = None
+        durable_vs_async = describe_ratio(
+            "BTV-durable", values["full_pipeline_durable"][0],
+            "the full-context status quo", values["status_quo_async_log"][0],
+        )
     if "full_pipeline_durable" in values and "status_quo_digest_log" in values:
-        slower = values["full_pipeline_durable"][0] / values["status_quo_digest_log"][0]
-    else:
-        slower = None
+        durable_vs_digest = describe_ratio(
+            "BTV-durable", values["full_pipeline_durable"][0],
+            "the digest-only status quo", values["status_quo_digest_log"][0],
+        )
 
     OUT.write_text("\n".join(out) + "\n")
     print(f"Wrote {OUT}", file=sys.stderr)
-    if faster and slower:
+    if durable_vs_async and durable_vs_digest:
         print(
-            f"Contrast @4KiB/1t: BTV-durable is {faster:.1f}x FASTER than the "
-            f"full-context status quo and {slower:.1f}x SLOWER than the "
-            "digest-only status quo.",
+            f"Contrast @4KiB/1t: {durable_vs_async}; {durable_vs_digest}.",
             file=sys.stderr,
         )
     return 0
