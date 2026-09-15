@@ -14,3 +14,22 @@ paper2/target/
 !data/sweep_raw_20260914T164735Z_runnervmlun5p.csv
 !data/sweep_raw_20260914T231541Z.csv
 !data/sweep_raw_20260914T231611Z_chunked5s.csv
+
+# COMSI-2026-04-0112 Round 2 (G5): recollected after fixing the durable-mode
+# payload nonce collision (see docs/RESPONSE-LETTER.md Part F). Supersedes
+# the chunked5s file above as the five-mode Table 2/3 source.
+!data/sweep_raw_20260915T024430Z_g5fix.csv
+
+# LaTeX build artifacts (COMSI-2026-04-0112 Round 3: the manuscript is now
+# compiled as a gate, so these appear on every build).
+paper1/*.aux
+paper1/*.bbl
+paper1/*.blg
+paper1/*.log
+paper1/*.out
+paper1/*.pdf
+dist/
+
+# R1 release artifacts
+!release/
+release/main-latex/

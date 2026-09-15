@@ -48,7 +48,7 @@ fn main() {
             .to_string(),
     );
 
-    println!("  [3] EscalatedVerdict constructed — V_esc ⊸ (O ⊗ 1) satisfied");
+    println!("  [3] EscalatedVerdict constructed — O ⊸ V_esc satisfied");
     println!(
         "      Decision:    {}",
         match verdict.decision() {

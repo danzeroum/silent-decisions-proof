@@ -1,46 +1,54 @@
-% ── Table: two-platform comparison (generated; do not edit) ──
-\begin{table}[t]
-\caption{Thread scaling of the BTV full pipeline at 4~KiB payloads,
-two virtualized platforms. Each cell is the MEDIAN across five trials
-of the per-trial aggregate; CV\% is the trial-to-trial coefficient of
-variation of the mean latency. Percentiles are $P^2$ estimates
-(Jain \& Chlamtac 1985), not order statistics. Provenance:
-\texttt{data/sweep\_raw\_20260914T164735Z\_runnervmlun5p.csv} (EPYC,
-10\,s target) and
-\texttt{data/sweep\_raw\_20260914T171258Z.csv} (Xeon, 1\,s target).}
+% ── Table: thread scaling, both persistence postures (generated; do not edit) ──
+\begin{table*}[t]
+\caption{Thread scaling at 4~KiB payloads, in-memory versus durable
+persistence. Each cell is the MEDIAN across five trials of the
+per-trial aggregate; CV\% is the trial-to-trial coefficient of
+variation. Percentiles are $P^2$ estimates (Jain \& Chlamtac 1985),
+not order statistics. Provenance:
+\texttt{data/sweep\_raw\_20260915T024430Z\_g5fix.csv}
+(Intel Xeon, 4~vCPU, 5\,s target).}
 \label{tab:platforms}
+\small
 \begin{tabular}{lrrrrrr}
 \hline
- & \multicolumn{3}{c}{EPYC 9V74 (4 vCPU, 10\,s target)} & \multicolumn{3}{c}{Xeon (2 vCPU, 1\,s target)}\\
+ & \multicolumn{3}{c}{In-memory sink} & \multicolumn{3}{c}{Durable SQLite (WAL, FULL)}\\
 Threads & p50 (\textmu s) & p99 (\textmu s) & CV\% & p50 (\textmu s) & p99 (\textmu s) & CV\%\\
 \hline
-1 & 1.72 & 1.85 & 0.0 & 1.27 & 1.43 & 0.1\\
-2 & 1.73 & 1.86 & 0.2 & 1.38 & 4.47 & 0.4\\
-4 & 2.30 & 2.44 & 0.2 & -- & -- & --\\
+1 & 7.82 & 25.87 & 0.1 & 261.44 & 511.55 & 7.8\\
+2 & 7.83 & 24.14 & 0.3 & 301.15 & 10929.66 & 2.0\\
+4 & 7.82 & 24.50 & 0.2 & 291.85 & 28000.83 & 8.8\\
 \hline
 \end{tabular}
-\end{table}
+\end{table*}
 
 % ── Table: five-mode contrast (generated; do not edit) ──
-\begin{table}[t]
+\begin{table*}[t]
 \caption{Five-mode accountability contrast at 4~KiB payloads, one
-thread (Xeon 2~vCPU, 5\,s target; reduced-footprint snapshot). Each
+thread (Xeon 4~vCPU, 5\,s target; reduced-footprint snapshot). Each
 cell is the median across five trials; percentiles are $P^2$
 estimates. The durable arm uses a real on-disk SQLite log (WAL,
 \texttt{synchronous=FULL}); its container-storage numbers are a
-LOWER bound on bare-metal fsync cost. Provenance:
-\texttt{data/sweep\_raw\_20260914T231611Z\_chunked5s.csv}.}
+LOWER bound on bare-metal fsync cost. Every durable-mode operation
+issued a real row (end-of-run sanity gate: rows persisted == operations
+issued), closing a prior round's silent idempotent-replay defect
+(COMSI-2026-04-0112 Round 2, G5). Provenance:
+\texttt{data/sweep\_raw\_20260915T024430Z\_g5fix.csv}. Rows:
+BTV in-memory sink; BTV with durable on-disk SQLite; BTV binding with
+tokens built outside the timed region; status quo digest plus metadata;
+status
+quo logging the full context as JSON, fire-and-forget.}
 \label{tab:fivemode}
+\small
 \begin{tabular}{lrrr}
 \hline
 Mode & p50 (\textmu s) & p99 (\textmu s) & throughput (k ops/s)\\
 \hline
-BTV full pipeline (RAM sink) & 2.22 & 2.86 & 408.9\\
-BTV full pipeline (durable SQLite, WAL+FULL) & 10.22 & 24.26 & 87.0\\
-BTV verdict construction only & 0.96 & 1.22 & 407.7\\
-Status quo: digest+metadata log & 1.35 & 1.92 & 655.8\\
-Status quo: full-context JSON, fire-and-forget & 26.59 & 42.46 & 35.0\\
+BTV, in-memory sink & 7.82 & 25.87 & 113.9\\
+BTV, durable SQLite & 261.44 & 511.55 & 3.1\\
+BTV, prebuilt binding & 4.69 & 8.56 & 114.7\\
+Status quo, digest only & 1.68 & 2.28 & 507.6\\
+Status quo, full context & 23.61 & 46.04 & 38.4\\
 \hline
 \end{tabular}
-\end{table}
+\end{table*}
 

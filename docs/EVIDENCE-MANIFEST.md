@@ -298,3 +298,14 @@ Commit: `fb6e9d5` (branch `review/bench-workspace-ffi`, PR #4).
 | G2 | `corpus_median` de BR-LGPD nunca tocou o corpus (`regime` CSV="BR" vs YAML="BR_LGPD") | CSV normalizado para `BR_LGPD`; gate estendido em `compute_crossover.py` | `python3 scripts/compute_crossover.py` imprime `Corpus provenance: OK` |
 | G7 | duas cartas-resposta; "Part R1" numerava R1.1–R1.3 sem fonte verificada | consolidadas em `docs/RESPONSE-LETTER.md`; numeração R1.x removida | uma única carta no repositório |
 | G1 | tag `comsi-2026-04-0112-r1` (`abb7ca2`) 20+ arquivos atrás do `main` | — | `git diff --stat <tag> HEAD` (pendente — ver nota G1 na carta-resposta) |
+
+## Rodada 3 — fechamento editorial (15 set 2026)
+
+| Achado | O que mudou | Evidência executável |
+|---|---|---|
+| **Tabelas de §5 mutuamente incoerentes** — `tab:platforms` citava os dois snapshots pré-OS-02 (full pipeline 1,72 µs @ 4 KiB), 4,5× ABAIXO da medição Criterion da mesma operação em `tab:construction` (7,65 µs) no mesmo manuscrito. Um componente custando mais que o pipeline que o contém, visível sem executar nada. | Regra de coleção única: as três tabelas passam a vir de `data/sweep_raw_20260915T024430Z_g5fix.csv`. `tab:platforms` vira escalonamento por threads × postura de persistência (RAM vs durável). Os dois CSVs antigos permanecem commitados como proveniência e são nomeados no docstring de `gen_section5_tables.py` como deliberadamente não lidos. | `python3 scripts/gen_section5_tables.py`; nenhum número de §5 fora do CSV citado na legenda |
+| **Cauda de contenção do sink durável, antes não reportada** | `tab:platforms` agora expõe p99 durável subindo de 512 µs (1 thread) a 28 ms (4 threads) sob serialização no SQLite single-writer. §5 declara que o `LogSink` de referência não é production-ready nessa dimensão. | mesma coleção, colunas p99/CV |
+| **Argumento ausente do §5** — a seção reportava o multiplicador de 11,1× e parava | §5 passa a citar `btv-core/tests/test_status_quo_contrast.rs` (logger morto e logger saturado retornando sucesso para mil decisões enquanto todo registro é descartado) e a declarar que a comparação não é like-for-like | `cargo test -p btv-core --test test_status_quo_contrast` |
+| **Claim de multi-hardware estreitado, e declarado** | Comparação cross-platform com o código atual vira obrigação aberta ao lado da coleta de 90 s; cobertura `aarch64` permanece compile-and-test sem claim de performance. §5.1 e carta E2 dizem isso. | `docs/RESPONSE-LETTER.md` E2 |
+
+**Contagem pós-fechamento:** abstract 149/150; corpo 5.967/6.000 (`scripts/count_words.py`).

@@ -196,6 +196,50 @@ jobs:
           BTV_TEST_THREADS: "2"
         run: cargo test --target aarch64-unknown-linux-gnu --features test-support --test test_load -- --nocapture
 
+  manuscript-build:
+    name: Manuscript compiles (LaTeX gate)
+    runs-on: ubuntu-latest
+    # COMSI-2026-04-0112 Round 3: until this round the manuscript had never
+    # been compiled in any round — every check was structural. The first
+    # compile found three tables overflowing IEEEtran's column measure by up
+    # to 99.7 pt, which no structural check can see. The compile is a gate now.
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install TeX Live (IEEEtran + cmll + listings)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            latexdiff texlive-extra-utils lmodern pandoc zip unzip \
+            texlive-latex-base texlive-latex-recommended texlive-publishers \
+            texlive-fonts-recommended texlive-fonts-extra texlive-science
+
+      - name: Compile and enforce typographic gates
+        run: |
+          python3 scripts/count_words.py
+          bash scripts/build_manuscript.sh
+
+      - name: Compile concise response letter
+        run: bash scripts/build_response_letter.sh
+
+      - name: Build tracked changes and LaTeX upload package
+        run: |
+          bash scripts/build_tracked_changes.sh
+          bash scripts/build_submission_package.sh
+
+      - name: Upload submission files
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: submission-files
+          path: |
+            paper1/main.pdf
+            dist/COMSI-2026-04-0112_main-latex.zip
+            dist/COMSI-2026-04-0112_tracked-changes.pdf
+            dist/COMSI-2026-04-0112_author-response.pdf
+
   tco-reproducibility:
     name: TCO Reproducibility
     runs-on: ubuntu-latest

@@ -8,9 +8,22 @@ is emitted here from the CSVs below, and the caption cites the exact file;
 the gate is "every numeric cell of §5 traces to a row of a committed CSV".
 
 Inputs (committed):
+  - data/sweep_raw_20260915T024430Z_g5fix.csv           (Intel Xeon, 4 vCPU, 5 s target, 5 modes —
+    THE ONLY dataset §5 quotes. Every table below comes from this one file, so the three tables
+    are mutually consistent by construction: Table 1's Criterion figure for Verdict::new, Table 2's
+    full-pipeline row and Table 3's five-mode contrast all describe the same code on the same host.
+    COMSI-2026-04-0112 Round 2 G5: recollected after fixing sweep_concurrent.rs's durable-mode
+    payload-nonce collision, which previously let OS-03's append-only idempotency absorb repeat
+    trials/threads as no-op replays instead of real writes. Supersedes
+    data/sweep_raw_20260914T231611Z_chunked5s.csv, whose durable-mode row measured that no-op
+    path — see docs/RESPONSE-LETTER.md Part F, G5, for the full account.)
+
+Committed but NOT quoted by §5 (retained as provenance only):
   - data/sweep_raw_20260914T164735Z_runnervmlun5p.csv   (AMD EPYC 9V74, 4 vCPU, 10 s target)
   - data/sweep_raw_20260914T171258Z.csv                 (Intel Xeon, 2 vCPU, 1 s target)
-  - data/sweep_raw_20260914T231611Z_chunked5s.csv       (Intel Xeon, 2 vCPU, 5 s target, 5 modes — OS-07)
+  Both predate OS-02's authority-signature verification inside Verdict::new, so their latency
+  figures measure strictly less work than the current code and are not comparable with the tables
+  below. A second-platform collection with the current code is due alongside the 90 s run.
 
 Outputs:
   - paper1/section5_tables_generated.tex (\\input{} by section5_benchmarks.tex)
@@ -20,9 +33,9 @@ configuration; CV% = stdev/mean of the trial medians' p50 values (the
 harness reports per-trial aggregates, so CV quantifies trial-to-trial
 stability, matching the EVIDENCE-MANIFEST practice).
 
-Epistemic footer: both platform runs are REDUCED-footprint VM snapshots
-(10 s and 1 s wall targets), NOT the 90 s dedicated-hardware headline
-collection the EVIDENCE-MANIFEST still lists as due; §5.1 must say so.
+Epistemic footer: the quoted collection is a REDUCED-footprint VM snapshot
+(5 s wall target on containerized overlayfs), NOT the 90 s dedicated-hardware
+headline collection the EVIDENCE-MANIFEST still lists as due; §5.1 must say so.
 Percentiles are P² estimates (Jain & Chlamtac 1985), not order statistics.
 """
 
@@ -35,18 +48,23 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 OUT = REPO_ROOT / "paper1" / "section5_tables_generated.tex"
 
-PLATFORMS = [
+# Retained for provenance; deliberately NOT read by any table (see docstring).
+SUPERSEDED_PLATFORMS = [
     ("EPYC-9V74-4vCPU", "data/sweep_raw_20260914T164735Z_runnervmlun5p.csv"),
     ("Xeon-2vCPU", "data/sweep_raw_20260914T171258Z.csv"),
 ]
-FIVE_MODE = "data/sweep_raw_20260914T231611Z_chunked5s.csv"
+FIVE_MODE = "data/sweep_raw_20260915T024430Z_g5fix.csv"
 
+# Labels are deliberately terse: IEEEtran's column measure is ~3.5 in, and
+# the descriptive forms these replace pushed the table 99.7 pt past the
+# column edge (COMSI-2026-04-0112 Round 3). The expansion lives in the
+# caption, where it costs nothing.
 MODE_LABELS = {
-    "full_pipeline": "BTV full pipeline (RAM sink)",
-    "full_pipeline_durable": "BTV full pipeline (durable SQLite, WAL+FULL)",
-    "verdict_only": "BTV verdict construction only",
-    "status_quo_async_log": "Status quo: full-context JSON, fire-and-forget",
-    "status_quo_digest_log": "Status quo: digest+metadata log",
+    "full_pipeline": "BTV, in-memory sink",
+    "full_pipeline_durable": "BTV, durable SQLite",
+    "verdict_only": "BTV, prebuilt binding",
+    "status_quo_async_log": "Status quo, full context",
+    "status_quo_digest_log": "Status quo, digest only",
 }
 
 
@@ -73,32 +91,49 @@ def main() -> int:
     out = []
     w = out.append
 
-    # ── Table 1: two platforms, full_pipeline, 4 KiB, thread scaling ────────
-    w("% ── Table: two-platform comparison (generated; do not edit) ──")
-    w("\\begin{table}[t]")
-    w("\\caption{Thread scaling of the BTV full pipeline at 4~KiB payloads,")
-    w("two virtualized platforms. Each cell is the MEDIAN across five trials")
-    w("of the per-trial aggregate; CV\\% is the trial-to-trial coefficient of")
-    w("variation of the mean latency. Percentiles are $P^2$ estimates")
-    w("(Jain \\& Chlamtac 1985), not order statistics. Provenance:")
-    w("\\texttt{data/sweep\\_raw\\_20260914T164735Z\\_runnervmlun5p.csv} (EPYC,")
-    w("10\\,s target) and")
-    w("\\texttt{data/sweep\\_raw\\_20260914T171258Z.csv} (Xeon, 1\\,s target).}")
+    # ── Table 1: thread scaling, RAM-sink vs durable arm, 4 KiB ─────────────
+    #
+    # COMSI-2026-04-0112 Round 3 (editorial closure): this table used to
+    # compare two OLDER platform snapshots
+    # (sweep_raw_20260914T164735Z_runnervmlun5p.csv, EPYC 4 vCPU; and
+    # sweep_raw_20260914T171258Z.csv, Xeon 2 vCPU). Both were collected
+    # BEFORE OS-02 made Verdict::new verify the compliance token's
+    # authority signature, so their full-pipeline figures (1.72 us at 4 KiB)
+    # measure strictly less work than the current code and sit 4.5x BELOW
+    # Table~\ref{tab:construction}'s Criterion measurement of the same
+    # operation (7.65 us) in the same manuscript. Publishing a component
+    # that costs more than the pipeline containing it is a contradiction a
+    # reader hits without running anything. The thread-scaling story is
+    # therefore told from the headline collection, which is internally
+    # consistent with both other tables; the two older snapshots remain
+    # committed as provenance, and §5.1 states that a second-platform
+    # re-collection with the current code is due alongside the 90 s run.
+    fm = group(load(FIVE_MODE))
+    w("% ── Table: thread scaling, both persistence postures (generated; do not edit) ──")
+    # table* (spans both columns): seven data columns do not fit IEEEtran's
+    # ~3.5 in single-column measure even at \small — it overflowed by 44 pt.
+    w("\\begin{table*}[t]")
+    w("\\caption{Thread scaling at 4~KiB payloads, in-memory versus durable")
+    w("persistence. Each cell is the MEDIAN across five trials of the")
+    w("per-trial aggregate; CV\\% is the trial-to-trial coefficient of")
+    w("variation. Percentiles are $P^2$ estimates (Jain \\& Chlamtac 1985),")
+    w("not order statistics. Provenance:")
+    w("\\texttt{data/sweep\\_raw\\_20260915T024430Z\\_g5fix.csv}")
+    w("(Intel Xeon, 4~vCPU, 5\\,s target).}")
     w("\\label{tab:platforms}")
+    w("\\small")
     w("\\begin{tabular}{lrrrrrr}")
     w("\\hline")
-    w(" & \\multicolumn{3}{c}{EPYC 9V74 (4 vCPU, 10\\,s target)} & "
-      "\\multicolumn{3}{c}{Xeon (2 vCPU, 1\\,s target)}\\\\")
+    w(" & \\multicolumn{3}{c}{In-memory sink} & "
+      "\\multicolumn{3}{c}{Durable SQLite (WAL, FULL)}\\\\")
     w("Threads & p50 (\\textmu s) & p99 (\\textmu s) & CV\\% & "
       "p50 (\\textmu s) & p99 (\\textmu s) & CV\\%\\\\")
     w("\\hline")
-    epyc = group(load(PLATFORMS[0][1]))
-    xeon = group(load(PLATFORMS[1][1]))
-    thread_counts = sorted({t for (_, _, t) in epyc} | {t for (_, _, t) in xeon})
+    thread_counts = sorted({t for (_, p, t) in fm if p == 4096})
     for t in thread_counts:
         cells = []
-        for g in (epyc, xeon):
-            rows = g.get(("full_pipeline", 4096, t))
+        for mode in ("full_pipeline", "full_pipeline_durable"):
+            rows = fm.get((mode, 4096, t))
             if not rows:
                 cells += ["--", "--", "--"]
                 continue
@@ -108,21 +143,30 @@ def main() -> int:
         w(f"{t} & {cells[0]} & {cells[1]} & {cells[2]} & {cells[3]} & {cells[4]} & {cells[5]}\\\\")
     w("\\hline")
     w("\\end{tabular}")
-    w("\\end{table}")
+    w("\\end{table*}")
     w("")
 
     # ── Table 2: five-mode contrast (OS-07), 4 KiB, 1 thread ────────────────
-    fm = group(load(FIVE_MODE))
     w("% ── Table: five-mode contrast (generated; do not edit) ──")
-    w("\\begin{table}[t]")
+    # table* for the same reason: the row labels plus three numeric columns
+    # overflowed the single-column measure by 38 pt at \small.
+    w("\\begin{table*}[t]")
     w("\\caption{Five-mode accountability contrast at 4~KiB payloads, one")
-    w("thread (Xeon 2~vCPU, 5\\,s target; reduced-footprint snapshot). Each")
+    w("thread (Xeon 4~vCPU, 5\\,s target; reduced-footprint snapshot). Each")
     w("cell is the median across five trials; percentiles are $P^2$")
     w("estimates. The durable arm uses a real on-disk SQLite log (WAL,")
     w("\\texttt{synchronous=FULL}); its container-storage numbers are a")
-    w("LOWER bound on bare-metal fsync cost. Provenance:")
-    w("\\texttt{data/sweep\\_raw\\_20260914T231611Z\\_chunked5s.csv}.}")
+    w("LOWER bound on bare-metal fsync cost. Every durable-mode operation")
+    w("issued a real row (end-of-run sanity gate: rows persisted == operations")
+    w("issued), closing a prior round's silent idempotent-replay defect")
+    w("(COMSI-2026-04-0112 Round 2, G5). Provenance:")
+    w("\\texttt{data/sweep\\_raw\\_20260915T024430Z\\_g5fix.csv}. Rows:")
+    w("BTV in-memory sink; BTV with durable on-disk SQLite; BTV binding with")
+    w("tokens built outside the timed region; status quo digest plus metadata;")
+    w("status")
+    w("quo logging the full context as JSON, fire-and-forget.}")
     w("\\label{tab:fivemode}")
+    w("\\small")
     w("\\begin{tabular}{lrrr}")
     w("\\hline")
     w("Mode & p50 (\\textmu s) & p99 (\\textmu s) & throughput (k ops/s)\\\\")
@@ -146,26 +190,46 @@ def main() -> int:
         w(f"{MODE_LABELS[mode]} & {p50/1e3:.2f} & {p99/1e3:.2f} & {thr/1e3:.1f}\\\\")
     w("\\hline")
     w("\\end{tabular}")
-    w("\\end{table}")
+    w("\\end{table*}")
     w("")
 
-    # Contrast sentence numbers (also computed, not hand-written)
+    # Contrast sentence numbers (also computed, not hand-written).
+    #
+    # COMSI-2026-04-0112 Round 2 (G5): this used to hardcode "FASTER" for
+    # the async-log comparison and "SLOWER" for the digest-log one,
+    # because at the time the durable-mode data happened to come out that
+    # way. That data was wrong (a payload-nonce collision let OS-03's
+    # append-only idempotency absorb most durable "writes" as no-op
+    # replays), and once fixed the direction inverted — durable is now
+    # slower than BOTH baselines. Hardcoding the word instead of deriving
+    # it from the sign of the ratio is exactly how a wrong number ships
+    # with a description that still sounds right: fixed to report
+    # whichever direction the fresh ratio actually shows, for both
+    # comparisons, every time this script runs.
+    def describe_ratio(numerator_label: str, num: float, denom_label: str, denom: float) -> str:
+        ratio = num / denom
+        if ratio >= 1:
+            return f"{numerator_label} is {ratio:.1f}x SLOWER than {denom_label}"
+        return f"{numerator_label} is {1 / ratio:.1f}x FASTER than {denom_label}"
+
+    durable_vs_async = None
+    durable_vs_digest = None
     if "full_pipeline_durable" in values and "status_quo_async_log" in values:
-        faster = values["status_quo_async_log"][0] / values["full_pipeline_durable"][0]
-    else:
-        faster = None
+        durable_vs_async = describe_ratio(
+            "BTV-durable", values["full_pipeline_durable"][0],
+            "the full-context status quo", values["status_quo_async_log"][0],
+        )
     if "full_pipeline_durable" in values and "status_quo_digest_log" in values:
-        slower = values["full_pipeline_durable"][0] / values["status_quo_digest_log"][0]
-    else:
-        slower = None
+        durable_vs_digest = describe_ratio(
+            "BTV-durable", values["full_pipeline_durable"][0],
+            "the digest-only status quo", values["status_quo_digest_log"][0],
+        )
 
     OUT.write_text("\n".join(out) + "\n")
     print(f"Wrote {OUT}", file=sys.stderr)
-    if faster and slower:
+    if durable_vs_async and durable_vs_digest:
         print(
-            f"Contrast @4KiB/1t: BTV-durable is {faster:.1f}x FASTER than the "
-            f"full-context status quo and {slower:.1f}x SLOWER than the "
-            "digest-only status quo.",
+            f"Contrast @4KiB/1t: {durable_vs_async}; {durable_vs_digest}.",
             file=sys.stderr,
         )
     return 0

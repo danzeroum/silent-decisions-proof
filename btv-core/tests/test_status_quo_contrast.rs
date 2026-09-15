@@ -25,7 +25,7 @@
 //!                              context) and a `ComplianceToken` (issued by
 //!                              an allowlist-validating authority) were
 //!                              MOVED INTO `Verdict::new` and consumed
-//!                              (V ⊸ (E ⊗ C), Theorem 4.1). There is no
+//!                              ((E ⊗ C) ⊸ V, Theorem 4.1). There is no
 //!                              code path that materializes a decision
 //!                              without the evidence having been bound to
 //!                              it first. The compile-time counterpart of

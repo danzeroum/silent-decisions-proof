@@ -37,7 +37,7 @@ fn main() {
     // its allowlist before minting the token.
     let authority = ComplianceAuthority::new_from_env();
     let compliance = authority
-        .issue_token("BR-LGPD", "1.0.0", 720) // 30 days per LGPD Art. 18§2
+        .issue_token("BR-LGPD", "1.0.0", 720) // Example 30-day policy window
         .expect("BR-LGPD is in the default allowlist");
     println!("  [2] ComplianceToken prepared");
     println!("      Jurisdiction: BR-LGPD");
@@ -46,7 +46,7 @@ fn main() {
 
     // Step 3: Construct the Verdict — this CONSUMES both tokens
     //
-    //   V ⊸ (E ⊗ C)
+    //   (E ⊗ C) ⊸ V
     //
     // After this line, `token` and `compliance` no longer exist.
     // The Rust compiler enforces this — there is no way to "forget" the evidence.
@@ -60,7 +60,7 @@ fn main() {
     )
     .expect("new_from_env authority holds the recognized key (OS-02)");
 
-    println!("  [3] Verdict constructed — V ⊸ (E ⊗ C) satisfied");
+    println!("  [3] Verdict constructed — (E ⊗ C) ⊸ V satisfied");
     println!(
         "      Decision:    {:?}",
         match verdict.decision() {

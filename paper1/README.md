@@ -8,19 +8,19 @@
 
 ## The Theorem
 
-> **Constitutional Enclosure Theorem:** In any system satisfying the BTV type invariant,
-> the set of materialized silent decisions is empty.
+> **Constitutional Enclosure Theorem:** under the stated encapsulation assumptions,
+> external Safe Rust callers cannot construct a BTV `Verdict` without the required tokens.
 
-A **silent decision** is an AI Verdict that carries legal consequences but has no
-non-repudiable evidence chain. This repository proves, via the Rust type system,
-that silent decisions are *type errors* — not runtime omissions, not process failures.
+A **silent decision**, within the BTV perimeter, is a `Verdict` lacking its required
+evidence and compliance resources. The crate's public Safe Rust API prevents that
+construction; it does not prove that surrounding systems cannot bypass BTV.
 
 ---
 
 ## The Core Law
 
 ```
-V ⊸ (E ⊗ C)
+(E ⊗ C) ⊸ V
 ```
 
 A Verdict (`V`) can only be produced by **linearly consuming**:

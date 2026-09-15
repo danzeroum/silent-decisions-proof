@@ -10,51 +10,50 @@
 \section{Conclusion}
 \label{sec:conclusion}
 
-This paper began from a simple observation: regulatory frameworks
-such as LGPD Art.~18\S2 and EU AI Act Art.~86 mandate that
-explanations and contestability rights \emph{accompany} a decision,
-but they cannot prevent a decision from existing \emph{without} them.
-We called this failure mode a \emph{silent decision}, and argued
-that its root cause is not a failure of intent but a failure of
-type---a structural property of architectures that treat
+Regulatory frameworks
+such as LGPD Art.~20 and EU AI Act Arts.~14 and~86 establish review,
+information, explanation, and oversight obligations, but do not by
+themselves prevent software from emitting a decision without supporting
+evidence.
+We called this failure mode a \emph{silent decision} and argued that
+its root cause is a failure of type: architectures treat
 accountability as a runtime audit obligation rather than a
 compile-time invariant.
 
 Drawing on Girard's Linear Logic~\cite{girard1987linear} and Rust's
 ownership model~\cite{jung2017rustbelt}, we introduced the
 Bound-To-Verdict (BTV) framework and its core type law:
-$V \multimap (E \otimes C)$.
+$(E \otimes C) \multimap V$.
 Under this invariant, a \texttt{Verdict} cannot be constructed
 without atomically consuming an \texttt{EvidenceToken} and a
 \texttt{ComplianceToken}.
-The three structural protections---private fields, \texttt{pub(crate)}
-consume, and \texttt{\#[must\_use]}---close every syntactic path
-around the constructor, making a silent decision a type error
-detected at compile time.
+The structural protections---private fields, \texttt{pub(crate)}
+consumption, and an affine ownership API reinforced by
+\texttt{\#[must\_use]} lint policy---enclose the authorized constructor.
+Within that perimeter, an unevidenced BTV verdict construction is rejected
+at compile time.
 
-We proved the \emph{Constitutional Enclosure Theorem}: in any Safe
-Rust program that includes the BTV crate, the set $\mathcal{S}$ of
-materialized silent decisions is empty within the crate's type
-perimeter, under the assumptions of Section~4.3.
-The proof is exhaustive (three cases), machine-checkable
-(\texttt{cargo test}: seventeen clauses, seconds), and accompanied
-by a Fail-Secure Corollary: a system that cannot produce evidence
-cannot issue a verdict---it fails securely rather than silently.
+We proved the \emph{Constitutional Enclosure Theorem}: under the
+assumptions of Section~4.3, an external Safe Rust caller cannot obtain
+a \texttt{Verdict} through the public API without the required
+tokens; the construction paths are machine-checked
+(\texttt{cargo test}: seventeen clauses), with a scoped
+Fail-Secure Corollary.
 
 Empirical benchmarks on the reference implementation bound what the
 type-level enforcement itself costs: it adds no runtime branch.  The
-measured cost is that of the cryptographic primitives
-(BLAKE3 + HMAC-SHA256, $\approx$1.4--2.4\,\textmu s of construction
-across 64\,B--4\,KiB payloads) and of durable persistence, which
- dominates at $\approx$0.2\,ms per verdict on the reference container
-and is bounded below by storage physics.
+measured cost is that of the cryptographic primitives and encoding
+(BLAKE3 + two HMAC-SHA256 computations, 5.36--7.65\,\textmu s for the
+full public construction path across 64\,B--4\,KiB payloads) and of durable
+persistence.  On the reduced-footprint reference collection, durable SQLite
+reached a 261\,\textmu s median at one thread and a 28\,ms estimated p99 at
+four threads.  These are container-storage measurements from one current
+x86-64 host, not production-scale or cross-architecture performance claims.
 
-The implications extend beyond compliance engineering.
-If accountability can be expressed as a type invariant, then
-the correctness of governance becomes a property that compilers
-can check, proof assistants can verify, and regulators can audit
-through \texttt{cargo test} rather than through manual code
-review.
-Silent decisions are not an inevitable cost of deploying AI at
-scale---they are a defect class that a sufficiently expressive type
-system removes, leaving only the irreducible cost of evidence itself.
+If accountability can be expressed as a type invariant,
+its correctness becomes a property that compilers can check, proof
+assistants can verify, and regulators can audit through
+\texttt{cargo test} rather than manual review.
+BTV therefore prevents a class of unevidenced verdict constructions
+inside a defined type perimeter.  It does not prove that every
+consequential action in a polyglot system is routed through that perimeter.

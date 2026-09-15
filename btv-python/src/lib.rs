@@ -28,7 +28,7 @@
 //!
 //! ## Out of scope
 //!
-//! - End-to-end non-repudiation across process boundaries.
+//! - Third-party-verifiable non-repudiation across process boundaries.
 //! - Protection against a compromised Python interpreter (a malicious
 //!   extension could call `btv_core` directly via FFI).
 //! - Durability of the `LogSink` beyond what the configured backend provides.
@@ -399,7 +399,7 @@ fn btv_python(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
          - SealedVerdict is read-only; use `with` for deterministic teardown.\n\
          \n\
          Out of scope:\n\
-         - End-to-end non-repudiation across processes.\n\
+         - Third-party-verifiable non-repudiation across processes.\n\
          - Protection against a compromised Python interpreter.\n\
          - Durability of the LogSink beyond what the backend provides.",
     )?;

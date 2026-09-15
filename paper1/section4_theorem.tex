@@ -5,11 +5,11 @@
 \section{The Constitutional Enclosure Theorem}
 \label{sec:theorem}
 
-This section formalises the central claim of the paper: in any Safe Rust
-program that uses the \texttt{silent-decisions-proof} crate, producing a
-\emph{silent decision} is a compile-time impossibility.  We state the
-theorem through three definitions, three axioms, and a constructive proof
-with exhaustive case analysis.
+This section formalises the paper's bounded claim: an external Safe Rust
+caller cannot obtain a BTV \texttt{Verdict} through the crate's public API
+without supplying the required evidence and compliance tokens.  This is an
+API-enclosure result, not a theorem that every consequential action in a
+surrounding system is routed through BTV.
 
 % ----------------------------------------------------------------
 \subsection{Definitions}
@@ -31,11 +31,12 @@ Safe Rust.
 
 \begin{definition}[Silent Decision]
 \label{def:silent}
-Let $\mathcal{S}$ denote the set of \emph{silent decisions}---decision
-acts that carry legal consequences but lack a non-repudiable evidence
-chain.  Formally, a decision act $\delta$ belongs to $\mathcal{S}$ if
-and only if $\delta$ cannot be expressed as a Materialized Verdict
-(Definition~\ref{def:materialized}).
+For a program $P$, let $\mathcal{S}_{P}$ denote the set of
+\emph{unevidenced BTV verdicts}: terms of type \texttt{Verdict} exposed
+through the crate's public API without construction from one
+\texttt{EvidenceToken} and one authority-issued \texttt{ComplianceToken}.
+This definition is deliberately confined to the BTV type perimeter; an
+external action that bypasses \texttt{Verdict} is outside the set.
 \end{definition}
 
 % ----------------------------------------------------------------
@@ -57,7 +58,7 @@ $E$ and $C$ by value.  Once passed to the constructor, neither token
 is accessible to the caller.
 \end{axiom}
 
-\begin{axiom}[Resource Uniqueness and Anti-Weakening]
+\begin{axiom}[Resource Uniqueness and Drop Diagnostics]
 \label{ax:unique}
 \texttt{EvidenceToken} is annotated \texttt{\#[must\_use]} and does
 not implement \texttt{Clone} or \texttt{Copy}.  Consequently:
@@ -65,10 +66,10 @@ not implement \texttt{Clone} or \texttt{Copy}.  Consequently:
   \item \emph{Contraction} is prohibited: a token cannot be
     duplicated, preventing the same evidence from being
     associated with more than one verdict.
-  \item \emph{Weakening} is prohibited: a token cannot be silently
-    discarded.  The compiler emits a \texttt{unused\_must\_use}
-    diagnostic---treated as an error in this crate---whenever an
-    \texttt{EvidenceToken} value is dropped without being consumed.
+  \item Ignoring a token-producing expression emits an
+    \texttt{unused\_must\_use} diagnostic, treated as an error in this
+    crate.  Explicit discard remains possible because Rust is affine;
+    this lint is a guardrail, not an anti-weakening proof.
 \end{enumerate}
 The method \texttt{consume()} is the unique destructor; it transfers
 the inner \texttt{Blake3Hash} to the \texttt{Verdict} constructor and
@@ -85,15 +86,12 @@ The following are ill-typed in $\Gamma_{\mathit{ext}}$:
 \begin{enumerate}
   \item Struct-literal construction of \texttt{Verdict}---all fields
     are private (compiler error \texttt{E0451}).
-  \item Direct invocation of \texttt{EvidenceToken::consume()}---the
-    method is \texttt{pub(crate)} (compiler error \texttt{E0624}).
+  \item Direct invocation of \texttt{EvidenceToken::consume()}:
+    the method is \texttt{pub(crate)} (compiler error \texttt{E0624}).
   \item Construction of \texttt{Blake3Hash} via its tuple-struct
     field---the field is private (compiler error \texttt{E0423}).
 \end{enumerate}
-Together, these restrictions close the encapsulation perimeter: the
-only well-typed path to a \texttt{Verdict} in $\Gamma_{\mathit{ext}}$
-is through \texttt{Verdict::new}, which enforces
-Axiom~\ref{ax:intro}.
+Together, these restrictions close the encapsulation perimeter.
 \end{axiom}
 
 % ----------------------------------------------------------------
@@ -105,12 +103,10 @@ The \texttt{unsafe} keyword grants the programmer the ability to
 bypass borrow-checker and visibility rules; consequently, code that
 uses \texttt{unsafe} is explicitly out of scope.
 
-This is not a practical limitation in governance contexts: production
-deployments can enforce the absence of \texttt{unsafe} code via
-\texttt{cargo geiger}~\cite{cargogeiger}, which reports every
-\texttt{unsafe} block transitively reachable from the dependency
-graph.  A zero-\texttt{unsafe} audit guarantees that the theorem
-applies to the entire compiled binary.
+First-party crates forbid \texttt{unsafe}; production deployments should
+also inventory dependency usage with \texttt{cargo geiger}~\cite{cargogeiger}.
+That tool reports unsafe constructs but does not prove their soundness or
+guarantee that the theorem composes across the entire dependency graph.
 
 Macro-generated code is in scope: procedural macros run before the
 type checker and cannot produce terms that circumvent visibility rules
@@ -122,17 +118,17 @@ without themselves using \texttt{unsafe}.
 
 \begin{theorem}[Constitutional Enclosure]
 \label{thm:enclosure}
-In any Safe Rust program $P$ whose crate graph includes
-\texttt{silent-decisions-proof}, no term of type \texttt{Verdict}
-can be constructed without consuming exactly one \texttt{EvidenceToken}
-and exactly one \texttt{ComplianceToken}.  Equivalently,
-$\delta \in \mathcal{S} \Rightarrow P$ does not type-check.
+Assume the BTV crate implementation and its public encapsulation are
+preserved.  No external Safe Rust caller can obtain a term of type
+\texttt{Verdict} through that public API without the constructor consuming
+one \texttt{EvidenceToken} and one authority-issued
+\texttt{ComplianceToken}.  Equivalently, $\mathcal{S}_{P}=\varnothing$
+within this API perimeter.
 \end{theorem}
 
 \begin{proof}
-We show that every possible syntactic strategy for constructing a
-\texttt{Verdict} without going through \texttt{Verdict::new} is
-ill-typed.  The cases are exhaustive.
+We analyze the public construction and extraction paths closed by the
+crate's encapsulation assumptions (Figure~\ref{fig:enclosure_perimeter}).
 
 \medskip
 \noindent\textbf{Case~A: Struct-literal construction.}
@@ -160,37 +156,35 @@ This is verified by the compile-fail test
 \texttt{tests/ui/external\_consume\_call.rs}.
 
 \medskip
-\noindent\textbf{Case~C: Silent drop of \texttt{EvidenceToken}.}
+\noindent\textbf{Guardrail~C: Discard of \texttt{EvidenceToken}.}
 A developer issues a decision without providing evidence by
 constructing an \texttt{EvidenceToken} and immediately dropping it
 (or ignoring the return value of a function that returns one).
-By Axiom~\ref{ax:unique}, \texttt{EvidenceToken} is \texttt{\#[must\_use]}.
-The compiler emits \texttt{warning: unused return value of
-`EvidenceToken` that must be used}, and because the crate sets
-\texttt{\#![deny(unused\_must\_use)]}, this warning is promoted to a
-hard error.  Note that \texttt{let \_ = expr} in Rust explicitly silences the
-\texttt{\#[must\_use]} lint without consuming the token.  This does
-not violate the theorem: no \texttt{Verdict} is produced, so no
-silent decision (Definition~\ref{def:silent}) materializes.  The
-\texttt{\#[must\_use]} annotation serves as a developer-facing
-guardrail against accidental drops, not as a formal closure of the
-type perimeter---that role belongs to Axiom~\ref{ax:encap} (private
-fields and \texttt{pub(crate)} visibility).  The developer cannot
-construct a \texttt{Verdict} without going through
-\texttt{Verdict::new}.
+By Axiom~\ref{ax:unique}, ignoring a token-producing expression triggers
+a diagnostic promoted to an error in this crate.  Explicit
+\texttt{let \_ = expr}, \texttt{drop}, or \texttt{mem::forget} remains
+possible.  None produces a \texttt{Verdict}; the formal closure instead
+comes from Axiom~\ref{ax:encap} (private fields and restricted visibility).
 This is verified by the compile-fail test
 \texttt{tests/ui/dropped\_evidence\_token.rs}.
 
 \medskip
-Since Cases~A, B, and C are exhaustive over all syntactic strategies
-for circumventing the constructor, and all three are ill-typed in
-Safe Rust, no term of type \texttt{Verdict} can be produced in
-$\Gamma_{\mathit{ext}}$ without passing through
+By the Encapsulation Boundary axiom, no term of type \texttt{Verdict}
+can be obtained in $\Gamma_{\mathit{ext}}$ without passing through
 \texttt{Verdict::new}.  By Definition~\ref{def:materialized}, every
-such term is a Materialized Verdict, and by
-Definition~\ref{def:silent}, no silent decision $\delta \in
-\mathcal{S}$ is representable.
+such term is a Materialized Verdict; therefore
+$\mathcal{S}_{P}=\varnothing$ within the stated perimeter.
 \end{proof}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig3_enclosure_perimeter.pdf}
+\caption{The Constitutional Enclosure perimeter: attack vectors A--C are
+  rejected by the compiler (\texttt{E0451}, \texttt{E0624},
+  \texttt{unused\_must\_use}); the only well-typed path to a
+  \texttt{Verdict} is \texttt{Verdict::new}.}
+\label{fig:enclosure_perimeter}
+\end{figure}
 
 % ----------------------------------------------------------------
 \subsection{Corollary: Fail-Secure by Construction}
@@ -204,27 +198,23 @@ failure to produce evidence (e.g., a database timeout, a missing
 context field) cannot silently issue a \texttt{Verdict}---the type
 system ensures at compile time that every branch leading to a
 \texttt{Verdict} must supply a valid \texttt{EvidenceToken}.
-The system \emph{fails securely}: it cannot issue a decision that
-lacks an evidence chain.
+The protected path \emph{fails securely}: it cannot return a BTV verdict
+that lacks an evidence record.
 \end{corollary}
 
 \begin{proof}
-If the evidence-production path is absent or returns an error type
-(e.g., \texttt{Result<EvidenceToken, E>}), the only well-typed
-continuation that produces a \texttt{Verdict} requires unwrapping
-the result and handling the error branch explicitly.  The error
-branch cannot produce a \texttt{Verdict} without evidence; it must
-either propagate the error upward or halt.  By
+The only well-typed continuation that produces a \texttt{Verdict}
+requires unwrapping the result and handling the error branch
+explicitly; that branch must either propagate the error or halt.  By
 Theorem~\ref{thm:enclosure}, any attempt to construct a
 \texttt{Verdict} in the error branch without a valid
 \texttt{EvidenceToken} is ill-typed.
 \end{proof}
 
-The Fail-Secure Corollary aligns with the regulatory intent of
-LGPD Art.~18\S2 and EU AI Act Art.~86: the obligation to provide an
-explanation is not advisory but \emph{structural}---it cannot be
-omitted under load, behind a feature flag, or through a code path
-that bypasses an \texttt{assert}.
+The Fail-Secure Corollary supports review and explanation under
+LGPD Art.~20 and EU AI Act Arts.~14 and~86 by making the required
+artifacts structural on the protected BTV path rather than an optional
+post-hoc assertion.
 
 % ----------------------------------------------------------------
 \subsection{Corollary 4.8: Human Escalation as the Only Well-Typed Alternative}
@@ -234,17 +224,17 @@ that bypasses an \texttt{assert}.
 \label{cor:escalated}
 Under the conditions of Theorem~\ref{thm:enclosure}, when an
 \texttt{EvidenceToken} cannot be produced (e.g., model timeout,
-unavailable context), the type system provides exactly one
-well-typed alternative: constructing an \texttt{EscalatedVerdict}
+unavailable context), the API provides a well-typed alternative to error
+propagation or halt: constructing an \texttt{EscalatedVerdict}
 via a linearly-consumed \texttt{OperatorToken}.
 Silent fallback to an unevidenced automated verdict is ill-typed.
-Formally, $V_{\mathrm{esc}} \multimap (O \otimes \mathbf{1})$.
+Formally, $O \multimap V_{\mathrm{esc}}$.
 
 This structure aligns with the human oversight requirement of
 EU AI Act Art.~14: the system cannot produce a consequential
 decision-equivalent record without binding exactly one named
-human operator, whose identity and authorisation are
-cryptographically sealed via HMAC.
+human operator, whose identity and authorisation are protected by an
+HMAC integrity seal under the configured key-management model.
 \end{corollary}
 
 \begin{proof}
@@ -267,9 +257,9 @@ The four compile-fail tests
 \texttt{escalated\_token\_reuse.rs},
 \texttt{escalated\_operator\_token\_drop.rs}, and
 \texttt{escalated\_consume\_external.rs}
-verify by exhaustive case analysis (mirroring Cases~A, B, and~C
-of Theorem~\ref{thm:enclosure}) that no \texttt{EscalatedVerdict}
-can be forged, duplicated, or silently dropped.
+exercise the corresponding encapsulation and ownership cases of
+Theorem~\ref{thm:enclosure}; no \texttt{EscalatedVerdict} can be
+forged, duplicated, or silently dropped.
 \end{proof}
 
 % ----------------------------------------------------------------

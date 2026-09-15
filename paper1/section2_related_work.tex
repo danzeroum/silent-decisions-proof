@@ -11,11 +11,9 @@
 \section{Related Work}
 \label{sec:related_work}
 
-The challenge of algorithmic accountability intersects three distinct
-domains of computer science: infrastructure governance, runtime
-verification, and type theory.
-We situate our contribution in contrast to prevailing methodologies
-in each domain.
+Algorithmic accountability intersects infrastructure governance, runtime
+verification, and type theory.  We situate our contribution against the
+prevailing methodology in each domain.
 
 % ----------------------------------------------------------------
 \subsection{Policy-as-Code for Infrastructure Governance}
@@ -24,22 +22,19 @@ in each domain.
 The industry standard for continuous compliance relies on
 Policy-as-Code (PaC) frameworks such as Open Policy
 Agent~\cite{opa2024}, Kyverno, and Checkov.
-These tools excel at governing infrastructure artifacts---verifying
-that a Kubernetes pod lacks privilege escalation, that a cloud
-storage bucket is not publicly accessible, or that a Terraform plan
-does not provision over-privileged IAM roles.
+These tools excel at governing infrastructure artifacts---that a
+Kubernetes pod lacks privilege escalation, or that a Terraform plan
+avoids over-privileged IAM roles.
 However, they are designed to evaluate \emph{declarative
 configurations}, not \emph{dynamic runtime decisions} affecting
 individual rights.
 
-Consequently, evidence of compliance in these systems manifests as
-asynchronous audit logs: records written after the decision logic has
-executed, stored in a separate artifact, and subject to omission or
-alteration if the logging pipeline fails.
-Infrastructure PaC frameworks therefore govern configuration
-artifacts, not transient decision acts with immediate legal
-consequences for a natural person; accountability remains a post-hoc
-observable state, structurally vulnerable to the silent-decision
+Evidence of compliance manifests as asynchronous audit logs: records
+written after the decision logic executes, stored separately, and
+subject to omission or alteration if the logging pipeline fails.
+PaC frameworks govern configuration artifacts, not transient decision
+acts with legal consequences for a person; accountability remains a
+post-hoc state, structurally vulnerable to the silent-decision
 failure mode of Section~\ref{sec:intro}.
 
 % ----------------------------------------------------------------
@@ -50,24 +45,20 @@ To govern application-level decision logic, practitioners
 typically rely on a combination of runtime assertions
 (e.g., \texttt{assert(evidence != null)}) and structured
 audit logging.
-While functional under nominal conditions, these mechanisms are
-procedural promises, not structural invariants.
-Runtime assertions can be disabled in production builds
-(e.g., by stripping \texttt{debug\_assertions} in Rust, or by
-omitting \texttt{-ea} in the Java VM) to reduce overhead.
-Audit logs can be truncated under load, dropped by a misconfigured
-sink, or bypassed by a code path that was never reached during
-testing.
+While functional under nominal conditions, these are procedural
+promises, not structural invariants.
+Assertions can be disabled in production builds (stripping
+\texttt{debug\_assertions} in Rust; omitting \texttt{-ea} in the
+Java VM); audit logs can be truncated under load, dropped by a
+misconfigured sink, or bypassed by an untested code path.
 
-Moreover, both mechanisms operate \emph{after} the decision logic
-has executed.
-They do not prevent the materialization of a verdict that lacks
-non-repudiable evidence; they attempt to record its absence, if they
-run at all.
+Both mechanisms operate \emph{after} the decision logic executes:
+they do not prevent a verdict that lacks integrity-authenticated
+evidence from materializing; they attempt to record its absence, if
+they run at all.
 This architectural decoupling separates the act of deciding from the
-act of proving---a separation incompatible with the obligations of
-LGPD Art.~18\S2 and EU AI Act Art.~86, which require that evidence
-\emph{accompany} a decision, not merely follow it.
+act of preserving evidence needed to support review, explanation, and
+oversight under LGPD Art.~20 and EU AI Act Arts.~14 and~86.
 
 A stronger form of runtime guarantee is offered by transactional
 databases: an ACID transaction wrapping both the decision record and
@@ -88,18 +79,10 @@ to include the evidence or not.
 \subsection{Linear Types and Resource Correctness}
 \label{sec:linear_related}
 
-The theoretical foundation for structural resource guarantees is
-Linear Logic, introduced by Girard~\cite{girard1987linear} in 1987.
-Girard's key insight---that propositions should be treated as
-\emph{resources} that are consumed exactly once---was subsequently
-adapted into programming language design by
-Wadler~\cite{wadler1991linear}, who showed that linear types
-eliminate a class of resource-management errors at compile time.
-This paradigm has proven highly effective in enforcing memory safety
-and preventing data races; it underpins the ownership and borrowing
-model of the Rust programming language~\cite{jung2017rustbelt}.
-
-However, prior applications of linear and substructural types focus
+Linear Logic's structural resource guarantees~\cite{girard1987linear,wadler1991linear}
+were adapted into programming-language design and underpin Rust's
+ownership and borrowing model~\cite{jung2017rustbelt}.
+Prior applications of linear and substructural types, however, focus
 predominantly on \emph{resource} correctness: ensuring that memory is
 freed exactly once, that file handles are not leaked, or that a
 communication protocol is followed in order.  Vault enforces
@@ -111,16 +94,14 @@ communication protocols on channels; and the substructural design
 space of affine versus linear versus relevant systems is surveyed by
 Walker~\cite{walker2005substructural}, with state-dependent
 disciplines studied by Ahmed et al.~\cite{ahmed2009state}.
-Prior work has therefore established that non-functional obligations
-of this family can be carried by the type system.
-This paper does not claim otherwise.  Our claim C1 is deliberately
-narrower: we \emph{instantiate} that established discipline over
-\emph{regulatory} obligations---the requirement that a decision act
-with legal consequences cannot exist without a causally-bound,
-non-repudiable evidence chain, as demanded by LGPD Art.~18\S2 and EU
-AI Act Art.~86---and we scope the resulting guarantee to the Safe Rust
+Our claim C1 is deliberately narrower: we \emph{instantiate} that
+established discipline over \emph{regulatory-support} artifacts---a
+BTV verdict must consume causally bound evidence and an
+authority-issued compliance token---and relate the mechanism to LGPD
+Art.~20 and EU AI Act Arts.~14 and~86.
+We scope the resulting guarantee to the Safe Rust
 type perimeter (Section~\ref{sec:encapsulation}), with the escape
-hatches of Section~3.1 stated explicitly.
+hatches of Section~3 stated explicitly.
 Bound-To-Verdict extends the linear-type discipline from resource
 management to regulatory accountability, not from nothing to
 regulatory accountability.
