@@ -103,9 +103,9 @@ fn clause_8_escalated_verdict_can_be_constructed() {
     );
 }
 
-/// Clause 9 lives in `src/lib.rs`'s `#[cfg(test)]` module: it exercises
-/// `OperatorToken::consume()`, which is `pub(crate)` BY DESIGN (an external
-/// call is itself a compile error — Clause 13).
+// Clause 9 lives in `src/lib.rs`'s `#[cfg(test)]` module: it exercises
+// `OperatorToken::consume()`, which is `pub(crate)` BY DESIGN (an external
+// call is itself a compile error — Clause 13).
 
 /// Clause 14: a tampered `EscalatedVerdict` fails integrity.
 #[test]

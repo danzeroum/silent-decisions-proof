@@ -78,7 +78,15 @@ jobs:
         # fail-secure contrast experiment behind the E2 status-quo baseline —
         # the status quo issues decisions while records vanish; BTV's
         # Verdict exists only through consumed linear tokens.
-        run: cargo test --features test-support --lib --test test_partition --test test_load --test test_status_quo_contrast
+        #
+        # test_append_only (OS-03, closes F3) and test_proof_clauses
+        # (OS-09, closes H4/H6 — 11 of the 17 numbered proof clauses) were
+        # previously never named here: `cargo test` restricts execution to
+        # exactly the targets an explicit `--test` names, so both files
+        # silently never ran in CI despite the manuscript's "seventeen
+        # clauses, cargo test, seconds" claim (Sections 1 and 7) and the
+        # F3 fix depending on this exact suite for its regression gate.
+        run: cargo test --features test-support --lib --test test_partition --test test_load --test test_status_quo_contrast --test test_append_only --test test_proof_clauses
 
       - name: Run trybuild compile-fail tests
         working-directory: btv-core

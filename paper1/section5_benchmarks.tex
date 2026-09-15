@@ -37,7 +37,7 @@ Micro-benchmarks use Criterion's \texttt{iter\_batched} discipline with
 a per-iteration seed that makes the hashed context distinct in every
 iteration.  Sweep measurements use a harness whose hot path carries no
 harness-injected synchronization; percentiles are estimated online with
-the $P^2$ algorithm (Jain \& Chlamtac, 1985), O(1) memory per quantile,
+the $P^2$ algorithm~\cite{jain1985p2}, O(1) memory per quantile,
 and are \emph{estimates}, not order statistics---all tables say so.
 Each sweep configuration runs five trials; we report medians and the
 trial-to-trial coefficient of variation (CV).  Iteration counts are

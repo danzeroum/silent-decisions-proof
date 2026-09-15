@@ -1,0 +1,10 @@
+# Python dependencies for scripts/*.py (compute_crossover.py, verify_reports.py,
+# benchmark_baseline.py). Mirrors exactly what .github/workflows/ci.yml installs
+# for the test-x86-64 and tco-reproducibility jobs — kept in sync by hand since
+# CI does not currently install from this file (documented here so `pip install
+# -r scripts/requirements.txt` reproduces the same environment locally).
+numpy
+pyyaml
+scipy
+opentelemetry-sdk
+opentelemetry-api

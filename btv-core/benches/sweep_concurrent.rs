@@ -595,7 +595,7 @@ fn sweep(thread_counts: &[usize], ops: &ModeOps<'_>) {
             for (i, b) in cal_payload.iter_mut().enumerate() {
                 *b = (i % 251) as u8;
             }
-            let mut calibrate_op = |buf: &mut [u8]| -> Duration {
+            let calibrate_op = |buf: &mut [u8]| -> Duration {
                 cal_iter += 1;
                 buf[0..8].copy_from_slice(&cal_iter.to_le_bytes());
                 match mode {

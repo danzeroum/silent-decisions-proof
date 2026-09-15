@@ -273,8 +273,8 @@ Commit: `fb6e9d5` (branch `review/bench-workspace-ffi`, PR #4).
 | OS-06 | F6 | `drop` no fail-secure | `reports/rss_probe_fail_secure.txt` (delta 0 kB/200k); `tests/ui/token_reuse_after_fail_secure.rs` (E0382) |
 | OS-07 | F7,F10 | `full_pipeline_durable` (disco real) + `status_quo_digest_log` | `data/sweep_raw_20260914T231611Z_chunked5s.csv` + fingerprint (5 modos, 5 trials) |
 | OS-08 | F8,F9 | testes não escrevem em `reports/`; n_threads por env; arquitetura por target triple; vazão = ops/wall_clock | `scripts/collect_load_stats.sh` → `reports/load_stats.csv` + fingerprint |
-| OS-09 | H4,H5,H6 | btv-core canônico; paper1 re-export; 17 cláusulas; `rust-toolchain.toml` | `grep -c "fn clause_"` == 17 == §1 == §7; `test_proof_clauses.rs` |
+| OS-09 | H4,H5,H6 | btv-core canônico; paper1 re-export; 17 cláusulas; `rust-toolchain.toml` | `grep -c "fn clause_" btv-core/src/lib.rs btv-core/tests/test_proof_clauses.rs` == 6+11 == 17 == §1 == §7; ambos os arquivos agora executados na CI (`--test test_proof_clauses` adicionado pós-merge PR#4→PR#5, junto com `--test test_append_only`, que também nunca era executado) |
 | OS-10 | A2 | §5 reescrita dos CSVs; tabelas geradas | `scripts/gen_section5_tables.py` → `paper1/section5_tables_generated.tex` |
 | OS-11 | A4 | claims moderados; abstract 149 palavras | `scripts/count_words.py` (PASS); grep de frases banidas vazio |
-| OS-12 | F11 | 4 refs de R2 com DOIs verificados; §2.3 reescopada; §3 afim×linear | `grep -c "^@" paper1/refs.bib` == 14; todas citadas |
+| OS-12 | F11 | 4 refs de R2 com DOIs verificados; §2.3 reescopada; §3 afim×linear | `grep -c "^@" paper1/refs.bib` == 15 (pós-merge PR#4→PR#5: 3 chaves duplicadas removidas, `jain1985p2` religada a `\cite`); todas as 15 citadas, zero duplicatas |
 | OS-13 | D1–D4 | `docs/RESPONSE-LETTER-COMSI-2026-04-0112.md` | carta ponto a ponto com arquivo:linha e hash |

@@ -25,38 +25,29 @@
 \label{sec:discussion}
 
 The Constitutional Enclosure Theorem establishes a strong structural
-guarantee within a precisely bounded scope.
-This section examines the boundaries of that scope honestly,
-identifies limitations of the current reference implementation,
-and proposes concrete extensions that preserve the core invariant
-while closing each gap.
+guarantee within a precisely bounded scope. This section examines
+those boundaries honestly, identifies limitations of the reference
+implementation, and proposes extensions that close each gap without
+weakening the core invariant.
 
 % ----------------------------------------------------------------
 \subsection{Scope and Boundaries of the Guarantee}
 \label{sec:scope}
 
 \paragraph{Unsafe Rust.}
-The \texttt{unsafe} keyword grants the programmer the ability to
-bypass borrow-checker and visibility rules, including the private
-field restrictions that enforce the encapsulation boundary
-(Section~\ref{sec:encapsulation}).
-Production deployments should enforce a zero-\texttt{unsafe} policy
-over the transitive dependency graph, auditable via
-\texttt{cargo geiger}~\cite{cargogeiger}.
-This is an operational policy decision, not a theoretical barrier:
-the tooling exists and its enforcement requires no changes to the
-BTV crate.
+The scope limits of \S\ref{sec:encapsulation} and \S\ref{sec:threat}
+apply here too: enforcing a zero-\texttt{unsafe} policy across the
+dependency graph (auditable via \texttt{cargo geiger}~\cite{cargogeiger})
+is an operational decision, not a theoretical barrier, and requires no
+change to the BTV crate itself.
 
 \paragraph{Semantic truthfulness and the AttestableContext extension.}
-The theorem guarantees that \emph{some} byte sequence was hashed
-and bound to a verdict---not that the sequence faithfully represents
-the context presented to the AI system at inference time.
-A caller could pass \texttt{b"placeholder"} to
-\texttt{EvidenceToken::new} and obtain a structurally valid token.
-
-We propose a concrete extension that narrows this gap without
-violating the core invariant.
-Introduce a sealed \texttt{AttestableContext} trait:
+The theorem guarantees that \emph{some} byte sequence was hashed and
+bound to a verdict, not that it faithfully represents the context
+presented at inference time: a caller could pass
+\texttt{b"placeholder"} to \texttt{EvidenceToken::new} and obtain a
+structurally valid token. A sealed \texttt{AttestableContext} trait
+would narrow this gap without weakening the core invariant:
 
 \begin{lstlisting}[language=Rust,caption={AttestableContext trait
   (proposed extension)}]
@@ -68,23 +59,16 @@ pub trait AttestableContext: Sealed {
 \end{lstlisting}
 
 \noindent
-where \texttt{SourceAttestation} encapsulates a digital signature
-produced by the inference service over the payload, using a key
-stored in an HSM or TPM.
-\texttt{EvidenceToken::new} would then accept
-\texttt{impl AttestableContext} instead of \texttt{\&[u8]}.
-Forging evidence would require compromising the signing key---a
-problem reducible to PKI security---rather than simply passing
-an arbitrary byte string.
-
-This extension tightens the type law to
-$V \multimap (E_{\text{attested}} \otimes C)$,
-which is strictly stronger than $V \multimap (E \otimes C)$:
-every proof of the original invariant is also a proof of the
-attested variant, but not vice versa.
-The \texttt{Sealed} supertrait prevents external crates from
-implementing \texttt{AttestableContext}, preserving the closed
-perimeter of Axiom~3.
+where \texttt{SourceAttestation} carries a signature over the payload
+from an HSM/TPM-backed key; \texttt{EvidenceToken::new} would accept
+\texttt{impl AttestableContext} instead of \texttt{\&[u8]}, reducing
+forgery to compromising that key rather than passing an arbitrary
+byte string. This tightens the type law to
+$V \multimap (E_{\text{attested}} \otimes C)$ --- strictly stronger
+than $V \multimap (E \otimes C)$, since every proof of the original
+invariant is also a proof of the attested variant --- while the
+\texttt{Sealed} supertrait keeps external crates from implementing
+\texttt{AttestableContext}, preserving Axiom~3's closed perimeter.
 
 % ----------------------------------------------------------------
 \subsection{Limitations of the Reference Implementation}
@@ -96,120 +80,91 @@ Four implementation choices trade production robustness for
 clarity of exposition; each has a well-defined remediation path.
 
 \paragraph{L1 — Static HMAC key (mitigated).}
-The reference implementation now reads the HMAC key from the
-\texttt{BTV\_HMAC\_KEY} environment variable at runtime, falling back
-to a compile-time constant only when the variable is unset.
-This closes L1 for deployments that inject a key from an HSM or KMS.
-However, L1 also surfaces an architectural asymmetry that recurs
-whenever a tamper-evident audit log is deployed alongside BTV: the
-verdict integrity seal offers its strongest guarantee only when
-\texttt{BTV\_HMAC\_KEY} is provisioned from the same HSM or KMS
-infrastructure that protects the audit log's signing key.
-Without such alignment, a deployment's overall non-repudiation
-guarantee is bounded by its weakest key-management practice.
-The type-level guarantee (Theorem~\ref{thm:enclosure}) is independent
-of key management and remains valid regardless of the HMAC key source.
+The reference implementation reads the HMAC key from
+\texttt{BTV\_HMAC\_KEY} at runtime, falling back to a compile-time
+constant only when unset, closing L1 for deployments that inject a
+key from an HSM/KMS. This surfaces a recurring asymmetry: the
+verdict seal's strongest guarantee holds only when
+\texttt{BTV\_HMAC\_KEY} shares HSM/KMS infrastructure with the audit
+log's own signing key, since overall non-repudiation is bounded by
+the weaker of the two. The type-level guarantee
+(Theorem~\ref{thm:enclosure}) is independent of key management and
+holds regardless of the key source.
 
-\paragraph{L2 — \texttt{ComplianceAuthority} factory (implemented).}
+\paragraph{L2 — \texttt{ComplianceAuthority} factory, HMAC-signed
+(implemented).}
 The \texttt{ComplianceToken::new} constructor was originally
-\texttt{pub}, allowing any external crate to self-declare a
-jurisdiction and policy version without validation.
-The reference implementation now restricts this constructor to
-\texttt{pub(crate)} and exposes a \texttt{ComplianceAuthority}
-factory that validates jurisdiction strings against an allowlist
-of recognised regulatory regimes (\texttt{BR-LGPD},
-\texttt{EU-GDPR}, \texttt{EU-AI-ACT}).
-The authority's signing key is read from the
-\texttt{BTV\_AUTHORITY\_KEY} environment variable, with a
-deterministic fallback for the proof test suite.
-Two additional proof clauses (Clauses~16 and~17) verify that
-(a)~an unrecognised jurisdiction (\texttt{"Narnia"}) is rejected,
-and (b)~valid jurisdictions produce well-formed tokens.
-The type law tightens to
+\texttt{pub}, letting any external crate self-declare a jurisdiction
+without validation \emph{or} authority. The reference implementation
+restricts it to \texttt{pub(crate)} behind a \texttt{ComplianceAuthority}
+factory that (a) validates the jurisdiction against an allowlist of
+recognised regimes (\texttt{BR-LGPD}, \texttt{EU-GDPR},
+\texttt{EU-AI-ACT}) and (b) signs \texttt{(jurisdiction, policy\_version,
+deadline\_hours)} with an HMAC key read from
+\texttt{BTV\_AUTHORITY\_KEY}. \texttt{Verdict::new} independently
+verifies that signature against the same recognized key before
+constructing a \texttt{Verdict}, rejecting a forged token or one
+issued by a differently-keyed authority (\texttt{BtvError::InvalidTokenSignature}) ---
+allowlist membership alone is no longer sufficient, closing the gap
+between "validated" and "authorized." The type law tightens to
 $V \multimap (E \otimes C_{\text{signed}})$; the encapsulation
 boundary (Axioms~1--3) is preserved.
 
 \paragraph{L3 — Single-node evidence chain.}
-The current \texttt{EvidenceToken} captures a single BLAKE3 hash
-of the decision context.
-Multi-step AI pipelines (retrieval, re-ranking, generation,
-scoring) produce intermediate states that each carry accountability
-implications.
-Extending the type system to a \emph{chain} of evidence tokens
-where each pipeline stage consumes the prior token and produces
-a new one is a natural generalisation that preserves
-$V \multimap (E \otimes C)$ at each step.
+\texttt{EvidenceToken} captures a single BLAKE3 hash; multi-step
+pipelines (retrieval, re-ranking, generation, scoring) each carry
+accountability implications. A \emph{chain} of evidence tokens, each
+stage consuming the prior and producing a new one, generalises
+naturally while preserving $V \multimap (E \otimes C)$ at each step.
 
 \paragraph{L4 — Polyglot pipelines.}
-Production AI systems rarely execute in a single-language process:
-Python orchestrators, C++ inference engines, and Java API gateways must
-all participate in the same governance boundary.
-Because the theorem holds within Safe Rust (Axiom~\ref{ax:encap}),
-external code constitutes $\Gamma_{\text{ext}}$ by definition, and
-cannot construct a \texttt{Verdict} directly.
-Section~\ref{sec:ffiboundary} analyses this boundary as a threat
-model: the PyO3 gateway (\texttt{btv-python}) keeps external callers
-inside $\Gamma_{\text{ext}}$, while a \emph{BTV sidecar} deployed
-alongside each service in a multi-service pipeline can intercept
-decision calls and chain a fresh \texttt{EvidenceToken} at each stage,
-addressing L3 and L4 jointly.
+Production AI systems rarely run in a single language: Python
+orchestrators, C++ inference engines, and Java gateways must all
+participate in the same governance boundary. Since the theorem holds
+within Safe Rust (Axiom~\ref{ax:encap}), external code is
+$\Gamma_{\text{ext}}$ by definition and cannot construct a
+\texttt{Verdict} directly; \S\ref{sec:ffiboundary} analyses this as a
+threat model, where the PyO3 gateway keeps external callers inside
+$\Gamma_{\text{ext}}$ and a \emph{BTV sidecar} per service could chain
+a fresh \texttt{EvidenceToken} at each stage, addressing L3 and L4
+jointly.
 
 % ----------------------------------------------------------------
 \subsection{CAL Design Trade-Offs}
 \label{sec:cal}
 
 A production governance kernel faces a three-way tension among
-\textbf{C}onsistency (every materialized verdict carries a
-causally-bound evidence chain), \textbf{A}vailability (the system can
-always issue a verdict in finite time), and \textbf{L}egality (tokens
-are issued only by a verified authority).
-Existing audit-logging designs effectively choose
-consistency-with-availability over legality: the decision path keeps
-issuing decisions even when the logging pipeline fails or drops
-records, so the resulting log carries no enforceable evidentiary
-guarantee.
-BTV makes the opposite choice: when evidence cannot be produced or
-the compliance authority is unreachable, the system fails securely
-rather than issuing an unevidenced verdict, accepting reduced
-availability---a deliberate posture for decisions with legal
-consequences, partially recovered by the \texttt{EscalatedVerdict}
-path (Section~\ref{sec:escalated}).
-We present this as a practical design observation, not a formal
-impossibility result; whether an FLP-style impossibility
-theorem~\cite{flp1985} holds for accountability systems remains an
-open question.
+\textbf{C}onsistency (every verdict carries a causally-bound evidence
+chain), \textbf{A}vailability (the system always issues a verdict in
+finite time), and \textbf{L}egality (tokens come only from a verified
+authority). Existing audit-logging designs choose
+consistency-with-availability over legality: decisions keep issuing
+even when the logging pipeline fails, so the log carries no
+enforceable evidentiary guarantee. BTV chooses the opposite: it fails
+securely rather than issuing unevidenced verdicts, accepting reduced
+availability, partially recovered by \texttt{EscalatedVerdict}
+(\S\ref{sec:escalated}). This is a practical design observation, not a
+formal impossibility result; whether an FLP-style
+theorem~\cite{flp1985} holds for accountability systems is open.
 
 % ----------------------------------------------------------------
 \subsection{Future Work}
 \label{sec:future}
 
-Six directions are most immediate.
-First, implementing the \texttt{AttestableContext} extension
-(Section~\ref{sec:scope}) and the \texttt{ComplianceAuthority}
-factory (L2) would close the semantic-truthfulness and
-self-declaration gaps in the reference kernel.
-Second, extending the evidence chain to multi-step pipelines via
-the sidecar pattern (L3, L4) would make the framework applicable
-to retrieval-augmented generation and agentic AI architectures.
-Third, formalising the type-system extension in a proof assistant
-(Lean~4 or Coq) would elevate the Constitutional Enclosure
-Theorem from a machine-checked Rust proof to a fully mechanised
-mathematical proof.
-Fourth, investigating whether a formal CAL impossibility result
-holds under asynchronous network conditions would provide
-theoretical grounding for the design trade-offs observed in
-Section~\ref{sec:cal}.
-Fifth, unifying \texttt{Verdict} and \texttt{EscalatedVerdict}
-under the \texttt{AccountableDecision} trait and formalising the
-composed invariant $(V_{\mathrm{auto}} \oplus V_{\mathrm{esc}})
-\multimap R$, where $R$ is the linear resource appropriate to
-each branch, would complete the type-theoretic account of
-mixed human-automated decision pipelines.
-Sixth, formalising the composition of BTV's construction-time
-guarantee with complementary mechanisms for tamper-evident persistence
-and privacy-preserving redaction of transparency logs remains an open
-problem.  We conjecture that these mechanisms operate at distinct
-enforcement layers (construction-time, delivery-time, and audit-time
-respectively) with non-overlapping trust assumptions, making
-end-to-end composition plausible; proving this formally---ideally via
-a mechanised proof assistant---is left as future work.
+Six directions are most immediate: (1)~implementing
+\texttt{AttestableContext} (\S\ref{sec:scope}) to close the
+semantic-truthfulness gap; (2)~extending the evidence chain to
+multi-step pipelines via the sidecar pattern (L3, L4) for
+retrieval-augmented and agentic architectures; (3)~mechanising the
+Constitutional Enclosure Theorem in a proof assistant (Lean~4 or Coq),
+elevating it from a machine-checked Rust proof to a fully mechanised
+one; (4)~investigating whether a formal CAL impossibility result holds
+under asynchronous network conditions (\S\ref{sec:cal}); (5)~unifying
+\texttt{Verdict} and \texttt{EscalatedVerdict} under
+\texttt{AccountableDecision} into a single composed invariant
+$(V_{\mathrm{auto}} \oplus V_{\mathrm{esc}}) \multimap R$ for mixed
+human-automated pipelines; and (6)~formally composing BTV's
+construction-time guarantee with tamper-evident persistence and
+privacy-preserving log redaction --- we conjecture these operate at
+distinct, non-overlapping-trust layers (construction-, delivery-, and
+audit-time), making composition plausible, but proving it is left open.

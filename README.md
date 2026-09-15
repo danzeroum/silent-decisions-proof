@@ -79,7 +79,10 @@ cargo audit --deny warnings
 cargo test --features test-support --lib
 cargo test --features test-support --test trybuild
 cargo test --features test-support --test test_partition
-cargo test --features test_support --test test_load -- --nocapture
+cargo test --features test-support --test test_load -- --nocapture
+cargo test --features test-support --test test_append_only
+cargo test --features test-support --test test_proof_clauses
+cargo test --features test-support --test test_status_quo_contrast
 
 # 3. Benchmarks
 cargo bench --features test-support --bench verdict_construction

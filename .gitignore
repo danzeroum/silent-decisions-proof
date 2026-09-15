@@ -12,4 +12,5 @@ paper2/target/
 # are the committed evidence pair (CSV + environment fingerprint alongside).
 !data/sweep_raw_20260914T171258Z.csv
 !data/sweep_raw_20260914T164735Z_runnervmlun5p.csv
+!data/sweep_raw_20260914T231541Z.csv
 !data/sweep_raw_20260914T231611Z_chunked5s.csv
